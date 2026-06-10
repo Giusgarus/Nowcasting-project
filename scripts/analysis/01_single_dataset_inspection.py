@@ -15,6 +15,16 @@ DATASET_PATH = PROJECT_ROOT / "data/raw/fc-uplink-fade.csv"
 ZOOM_OBSERVATIONS = 500
 
 # %%
+# Run overview
+print(
+    "=== Analysis overview ===\n"
+    "Prints: metadata, initial/final rows, statistics, and largest consecutive "
+    "change.\n"
+    "Displays: full timeline, initial observations, and largest-change zoom.\n"
+    "Saves: no files.\n"
+)
+
+# %%
 # Load selected dataset
 print("=== Load selected dataset ===")
 dataframe, metadata = load_signal_dataset(DATASET_PATH)
@@ -43,6 +53,7 @@ print(f"Invalid signal rows: {metadata['invalid_signal_rows']:,}")
 # %%
 # Locate largest absolute Signal change
 print("=== Locate largest absolute Signal change ===")
+# This diagnostic uses consecutive parse-valid rows; inspect sampling gaps separately.
 largest_change_position = int(dataframe["Signal"].diff().abs().fillna(0).to_numpy().argmax())
 zoom_start = max(0, largest_change_position - ZOOM_OBSERVATIONS // 2)
 zoom_stop = min(len(dataframe), largest_change_position + ZOOM_OBSERVATIONS // 2)

@@ -30,6 +30,17 @@ N_SPIKE_ZOOMS = 3
 ZOOM_RADIUS = 100
 
 # %%
+# Run overview
+print(
+    "=== Analysis overview ===\n"
+    "Prints: per-dataset outcomes and file, table, and saved-spike totals.\n"
+    "Displays: delta distributions, spike markers, and zooms on the top "
+    f"{N_SPIKE_ZOOMS} spikes per dataset.\n"
+    f"Saves: summary and top {TOP_K_SPIKES} spikes per dataset under {OUTPUT_DIR}.\n"
+    "Note: spikes are flagged, not removed or classified as errors.\n"
+)
+
+# %%
 # Load datasets
 print("=== Load datasets ===")
 loaded_datasets = []
@@ -50,6 +61,7 @@ summary_rows = []
 spike_frames = []
 figures_displayed = 0
 for dataset_name, dataframe in loaded_datasets:
+    # Spike thresholds are descriptive: q99 and median + 5 * MAD.
     summary_rows.append(
         {
             "dataset_name": dataset_name,
@@ -57,6 +69,7 @@ for dataset_name, dataframe in loaded_datasets:
         }
     )
     changes = compute_signal_changes(dataframe)
+    # dt_seconds keeps changes across time gaps identifiable during review.
     spikes = find_top_signal_spikes(dataframe, TOP_K_SPIKES)
     spikes.insert(0, "dataset_name", dataset_name)
     spike_frames.append(spikes)

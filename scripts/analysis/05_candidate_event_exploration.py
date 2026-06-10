@@ -22,12 +22,23 @@ ZOOM_PADDING = 200
 TABLE_PATH = PROJECT_ROOT / "results/data_analysis/candidate_event_quantile_summary.csv"
 
 # %%
+# Run overview
+print(
+    "=== Analysis overview ===\n"
+    "Prints: processing progress and final table path.\n"
+    "Displays: q05/q95 thresholds and zooms on the longest extreme runs.\n"
+    f"Saves: {TABLE_PATH}.\n"
+    "Note: this does not define final fade events.\n"
+)
+
+# %%
 # Compute exploratory quantile-run summaries
 print("=== Exploratory quantile-based candidate events ===")
 summary_frames = []
 for dataset_path in sorted(RAW_DIR.glob("*.csv")):
     dataframe, _ = load_signal_dataset(dataset_path)
 
+    # Quantile thresholds are dataset-relative and are not operational event rules.
     summary = compute_quantile_run_summary(dataframe)
     summary.insert(0, "dataset_name", dataset_path.name)
     summary_frames.append(summary)

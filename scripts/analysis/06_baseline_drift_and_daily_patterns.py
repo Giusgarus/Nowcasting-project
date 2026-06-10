@@ -28,6 +28,17 @@ ROLLING_WINDOWS = {"short": 120, "medium": 720, "long": 2880}
 ROLLING_STD_WINDOWS = {"short": 120, "medium": 720}
 
 # %%
+# Run overview
+print(
+    "=== Analysis overview ===\n"
+    "Prints: per-dataset outcomes and file, table, and insufficient-window totals.\n"
+    "Displays: Signal with rolling means, rolling standard deviations, and hourly "
+    "patterns by dataset.\n"
+    f"Saves: three compact tables under {OUTPUT_DIR}.\n"
+    "Note: rolling windows are measured in samples, not exact time durations.\n"
+)
+
+# %%
 # Load datasets
 print("=== Load datasets ===")
 loaded_datasets = []
@@ -49,10 +60,12 @@ hourly_frames = []
 daily_frames = []
 figures_displayed = 0
 for dataset_name, dataframe in loaded_datasets:
+    # Rolling summaries describe drift without modifying or detrending Signal.
     baseline = compute_rolling_baseline_summary(dataframe, ROLLING_WINDOWS)
     baseline.insert(0, "dataset_name", dataset_name)
     baseline_frames.append(baseline)
 
+    # Calendar summaries aggregate all observations sharing the same hour or date.
     hourly = compute_hourly_signal_summary(dataframe)
     hourly.insert(0, "dataset_name", dataset_name)
     hourly_frames.append(hourly)

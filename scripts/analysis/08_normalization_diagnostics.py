@@ -29,6 +29,16 @@ TIMESERIES_TRANSFORMATIONS = (
 HISTOGRAM_TRANSFORMATIONS = ("raw_signal", "robust_zscore_per_dataset")
 
 # %%
+# Run overview
+print(
+    "=== Analysis overview ===\n"
+    "Prints: per-dataset outcomes and file, table, and displayed-figure totals.\n"
+    "Displays: raw/normalized time series and comparison histograms by dataset.\n"
+    f"Saves: summary statistics only in {OUTPUT_PATH}.\n"
+    "Note: transformed series are not saved and no final normalization is selected.\n"
+)
+
+# %%
 # Load datasets
 print("=== Load datasets ===")
 loaded_datasets = []
@@ -48,6 +58,7 @@ print("=== Compute normalization diagnostics ===")
 summary_frames = []
 figures_displayed = 0
 for dataset_name, dataframe in loaded_datasets:
+    # Global diagnostics use the complete dataset and must not become model inputs.
     transformed, summary = compute_normalization_diagnostics(
         dataframe,
         ROLLING_WINDOW,

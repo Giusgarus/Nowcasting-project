@@ -20,11 +20,21 @@ GAP_THRESHOLD_SECONDS = 90
 OUTPUT_PATH = PROJECT_ROOT / "results/data_analysis/window_availability_summary.csv"
 
 # %%
+# Run overview
+print(
+    "=== Analysis overview ===\n"
+    "Prints: valid rows and continuous segments used for each dataset count.\n"
+    "Displays: no figures.\n"
+    f"Saves: {OUTPUT_PATH}.\n"
+)
+
+# %%
 # Count windows
 print("=== Window availability ===")
 rows = []
 for dataset_path in sorted(RAW_DIR.glob("*.csv")):
     dataframe, _ = load_signal_dataset(dataset_path)
+    # Windows are counted only inside segments separated by large time gaps.
     summary = count_valid_windows_by_segments(
         dataframe,
         CONTEXT_LENGTHS,

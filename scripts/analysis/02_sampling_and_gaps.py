@@ -22,11 +22,21 @@ GAP_THRESHOLD_SECONDS = 90
 TABLE_PATH = PROJECT_ROOT / "results/data_analysis/sampling_and_gaps_summary.csv"
 
 # %%
+# Run overview
+print(
+    "=== Analysis overview ===\n"
+    "Prints: median sampling interval and continuous-segment count by dataset.\n"
+    "Displays: one interactive sampling-interval histogram per dataset.\n"
+    f"Saves: {TABLE_PATH}.\n"
+)
+
+# %%
 # Load, compute, and plot
 print("=== Sampling and gap analysis ===")
 rows = []
 for dataset_path in sorted(RAW_DIR.glob("*.csv")):
     dataframe, metadata = load_signal_dataset(dataset_path)
+    # Gaps above the configured threshold start a new continuous segment.
     summary = compute_sampling_summary(dataframe, GAP_THRESHOLD_SECONDS)
     rows.append({"dataset_name": dataset_path.name, "valid_rows": len(dataframe), **summary})
     plot_sampling_histogram(

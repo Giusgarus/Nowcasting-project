@@ -18,6 +18,15 @@ RAW_DIR = PROJECT_ROOT / "data/raw"
 TABLE_PATH = PROJECT_ROOT / "results/data_analysis/signal_distribution_summary.csv"
 
 # %%
+# Run overview
+print(
+    "=== Analysis overview ===\n"
+    "Prints: processing progress and final table path.\n"
+    "Displays: per-dataset histograms and one combined comparison boxplot.\n"
+    f"Saves: {TABLE_PATH}.\n"
+)
+
+# %%
 # Load and compute distributions
 print("=== Signal distribution analysis ===")
 rows = []
@@ -30,6 +39,7 @@ for dataset_path in sorted(RAW_DIR.glob("*.csv")):
             **compute_signal_distribution_summary(dataframe),
         }
     )
+    # Keep the original series only for the final cross-dataset boxplot.
     signals[dataset_path.name] = dataframe["Signal"]
     plot_signal_histogram(
         dataframe,

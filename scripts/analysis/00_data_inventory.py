@@ -18,6 +18,15 @@ OUTPUT_PATH = PROJECT_ROOT / "results/data_analysis/data_inventory_summary.csv"
 SUSPECTED_SENTINEL_THRESHOLD = -10.0
 
 # %%
+# Run overview
+print(
+    "=== Analysis overview ===\n"
+    "Prints: discovered files, loading outcomes, and quality issues by dataset.\n"
+    "Displays: no figures.\n"
+    f"Saves: {OUTPUT_PATH}.\n"
+)
+
+# %%
 # Discover raw datasets
 print("=== Discover raw datasets ===")
 dataset_paths = sorted(RAW_DIR.glob("*.csv"))
@@ -29,6 +38,7 @@ print("=== Load and summarize ===")
 rows = []
 for dataset_path in dataset_paths:
     try:
+        # Sentinel values are reported separately and remain parse-valid.
         dataframe, metadata = load_signal_dataset(
             dataset_path,
             suspected_sentinel_threshold=SUSPECTED_SENTINEL_THRESHOLD,
