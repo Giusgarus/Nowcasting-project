@@ -1,0 +1,42 @@
+schema_version: 1
+
+data:
+  dataset_name: null
+  raw_path: null
+
+  # Header handling:
+  # - true: read column names from file
+  # - false: assume first column is Time and second column is Signal
+  # - auto: infer whether a header is present
+  has_header: auto
+
+  time_col: Time
+  signal_col: Signal
+
+  # Positional indices used for files without headers.
+  time_col_index: 0
+  signal_col_index: 1
+
+  target_col: Signal
+  keep_only_time_and_signal: true
+
+sampling:
+  expected_seconds: 30
+
+attenuation:
+  enabled: false
+  source_col: Signal
+  output_col: Attenuation
+  method: null
+
+switch:
+  mode: null
+  signal_threshold: null
+  attenuation_threshold: null
+  min_switch_duration_samples: 10
+
+split:
+  method: chronological
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15

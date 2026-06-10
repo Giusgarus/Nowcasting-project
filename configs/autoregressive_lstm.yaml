@@ -1,0 +1,17 @@
+schema_version: 1
+
+experiment:
+  task: autoregressive_forecasting
+  model_family: lstm
+  seed: 42
+  device: auto
+
+data_config: configs/data.yaml
+data:
+  target_col: Signal
+  input_col: Signal
+
+model:
+  input_size: 1
+training: {}
+switch_conversion: {}
