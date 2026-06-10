@@ -15,9 +15,7 @@ from src.analysis.plots import plot_combined_boxplot, plot_signal_histogram
 from src.data.loading import load_signal_dataset
 
 RAW_DIR = PROJECT_ROOT / "data/raw"
-TABLE_PATH = (
-    PROJECT_ROOT / "results/tables/data_analysis/signal_distribution_summary.csv"
-)
+TABLE_PATH = PROJECT_ROOT / "results/data_analysis/signal_distribution_summary.csv"
 
 # %%
 # Load and compute distributions

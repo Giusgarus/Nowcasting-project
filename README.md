@@ -72,7 +72,7 @@ conda env export --no-builds | grep -v "^prefix:" > environment.yml
 - `scripts/experiments/`: executable autoregressive experiments.
 - `src/`: reusable analysis, data, dataset, model, evaluation, and utility code.
 - `models/<task>/<model>/`: generated model artifacts without run-ID folders.
-- `results/tables/data_analysis/`: shared raw-data analysis tables; exploratory
+- `results/data_analysis/`: shared raw-data analysis tables; exploratory
   figures are displayed interactively and are not saved automatically.
 - `results/<task>/<model>/`: model-specific figures, tables, predictions, and
   reports.

@@ -19,10 +19,7 @@ from src.data.loading import load_signal_dataset
 
 RAW_DIR = PROJECT_ROOT / "data/raw"
 ZOOM_PADDING = 200
-TABLE_PATH = (
-    PROJECT_ROOT
-    / "results/tables/data_analysis/candidate_event_quantile_summary.csv"
-)
+TABLE_PATH = PROJECT_ROOT / "results/data_analysis/candidate_event_quantile_summary.csv"
 
 # %%
 # Compute exploratory quantile-run summaries

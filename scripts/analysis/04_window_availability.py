@@ -17,9 +17,7 @@ RAW_DIR = PROJECT_ROOT / "data/raw"
 CONTEXT_LENGTHS = [60, 120]
 PREDICTION_LENGTHS = [20, 30]
 GAP_THRESHOLD_SECONDS = 90
-OUTPUT_PATH = (
-    PROJECT_ROOT / "results/tables/data_analysis/window_availability_summary.csv"
-)
+OUTPUT_PATH = PROJECT_ROOT / "results/data_analysis/window_availability_summary.csv"
 
 # %%
 # Count windows

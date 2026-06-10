@@ -19,7 +19,7 @@ from src.data.loading import load_signal_dataset
 
 RAW_DIR = PROJECT_ROOT / "data/raw"
 GAP_THRESHOLD_SECONDS = 90
-TABLE_PATH = PROJECT_ROOT / "results/tables/data_analysis/sampling_and_gaps_summary.csv"
+TABLE_PATH = PROJECT_ROOT / "results/data_analysis/sampling_and_gaps_summary.csv"
 
 # %%
 # Load, compute, and plot

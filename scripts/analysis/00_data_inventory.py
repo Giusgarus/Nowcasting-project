@@ -14,7 +14,7 @@ from src.analysis.data_quality import summarize_signal_dataframe
 from src.data.loading import load_signal_dataset
 
 RAW_DIR = PROJECT_ROOT / "data/raw"
-OUTPUT_PATH = PROJECT_ROOT / "results/tables/data_analysis/data_inventory_summary.csv"
+OUTPUT_PATH = PROJECT_ROOT / "results/data_analysis/data_inventory_summary.csv"
 SUSPECTED_SENTINEL_THRESHOLD = -10.0
 
 # %%
