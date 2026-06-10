@@ -3,10 +3,14 @@
 import pandas as pd
 
 from src.analysis.data_quality import (
+    compute_hourly_signal_summary,
+    compute_normalization_diagnostics,
     compute_quantile_run_summary,
+    compute_rolling_baseline_summary,
     compute_sampling_summary,
     count_valid_windows_by_segments,
     find_continuous_segments,
+    find_top_signal_spikes,
 )
 
 
@@ -62,3 +66,40 @@ def test_quantile_run_summary_is_exploratory_and_complete() -> None:
         "below_q05",
         "below_q01",
     }
+
+
+def test_rolling_summary_reports_insufficient_points() -> None:
+    summary = compute_rolling_baseline_summary(_dataframe(), {"too_long": 10})
+
+    assert summary.loc[0, "status"] == "insufficient_points"
+    assert summary.loc[0, "num_valid_points"] == 0
+    assert pd.isna(summary.loc[0, "rolling_mean_min"])
+
+
+def test_hourly_summary_groups_by_hour() -> None:
+    summary = compute_hourly_signal_summary(_dataframe())
+
+    assert summary["hour"].tolist() == [0]
+    assert summary.loc[0, "count"] == 5
+    assert summary.loc[0, "mean_signal"] == 2.0
+
+
+def test_top_spikes_returns_largest_absolute_changes() -> None:
+    dataframe = _dataframe().assign(Signal=[0.0, 1.0, 10.0, 11.0, 12.0])
+
+    spikes = find_top_signal_spikes(dataframe, top_k=2)
+
+    assert spikes["abs_delta_signal"].tolist() == [9.0, 1.0]
+    assert spikes["rank"].tolist() == [1, 2]
+
+
+def test_normalization_diagnostics_handles_constant_signal() -> None:
+    dataframe = _dataframe().assign(Signal=5.0)
+
+    transformed, summary = compute_normalization_diagnostics(dataframe, rolling_window=3)
+
+    assert transformed["zscore_per_dataset"].eq(0).all()
+    assert transformed["robust_zscore_per_dataset"].eq(0).all()
+    assert transformed["minmax_per_dataset"].eq(0).all()
+    assert transformed["rolling_robust_zscore"].dropna().eq(0).all()
+    assert summary["num_valid"].gt(0).all()

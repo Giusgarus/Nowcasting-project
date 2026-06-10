@@ -1,7 +1,7 @@
 """Descriptive signal-only data-quality analysis helpers."""
 
 import re
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, Literal
 
 import numpy as np
@@ -226,3 +226,253 @@ def longest_quantile_run(
     )
     runs = find_boolean_runs(mask)
     return max(runs, key=lambda interval: interval[1] - interval[0], default=None)
+
+
+def compute_rolling_baseline_summary(
+    dataframe: pd.DataFrame,
+    windows: Mapping[str, int],
+) -> pd.DataFrame:
+    """Summarize rolling baseline and variability diagnostics."""
+
+    rows = []
+    signal = dataframe["Signal"]
+    for window_name, window_samples in windows.items():
+        if window_samples < 1:
+            raise ValueError("Rolling windows must contain at least one sample.")
+
+        rolling = signal.rolling(window_samples, min_periods=window_samples)
+        rolling_mean = rolling.mean()
+        rolling_median = rolling.median()
+        rolling_std = rolling.std()
+        rolling_q05 = rolling.quantile(0.05)
+        rolling_q95 = rolling.quantile(0.95)
+        num_valid = int(rolling_mean.notna().sum())
+
+        rows.append(
+            {
+                "window_name": window_name,
+                "window_samples": window_samples,
+                "status": "ok" if num_valid else "insufficient_points",
+                "num_valid_points": num_valid,
+                "rolling_mean_min": _series_statistic(rolling_mean, "min"),
+                "rolling_mean_max": _series_statistic(rolling_mean, "max"),
+                "rolling_mean_range": _series_range(rolling_mean),
+                "rolling_median_min": _series_statistic(rolling_median, "min"),
+                "rolling_median_max": _series_statistic(rolling_median, "max"),
+                "rolling_median_range": _series_range(rolling_median),
+                "rolling_std_median": _series_statistic(rolling_std, "median"),
+                "rolling_std_q95": _series_quantile(rolling_std, 0.95),
+                "rolling_q05_median": _series_statistic(rolling_q05, "median"),
+                "rolling_q95_median": _series_statistic(rolling_q95, "median"),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def compute_hourly_signal_summary(dataframe: pd.DataFrame) -> pd.DataFrame:
+    """Group Signal statistics by hour of day."""
+
+    grouped = dataframe.assign(hour=dataframe["Time"].dt.hour).groupby("hour")[
+        "Signal"
+    ]
+    return grouped.agg(
+        count="count",
+        mean_signal="mean",
+        median_signal="median",
+        std_signal="std",
+        q05_signal=lambda values: values.quantile(0.05),
+        q95_signal=lambda values: values.quantile(0.95),
+    ).reset_index()
+
+
+def compute_daily_signal_summary(dataframe: pd.DataFrame) -> pd.DataFrame:
+    """Group Signal statistics by calendar date."""
+
+    grouped = dataframe.assign(date=dataframe["Time"].dt.date).groupby("date")[
+        "Signal"
+    ]
+    return grouped.agg(
+        count="count",
+        mean_signal="mean",
+        median_signal="median",
+        std_signal="std",
+        min_signal="min",
+        max_signal="max",
+        q05_signal=lambda values: values.quantile(0.05),
+        q95_signal=lambda values: values.quantile(0.95),
+    ).reset_index()
+
+
+def compute_signal_changes(dataframe: pd.DataFrame) -> pd.DataFrame:
+    """Return consecutive Signal changes and their timing information."""
+
+    signal = dataframe["Signal"]
+    previous_signal = signal.shift(1)
+    delta = signal - previous_signal
+    safe_previous = previous_signal.abs().gt(np.finfo(float).eps)
+    relative_delta = delta.div(previous_signal.abs().where(safe_previous))
+    return pd.DataFrame(
+        {
+            "time_prev": dataframe["Time"].shift(1),
+            "time_current": dataframe["Time"],
+            "signal_prev": previous_signal,
+            "signal_current": signal,
+            "delta_signal": delta,
+            "abs_delta_signal": delta.abs(),
+            "relative_delta_signal": relative_delta,
+            "dt_seconds": dataframe["Time"].diff().dt.total_seconds(),
+        }
+    )
+
+
+def compute_signal_change_summary(dataframe: pd.DataFrame) -> dict[str, Any]:
+    """Summarize local changes and robust spike-candidate thresholds."""
+
+    changes = compute_signal_changes(dataframe)
+    delta = _finite_values(changes["delta_signal"])
+    abs_delta = _finite_values(changes["abs_delta_signal"])
+    relative_delta = _finite_values(changes["relative_delta_signal"])
+    q99_threshold = _series_quantile(abs_delta, 0.99)
+    median_abs_delta = _series_statistic(abs_delta, "median")
+    mad = _series_statistic((abs_delta - median_abs_delta).abs(), "median")
+    mad_threshold = median_abs_delta + 5 * mad
+    num_deltas = len(delta)
+    num_spikes_q99 = int((abs_delta > q99_threshold).sum()) if num_deltas else 0
+    num_spikes_mad = int((abs_delta > mad_threshold).sum()) if num_deltas else 0
+
+    return {
+        "num_points": len(dataframe),
+        "num_deltas": num_deltas,
+        "delta_mean": _series_statistic(delta, "mean"),
+        "delta_std": _series_statistic(delta, "std"),
+        "delta_q01": _series_quantile(delta, 0.01),
+        "delta_q05": _series_quantile(delta, 0.05),
+        "delta_median": _series_statistic(delta, "median"),
+        "delta_q95": _series_quantile(delta, 0.95),
+        "delta_q99": _series_quantile(delta, 0.99),
+        "abs_delta_mean": _series_statistic(abs_delta, "mean"),
+        "abs_delta_median": median_abs_delta,
+        "abs_delta_q95": _series_quantile(abs_delta, 0.95),
+        "abs_delta_q99": q99_threshold,
+        "abs_delta_max": _series_statistic(abs_delta, "max"),
+        "mad_abs_delta": mad,
+        "spike_q99_threshold": q99_threshold,
+        "spike_mad_threshold": mad_threshold,
+        "num_spikes_q99": num_spikes_q99,
+        "num_spikes_mad": num_spikes_mad,
+        "pct_spikes_q99": _percentage(num_spikes_q99, num_deltas),
+        "pct_spikes_mad": _percentage(num_spikes_mad, num_deltas),
+        "num_valid_relative_deltas": len(relative_delta),
+        "relative_delta_median": _series_statistic(relative_delta, "median"),
+        "relative_delta_q95": _series_quantile(relative_delta, 0.95),
+    }
+
+
+def find_top_signal_spikes(dataframe: pd.DataFrame, top_k: int) -> pd.DataFrame:
+    """Return the largest absolute consecutive Signal changes."""
+
+    if top_k < 1:
+        raise ValueError("top_k must be positive.")
+
+    columns = [
+        "rank",
+        "time_prev",
+        "time_current",
+        "signal_prev",
+        "signal_current",
+        "delta_signal",
+        "abs_delta_signal",
+        "dt_seconds",
+    ]
+    changes = compute_signal_changes(dataframe).dropna(subset=["abs_delta_signal"])
+    top = changes.nlargest(top_k, "abs_delta_signal", keep="first").copy()
+    top.insert(0, "rank", np.arange(1, len(top) + 1))
+    return top[columns].reset_index(drop=True)
+
+
+def compute_normalization_diagnostics(
+    dataframe: pd.DataFrame,
+    rolling_window: int,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Return temporary normalization variants and compact summaries."""
+
+    if rolling_window < 1:
+        raise ValueError("rolling_window must be positive.")
+
+    signal = dataframe["Signal"].astype(float)
+    median = float(signal.median())
+    q25 = float(signal.quantile(0.25))
+    q75 = float(signal.quantile(0.75))
+    rolling = signal.rolling(rolling_window, min_periods=rolling_window)
+    rolling_median = rolling.median()
+    rolling_iqr = rolling.quantile(0.75) - rolling.quantile(0.25)
+    rolling_centered = signal - rolling_median
+
+    transformed = pd.DataFrame(
+        {
+            "Time": dataframe["Time"],
+            "raw_signal": signal,
+            "zscore_per_dataset": _safe_scaled(signal - signal.mean(), signal.std()),
+            "robust_zscore_per_dataset": _safe_scaled(signal - median, q75 - q25),
+            "minmax_per_dataset": _safe_scaled(signal - signal.min(), signal.max() - signal.min()),
+            "rolling_centered_signal": rolling_centered,
+            "rolling_robust_zscore": _safe_series_scaled(
+                rolling_centered,
+                rolling_iqr,
+            ),
+        }
+    )
+
+    rows = []
+    for transformation in transformed.columns.drop("Time"):
+        values = _finite_values(transformed[transformation])
+        rows.append(
+            {
+                "transformation": transformation,
+                "num_valid": len(values),
+                "min": _series_statistic(values, "min"),
+                "q01": _series_quantile(values, 0.01),
+                "q05": _series_quantile(values, 0.05),
+                "median": _series_statistic(values, "median"),
+                "mean": _series_statistic(values, "mean"),
+                "q95": _series_quantile(values, 0.95),
+                "q99": _series_quantile(values, 0.99),
+                "max": _series_statistic(values, "max"),
+                "std": _series_statistic(values, "std"),
+            }
+        )
+    return transformed, pd.DataFrame(rows)
+
+
+def _finite_values(values: pd.Series) -> pd.Series:
+    return values.replace([np.inf, -np.inf], np.nan).dropna()
+
+
+def _series_statistic(values: pd.Series, statistic: str) -> float:
+    finite = _finite_values(values)
+    return float(getattr(finite, statistic)()) if not finite.empty else np.nan
+
+
+def _series_quantile(values: pd.Series, quantile: float) -> float:
+    finite = _finite_values(values)
+    return float(finite.quantile(quantile)) if not finite.empty else np.nan
+
+
+def _series_range(values: pd.Series) -> float:
+    finite = _finite_values(values)
+    return float(finite.max() - finite.min()) if not finite.empty else np.nan
+
+
+def _safe_scaled(numerator: pd.Series, scale: float) -> pd.Series:
+    if np.isfinite(scale) and abs(scale) > np.finfo(float).eps:
+        return numerator / scale
+    return pd.Series(0.0, index=numerator.index, dtype=float)
+
+
+def _safe_series_scaled(numerator: pd.Series, scale: pd.Series) -> pd.Series:
+    result = numerator / scale.mask(scale.abs().le(np.finfo(float).eps))
+    return result.mask(scale.abs().le(np.finfo(float).eps) & numerator.eq(0), 0.0)
+
+
+def _percentage(count: int, total: int) -> float:
+    return count / total * 100 if total else 0.0

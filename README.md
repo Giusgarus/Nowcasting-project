@@ -18,7 +18,8 @@ The repository currently provides an initial, dependency-light foundation:
 - normalization of every loaded dataset to exactly `Time` and `Signal`;
 - reusable raw-data quality, sampling, distribution, window-availability, and
   candidate-event analysis helpers;
-- six interactive raw-data analysis scripts with generated tables and figures;
+- interactive raw-data analyses for inventory, sampling, distributions,
+  baseline drift, calendar patterns, spikes, and normalization diagnostics;
 - configuration templates with unresolved empirical assumptions left explicit;
 - chronological split helpers;
 - no-leakage autoregressive window-index construction;
