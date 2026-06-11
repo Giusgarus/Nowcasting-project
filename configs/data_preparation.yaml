@@ -1,0 +1,55 @@
+data:
+  raw_dir: data/raw
+  interim_dir: data/interim
+  processed_dir: data/processed
+  results_dir: results/autoregressive/data_preparation
+
+loading:
+  has_header: auto
+  time_col: Time
+  signal_col: Signal
+  time_col_index: 0
+  signal_col_index: 1
+
+cleaning:
+  duplicate_timestamp_strategy: mean
+  drop_invalid_time: true
+  drop_invalid_signal: true
+
+sampling:
+  expected_seconds: 30
+  gap_threshold_seconds: 90
+
+candidate_events:
+  signal_threshold: 10.0
+  condition: greater_than
+  grouping_hours: 3.0
+  window_pre_hours: 1.5
+  window_post_hours: 1.5
+  require_min_persistence: false
+
+event_window_quality:
+  min_coverage_ratio: 0.8
+  max_gap_seconds_for_imputation: 90
+  max_small_gap_samples: 2
+  max_warning_gap_samples: 5
+  imputation_method: linear_time
+  allow_warning_events_for_window_index: true
+
+autoregressive_windows:
+  context_length: 30
+  prediction_length: 10
+
+split:
+  method: chronological_by_event_per_dataset
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+
+output:
+  file_format: parquet
+  save_per_dataset_event_windows: true
+  save_all_event_windows: true
+  save_metadata: true
+
+seed: 42

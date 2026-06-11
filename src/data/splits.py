@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+import pandas as pd
+
 
 @dataclass(frozen=True)
 class SplitRange:
@@ -57,3 +59,34 @@ def chronological_split(
     if min(split.train.size, split.validation.size, split.test.size) < 1:
         raise ValueError("The requested fractions produce an empty split.")
     return split
+
+
+def assign_event_splits(
+    events: pd.DataFrame,
+    *,
+    train_ratio: float,
+    validation_ratio: float,
+) -> pd.DataFrame:
+    """Assign chronological train/validation/test splits per dataset."""
+
+    if not 0 < train_ratio < 1 or not 0 < validation_ratio < 1:
+        raise ValueError("Split ratios must be between zero and one.")
+    if train_ratio + validation_ratio >= 1:
+        raise ValueError("Train and validation ratios must sum to less than one.")
+
+    assigned_frames = []
+    for _, dataset_events in events.groupby("dataset_id", sort=False):
+        ordered = dataset_events.sort_values("event_timestamp", kind="stable").copy()
+        count = len(ordered)
+        train_stop = int(count * train_ratio)
+        validation_stop = int(count * (train_ratio + validation_ratio))
+        splits = (
+            ["train"] * train_stop
+            + ["validation"] * (validation_stop - train_stop)
+            + ["test"] * (count - validation_stop)
+        )
+        ordered["split"] = splits
+        assigned_frames.append(ordered)
+    if not assigned_frames:
+        return events.assign(split=pd.Series(dtype="string"))
+    return pd.concat(assigned_frames, ignore_index=True)

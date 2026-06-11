@@ -133,6 +133,10 @@ def load_signal_dataset(
     has_header: HeaderMode = "auto",
     delimiter: str | None = None,
     suspected_sentinel_threshold: float = -10.0,
+    time_col: str = "Time",
+    signal_col: str = "Signal",
+    time_col_index: int = 0,
+    signal_col_index: int = 1,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Load raw data into a valid-row DataFrame with exactly Time and Signal.
 
@@ -148,6 +152,10 @@ def load_signal_dataset(
         raise ValueError("has_header must be true, false, or 'auto'.")
     if delimiter is not None and len(delimiter) != 1:
         raise ValueError("delimiter must be one character.")
+    if min(time_col_index, signal_col_index) < 0:
+        raise ValueError("Column indices cannot be negative.")
+    if time_col_index == signal_col_index:
+        raise ValueError("Time and Signal column indices must be different.")
 
     source = Path(path)
     text = source.read_text(encoding="utf-8-sig")
@@ -162,23 +170,27 @@ def load_signal_dataset(
         raise ValueError(f"Input file has no rows: {source}")
 
     raw_num_columns = max(len(row) for row in rows)
-    if raw_num_columns < 2:
+    if raw_num_columns <= max(time_col_index, signal_col_index):
         raise ValueError("At least two columns are required: Time and Signal.")
 
     if header_present:
         header = _normalized_header(rows[0], raw_num_columns)
         data_rows = rows[1:]
         time_index, signal_index, used_positional_fallback = _analysis_column_indices(
-            header
+            header,
+            time_col=time_col,
+            signal_col=signal_col,
+            time_col_index=time_col_index,
+            signal_col_index=signal_col_index,
         )
         used_time_column = header[time_index]
         used_signal_column = header[signal_index]
     else:
         data_rows = rows
-        time_index, signal_index = 0, 1
+        time_index, signal_index = time_col_index, signal_col_index
         used_positional_fallback = True
-        used_time_column = "column_0"
-        used_signal_column = "column_1"
+        used_time_column = f"column_{time_col_index}"
+        used_signal_column = f"column_{signal_col_index}"
 
     raw_rows = len(data_rows)
     raw_time = pd.Series(
@@ -255,10 +267,17 @@ def _normalized_header(row: list[str], width: int) -> list[str]:
     return header + [f"column_{index}" for index in range(len(header), width)]
 
 
-def _analysis_column_indices(header: list[str]) -> tuple[int, int, bool]:
-    if "Time" in header and "Signal" in header:
-        return header.index("Time"), header.index("Signal"), False
-    return 0, 1, True
+def _analysis_column_indices(
+    header: list[str],
+    *,
+    time_col: str,
+    signal_col: str,
+    time_col_index: int,
+    signal_col_index: int,
+) -> tuple[int, int, bool]:
+    if time_col in header and signal_col in header:
+        return header.index(time_col), header.index(signal_col), False
+    return time_col_index, signal_col_index, True
 
 
 def _row_field(row: list[str], index: int) -> str | None:

@@ -20,6 +20,9 @@ The repository currently provides an initial, dependency-light foundation:
   candidate-event analysis helpers;
 - interactive raw-data analyses for inventory, sampling, distributions,
   baseline drift, calendar patterns, spikes, and normalization diagnostics;
+- configurable candidate-event preparation with clean Parquet data,
+  event-centered windows, quality/imputation tracking, event-level splits, and
+  traceable autoregressive window indices;
 - configuration templates with unresolved empirical assumptions left explicit;
 - chronological split helpers;
 - no-leakage autoregressive window-index construction;
@@ -28,9 +31,10 @@ The repository currently provides an initial, dependency-light foundation:
 - centralized device selection and reproducibility utilities;
 - `pytest` unit tests.
 
-Model architectures, reference-switch post-processing, event definitions, and
-dataset-specific loading are intentionally deferred until their assumptions are
-specified.
+Model architectures, reference-switch post-processing, and final operational
+event definitions are intentionally deferred until their assumptions are
+specified. Candidate events currently serve only to select data-preparation
+windows.
 
 All models are univariate and use only `Signal`. Input files may contain
 headers or omit them; no-header files use the first column as `Time` and the
@@ -67,7 +71,7 @@ conda env export --no-builds | grep -v "^prefix:" > environment.yml
 
 ## Repository Layout
 
-- `configs/`: data and autoregressive experiment configuration templates.
+- `configs/`: data preparation and autoregressive experiment configurations.
 - `data/`: raw, interim, and processed data. Raw data must never be modified.
 - `scripts/analysis/`: interactive Python analysis scripts using `# %%` cells.
 - `scripts/experiments/`: executable autoregressive experiments.
@@ -75,6 +79,8 @@ conda env export --no-builds | grep -v "^prefix:" > environment.yml
 - `models/<task>/<model>/`: generated model artifacts without run-ID folders.
 - `results/data_analysis/`: shared raw-data analysis tables; exploratory
   figures are displayed interactively and are not saved automatically.
+- `results/autoregressive/data_preparation/`: threshold-specific event-dataset
+  preparation summaries.
 - `results/<task>/<model>/`: model-specific figures, tables, predictions, and
   reports.
 - `results/<task>/comparisons/`: cross-model outputs for one task.

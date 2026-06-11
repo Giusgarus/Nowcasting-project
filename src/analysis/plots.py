@@ -10,6 +10,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(_CACHE_ROOT / "matplotlib"))
 os.environ.setdefault("XDG_CACHE_HOME", str(_CACHE_ROOT))
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 
@@ -65,21 +66,42 @@ def plot_sampling_histogram(
     dt_seconds: pd.Series,
     title: str,
     *,
-    max_seconds: float = 600,
+    max_seconds: float | None = None,
+    log_count_scale: bool = True,
+    max_tick_labels: int = 30,
 ) -> None:
-    """Display a histogram of positive sampling intervals up to max_seconds."""
+    """Display categorical counts for observed positive sampling intervals."""
 
-    visible = dt_seconds[(dt_seconds > 0) & (dt_seconds <= max_seconds)]
-    fig, ax = plt.subplots(figsize=(8, 4))
-    display_title = f"{title} (0 < dt <= {max_seconds:g}s)"
+    if max_tick_labels < 1:
+        raise ValueError("max_tick_labels must be positive.")
+
+    visible = dt_seconds[dt_seconds > 0]
+    if max_seconds is not None:
+        visible = visible[visible <= max_seconds]
+    counts = visible.value_counts().sort_index()
+    positions = range(len(counts))
+    fig, ax = plt.subplots(figsize=(14, 5))
+    scale_label = "log count" if log_count_scale else "count"
+    interval_label = (
+        f"0 < dt <= {max_seconds:g}s" if max_seconds is not None else "all dt > 0"
+    )
+    display_title = f"{title} | observed intervals only, {interval_label} ({scale_label})"
     _set_figure_title(fig, display_title)
-    ax.hist(visible, bins=60)
+    ax.bar(positions, counts.to_numpy(), width=0.85)
+
+    # Bars are categorical, so absent interval values do not occupy horizontal space.
+    tick_step = max(1, int(np.ceil(len(counts) / max_tick_labels)))
+    tick_positions = list(positions)[::tick_step]
+    tick_labels = [f"{counts.index[position]:g}" for position in tick_positions]
+    ax.set_xticks(tick_positions, tick_labels, rotation=45, ha="right")
+    if log_count_scale:
+        ax.set_yscale("log")
     ax.set(
         title=display_title,
-        xlabel="Sampling interval (seconds)",
-        ylabel="Count",
+        xlabel="Observed sampling interval (seconds; categorical positions)",
+        ylabel="Count (log scale)" if log_count_scale else "Count",
     )
-    ax.grid(alpha=0.2)
+    ax.grid(axis="y", alpha=0.2)
     _show(fig)
 
 

@@ -198,6 +198,38 @@ def test_dataframe_loader_uses_positional_fallback_for_nonstandard_header(
     assert metadata["used_signal_column"] == "beacon_signal"
 
 
+def test_dataframe_loader_uses_configured_names_and_fallback_indices(tmp_path) -> None:
+    named_path = tmp_path / "named.csv"
+    named_path.write_text(
+        "Timestamp,Value,extra\n2026-01-01T00:00:00,1.5,x\n",
+        encoding="utf-8",
+    )
+    fallback_path = tmp_path / "fallback_indices.csv"
+    fallback_path.write_text(
+        "ignored,2026-01-01T00:00:00,2.5\n",
+        encoding="utf-8",
+    )
+
+    named, named_metadata = load_signal_dataset(
+        named_path,
+        has_header=True,
+        time_col="Timestamp",
+        signal_col="Value",
+    )
+    fallback, fallback_metadata = load_signal_dataset(
+        fallback_path,
+        has_header=False,
+        time_col_index=1,
+        signal_col_index=2,
+    )
+
+    assert named["Signal"].tolist() == [1.5]
+    assert named_metadata["used_positional_fallback"] is False
+    assert fallback["Signal"].tolist() == [2.5]
+    assert fallback_metadata["used_time_column"] == "column_1"
+    assert fallback_metadata["used_signal_column"] == "column_2"
+
+
 def test_dataframe_loader_reports_detailed_invalid_reasons_and_sentinels(
     tmp_path,
 ) -> None:

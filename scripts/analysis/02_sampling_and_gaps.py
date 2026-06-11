@@ -19,6 +19,8 @@ from src.data.loading import load_signal_dataset
 
 RAW_DIR = PROJECT_ROOT / "data/raw"
 GAP_THRESHOLD_SECONDS = 90
+PLOT_MAX_SECONDS = None
+PLOT_LOG_COUNT_SCALE = True
 TABLE_PATH = PROJECT_ROOT / "results/data_analysis/sampling_and_gaps_summary.csv"
 
 # %%
@@ -26,7 +28,8 @@ TABLE_PATH = PROJECT_ROOT / "results/data_analysis/sampling_and_gaps_summary.csv
 print(
     "=== Analysis overview ===\n"
     "Prints: median sampling interval and continuous-segment count by dataset.\n"
-    "Displays: one interactive sampling-interval histogram per dataset.\n"
+    "Displays: categorical counts of observed sampling intervals only; absent "
+    "interval values occupy no horizontal space.\n"
     f"Saves: {TABLE_PATH}.\n"
 )
 
@@ -42,6 +45,8 @@ for dataset_path in sorted(RAW_DIR.glob("*.csv")):
     plot_sampling_histogram(
         compute_time_differences(dataframe),
         f"Sampling interval distribution | Dataset: {dataset_path.name}",
+        max_seconds=PLOT_MAX_SECONDS,
+        log_count_scale=PLOT_LOG_COUNT_SCALE,
     )
     print(
         f"{dataset_path.name}: median dt={summary['median_dt_seconds']:.2f}s, "
