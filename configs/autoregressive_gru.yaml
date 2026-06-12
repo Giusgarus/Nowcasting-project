@@ -46,8 +46,9 @@ evaluation:
   evaluate_in_raw_scale: true
 
 output:
-  models_root: models/autoregressive/gru
-  results_root: results/autoregressive/gru
+  models_root: models/gru
+  results_root: results/runs
+  comparisons_root: results/comparisons
   save_predictions: true
   save_plots: true
   overwrite: false

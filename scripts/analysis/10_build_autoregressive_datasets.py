@@ -26,6 +26,14 @@ from src.datasets.autoregressive_dataset import (
 )
 from src.utils.config import config_fingerprint, load_yaml_config, save_yaml
 from src.utils.paths import project_path
+from src.utils.results_paths import (
+    DATASET_INDEX_COLUMNS,
+    get_data_preparation_dir,
+    get_results_index_dir,
+    make_selection_id,
+    relative_project_path,
+    upsert_index_row,
+)
 
 CONFIG_PATH = PROJECT_ROOT / "configs/autoregressive_dataset.yaml"
 
@@ -52,7 +60,6 @@ if (
 event_windows_path = project_path(config["data"]["event_windows_path"])
 window_index_path = project_path(config["data"]["window_index_path"])
 output_root = project_path(config["data"]["output_root"])
-results_root = project_path(config["data"]["results_root"]) / "final_datasets"
 
 # %%
 # Run overview
@@ -94,9 +101,20 @@ selected_index = filtered_index.loc[
 if selected_index.empty:
     raise ValueError("Dataset selection produced no valid autoregressive windows.")
 validate_event_split_integrity(selected_index)
+thresholds = selected_index["signal_threshold"].drop_duplicates()
+if len(thresholds) != 1:
+    raise ValueError("Selected windows must use exactly one signal threshold.")
+signal_threshold = float(thresholds.iloc[0])
+selection_id = make_selection_id(
+    mode=selection["mode"],
+    selected_datasets=selected_datasets,
+    context_length=forecasting["context_length"],
+    prediction_length=forecasting["prediction_length"],
+    threshold=signal_threshold,
+)
 
 output_dir = output_root / selection_folder
-summary_dir = results_root / selection_folder
+summary_dir = get_data_preparation_dir(selection_id)
 if not output_config["overwrite"]:
     existing = [
         path
@@ -143,10 +161,6 @@ for split in SPLITS:
 # %%
 # Build and save review summaries
 print("=== Save final dataset summaries ===")
-thresholds = selected_index["signal_threshold"].drop_duplicates()
-if len(thresholds) != 1:
-    raise ValueError("Selected windows must use exactly one signal threshold.")
-signal_threshold = float(thresholds.iloc[0])
 summary_tables = {
     "selected_dataset_ranking.csv": ranking,
     "final_dataset_summary.csv": summarize_final_dataset(
@@ -186,6 +200,7 @@ metadata = {
     "selected_datasets": selected_datasets,
     "dataset_selection_mode": selection["mode"],
     "selection_folder": selection_folder,
+    "selection_id": selection_id,
     "allow_warning_events": selection["allow_warning_events"],
     "normalization_versions": normalization["versions"],
     "normalization_epsilon": float(context_standard["epsilon"]),
@@ -217,12 +232,31 @@ metadata["output_files"]["dataset_metadata"] = str(
     dataset_metadata_path.relative_to(PROJECT_ROOT)
 )
 save_yaml(dataset_metadata_path, metadata)
+upsert_index_row(
+    get_results_index_dir() / "datasets.csv",
+    {
+        "selection_id": selection_id,
+        "dataset_selection_mode": selection["mode"],
+        "selected_datasets": ";".join(selected_datasets),
+        "threshold": signal_threshold,
+        "context_length": forecasting["context_length"],
+        "prediction_length": forecasting["prediction_length"],
+        "dataset_path": relative_project_path(output_dir),
+        "num_train_windows": len(split_metadata["train"]),
+        "num_val_windows": len(split_metadata["validation"]),
+        "num_test_windows": len(split_metadata["test"]),
+        "created_at": metadata["created_at"],
+    },
+    id_column="selection_id",
+    columns=DATASET_INDEX_COLUMNS,
+)
 
 # %%
 # Compact final summary
 normalization_summary = summary_tables["normalization_summary.csv"]
 print("=== Compact final summary ===")
 print(f"Selection mode: {selection['mode']}")
+print(f"Selection ID: {selection_id}")
 print(f"Selected datasets: {', '.join(selected_datasets)}")
 print(f"Output folder: {output_dir}")
 print(f"Train windows: {len(split_metadata['train']):,}")

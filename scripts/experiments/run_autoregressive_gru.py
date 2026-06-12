@@ -27,6 +27,19 @@ from src.utils.config import config_fingerprint, load_yaml_config, save_yaml
 from src.utils.device import select_device
 from src.utils.paths import project_path
 from src.utils.reproducibility import set_seed
+from src.utils.results_paths import (
+    COMPARISON_INDEX_COLUMNS,
+    RUN_INDEX_COLUMNS,
+    ensure_results_subdirs,
+    get_comparison_dir,
+    get_model_dir,
+    get_results_index_dir,
+    get_run_dir,
+    make_run_id,
+    relative_project_path,
+    selection_id_from_metadata,
+    upsert_index_row,
+)
 
 CONFIG_PATH = PROJECT_ROOT / "configs/autoregressive_gru.yaml"
 
@@ -125,7 +138,7 @@ def save_run_figures(
     axis.set_title("GRU training history")
     axis.legend()
     figure.tight_layout()
-    figure.savefig(figures_dir / "training_history.png", dpi=150)
+    figure.savefig(figures_dir / "training_loss.png", dpi=150)
     plt.close(figure)
 
     sample_count = min(5, len(metadata))
@@ -139,7 +152,9 @@ def save_run_figures(
         axis.set_ylabel("Signal")
         axis.legend()
     figure.tight_layout()
-    figure.savefig(figures_dir / "test_forecast_examples.png", dpi=150)
+    examples_dir = figures_dir / "forecast_examples"
+    examples_dir.mkdir(parents=True, exist_ok=True)
+    figure.savefig(examples_dir / "test_forecast_examples.png", dpi=150)
     plt.close(figure)
 
 
@@ -177,10 +192,16 @@ def main() -> None:
         config["data"]["selection_folder"],
     )
     selection_folder = dataset_folder.name
-    models_root = project_path(config["output"]["models_root"]) / selection_folder
-    results_root = project_path(config["output"]["results_root"]) / selection_folder
+    dataset_metadata = load_yaml_config(dataset_folder / "dataset_metadata.yaml")
+    selection_id = selection_id_from_metadata(dataset_metadata)
+    comparison_id = f"gru_architecture_variant_{selection_id}"
+    comparison_dir = get_comparison_dir(comparison_id)
+    comparison_paths = ensure_results_subdirs(
+        comparison_dir,
+        ("tables",),
+    )
     comparison_path = (
-        results_root / "comparison/gru_architecture_variant_comparison.csv"
+        comparison_paths["tables"] / "gru_architecture_variant_comparison.csv"
     )
     if (
         comparison_path.exists()
@@ -204,15 +225,19 @@ def main() -> None:
     comparison_rows = []
     for architecture in config["experiment"]["architectures"]:
         for variant in config["experiment"]["variants"]:
-            model_dir = models_root / architecture / variant
-            result_dir = results_root / architecture / variant
+            run_id = make_run_id("gru", architecture, variant, selection_id)
+            model_dir = get_model_dir("gru", run_id)
+            result_dir = get_run_dir(run_id)
             ensure_run_paths_are_available(
                 model_dir,
                 result_dir,
                 overwrite=config["output"]["overwrite"],
             )
             model_dir.mkdir(parents=True, exist_ok=True)
-            result_dir.mkdir(parents=True, exist_ok=True)
+            result_paths = ensure_results_subdirs(
+                result_dir,
+                ("metrics", "predictions", "figures", "tables"),
+            )
             set_seed(config["training"]["seed"])
             model = build_gru_forecaster(
                 architecture,
@@ -292,20 +317,26 @@ def main() -> None:
             )
             history = pd.DataFrame(result.history)
 
-            metrics_summary.to_csv(result_dir / "metrics_summary.csv", index=False)
-            horizon_metrics.to_csv(result_dir / "metrics_by_horizon.csv", index=False)
+            metrics_summary.to_csv(
+                result_paths["metrics"] / "metrics_summary.csv", index=False
+            )
+            horizon_metrics.to_csv(
+                result_paths["metrics"] / "metrics_by_horizon.csv", index=False
+            )
             grouped_metrics(predictions, "dataset_name").to_csv(
-                result_dir / "metrics_by_dataset.csv",
+                result_paths["metrics"] / "metrics_by_dataset.csv",
                 index=False,
             )
             grouped_metrics(predictions, "quality_flag").to_csv(
-                result_dir / "metrics_by_quality_flag.csv",
+                result_paths["metrics"] / "metrics_by_quality_flag.csv",
                 index=False,
             )
-            history.to_csv(result_dir / "training_history.csv", index=False)
+            history.to_csv(
+                result_paths["metrics"] / "training_history.csv", index=False
+            )
             if config["output"]["save_predictions"]:
                 predictions.to_parquet(
-                    result_dir / "test_predictions.parquet",
+                    result_paths["predictions"] / "test_predictions.parquet",
                     index=False,
                 )
             if config["output"]["save_plots"]:
@@ -314,7 +345,7 @@ def main() -> None:
                     split_metadata["test"],
                     y_true_raw,
                     y_pred_raw,
-                    result_dir / "figures",
+                    result_paths["figures"],
                 )
 
             model_config = {
@@ -346,17 +377,45 @@ def main() -> None:
             }
             save_yaml(model_dir / "training_metadata.yaml", training_metadata)
             save_yaml(
-                result_dir / "run_metadata.yaml",
+                result_dir / "metadata.yaml",
                 {
                     "config_path": str(CONFIG_PATH.relative_to(PROJECT_ROOT)),
                     "config_fingerprint": config_fingerprint(config),
                     "selection_folder": selection_folder,
+                    "selection_id": selection_id,
+                    "run_id": run_id,
                     "architecture": architecture,
                     "variant": variant,
                     "device": str(device),
                     "metrics_in_raw_scale": True,
                     **training_metadata,
                 },
+            )
+            upsert_index_row(
+                get_results_index_dir() / "runs.csv",
+                {
+                    "run_id": run_id,
+                    "model_family": "gru",
+                    "architecture": architecture,
+                    "variant": variant,
+                    "selection_id": selection_id,
+                    "dataset_selection": ";".join(
+                        dataset_metadata["selected_datasets"]
+                    ),
+                    "threshold": dataset_metadata["threshold"],
+                    "context_length": dataset_metadata["context_length"],
+                    "prediction_length": dataset_metadata["prediction_length"],
+                    "results_path": relative_project_path(result_dir),
+                    "model_path": relative_project_path(model_dir),
+                    "predictions_path": relative_project_path(
+                        result_paths["predictions"] / "test_predictions.parquet"
+                    ),
+                    "metrics_path": relative_project_path(result_paths["metrics"]),
+                    "status": "complete",
+                    "created_at": training_metadata["created_at"],
+                },
+                id_column="run_id",
+                columns=RUN_INDEX_COLUMNS,
             )
             comparison_rows.append(metrics_summary.iloc[0].to_dict())
             print(
@@ -372,8 +431,34 @@ def main() -> None:
                 f"Output folder: {result_dir}"
             )
 
-    comparison_path.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(comparison_rows).to_csv(comparison_path, index=False)
+    save_yaml(
+        comparison_dir / "metadata.yaml",
+        {
+            "comparison_id": comparison_id,
+            "selection_id": selection_id,
+            "comparison_type": "forecast_metrics_across_gru_runs",
+            "table": relative_project_path(comparison_path),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+    upsert_index_row(
+        get_results_index_dir() / "comparisons.csv",
+        {
+            "comparison_id": comparison_id,
+            "method_id": "multiple_gru_runs",
+            "reference_id": "",
+            "comparison_type": "forecast_metrics",
+            "selection_id": selection_id,
+            "results_path": relative_project_path(comparison_dir),
+            "metrics_path": relative_project_path(comparison_paths["tables"]),
+            "figures_path": "",
+            "status": "complete",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+        id_column="comparison_id",
+        columns=COMPARISON_INDEX_COLUMNS,
+    )
     print(f"\nSaved comparison table: {comparison_path}")
 
 

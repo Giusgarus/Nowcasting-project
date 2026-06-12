@@ -1,0 +1,33 @@
+data:
+  selection_id: autoLargest_L30_h10_thr10
+
+methods:
+  - name: GRU S2V Raw
+    model_family: gru
+    architecture: gru_s2v
+    variant: raw
+  - name: GRU S2V Context Standard
+    model_family: gru
+    architecture: gru_s2v
+    variant: context_standard
+  - name: GRU Seq2Seq Raw
+    model_family: gru
+    architecture: gru_seq2seq
+    variant: raw
+  - name: GRU Seq2Seq Context Standard
+    model_family: gru
+    architecture: gru_seq2seq
+    variant: context_standard
+
+conversion:
+  prediction_aggregation: latest_available
+  threshold: 10.0
+  condition: greater_than
+  switch_time: 10
+  apply_min_island_length: true
+
+plots:
+  max_events: 20
+
+output:
+  overwrite: false

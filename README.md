@@ -35,10 +35,9 @@ The repository currently provides an initial, dependency-light foundation:
 - centralized device selection and reproducibility utilities;
 - `pytest` unit tests.
 
-Model architectures, reference-switch post-processing, and final operational
-event definitions are intentionally deferred until their assumptions are
-specified. Candidate events currently serve only to select data-preparation
-windows.
+Shapelet/survival architectures and final operational event definitions remain
+deferred until their assumptions are specified. Candidate events currently
+serve only to select data-preparation windows.
 
 All models are univariate and use only `Signal`. Input files may contain
 headers or omit them; no-header files use the first column as `Time` and the
@@ -80,14 +79,15 @@ conda env export --no-builds | grep -v "^prefix:" > environment.yml
 - `scripts/analysis/`: interactive Python analysis scripts using `# %%` cells.
 - `scripts/experiments/`: executable autoregressive experiments.
 - `src/`: reusable analysis, data, dataset, model, evaluation, and utility code.
-- `models/<task>/<model>/`: generated model artifacts without run-ID folders.
+- `models/<model_family>/<run_id>/`: trained checkpoints and model metadata.
 - `results/data_analysis/`: shared raw-data analysis tables; exploratory
   figures are displayed interactively and are not saved automatically.
-- `results/autoregressive/data_preparation/`: threshold-specific event-dataset
-  preparation and final supervised-dataset summaries.
-- `results/<task>/<model>/`: model-specific figures, tables, predictions, and
-  reports.
-- `results/<task>/comparisons/`: cross-model outputs for one task.
+- `results/runs/<run_id>/`: one shallow folder for each model run.
+- `results/switching/perfect_switch/<selection_id>/`: Perfect Switch reference.
+- `results/comparisons/<comparison_id>/`: model and baseline comparisons.
+  Each switch-evaluation folder compares exactly one run with one reference.
+- `results/data_preparation/<selection_id>/`: human-readable dataset summaries.
+- `results/index/`: central CSV indexes for datasets, runs, references, and comparisons.
 - `reports/`: methodological notes and experiment logs.
 - `tests/`: unit tests.
 

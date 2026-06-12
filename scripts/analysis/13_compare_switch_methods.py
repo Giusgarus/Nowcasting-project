@@ -1,0 +1,222 @@
+"""Compare saved model-derived switches against the Perfect Switch oracle."""
+
+# %%
+# Path setup and imports
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.switching.comparison import (
+    build_model_switch_timeseries,
+    compute_model_vs_perfect_metrics,
+)
+from src.switching.plots import plot_switch_methods_for_event
+from src.utils.config import config_fingerprint, load_yaml_config, save_yaml
+from src.utils.results_paths import (
+    COMPARISON_INDEX_COLUMNS,
+    ensure_results_subdirs,
+    get_comparison_dir,
+    get_perfect_switch_dir,
+    get_results_index_dir,
+    get_run_dir,
+    make_comparison_id,
+    make_run_id,
+    relative_project_path,
+    upsert_index_row,
+)
+
+CONFIG_PATH = PROJECT_ROOT / "configs/switch_comparison.yaml"
+
+# %%
+# Load configuration and Perfect Switch reference
+config = load_yaml_config(CONFIG_PATH)
+selection_id = config["data"]["selection_id"]
+perfect_root = get_perfect_switch_dir(selection_id)
+perfect_timeseries_path = perfect_root / "tables/perfect_switch_timeseries.parquet"
+perfect_targets_path = perfect_root / "tables/perfect_switch_window_targets.parquet"
+perfect_timeseries = pd.read_parquet(perfect_timeseries_path)
+perfect_targets = pd.read_parquet(perfect_targets_path)
+reference_id = f"perfect_switch_{selection_id}"
+
+print(
+    "=== Analysis overview ===\n"
+    "Prints: forecast-to-switch rule and model-vs-Perfect metrics.\n"
+    "Displays: no figures.\n"
+    "Saves: one independent shallow comparison folder per method against Perfect "
+    "Switch, with metrics, predictions, metadata, and event plots.\n"
+    "Note: uses saved test predictions only; no model is trained or reloaded.\n"
+)
+if config["conversion"]["prediction_aggregation"] != "latest_available":
+    raise ValueError("Only prediction_aggregation=latest_available is supported.")
+
+# %%
+# Build one independent model-vs-Perfect comparison per method
+reports = []
+for method in config["methods"]:
+    run_id = make_run_id(
+        method["model_family"],
+        method["architecture"],
+        method["variant"],
+        selection_id,
+    )
+    comparison_id = make_comparison_id(run_id)
+    run_dir = get_run_dir(run_id)
+    predictions_path = run_dir / "predictions/test_predictions.parquet"
+    output_dir = get_comparison_dir(comparison_id)
+    output_paths = ensure_results_subdirs(
+        output_dir,
+        ("metrics", "predictions", "figures", "tables"),
+    )
+    comparison_path = output_paths["predictions"] / "model_vs_perfect_switch.parquet"
+    summary_path = output_paths["metrics"] / "switch_metrics_summary.csv"
+    event_metrics_path = output_paths["metrics"] / "switch_metrics_by_event.csv"
+    metadata_path = output_dir / "metadata.yaml"
+    figures_dir = output_paths["figures"] / "event_switch_plots"
+
+    required_outputs = (
+        comparison_path,
+        summary_path,
+        event_metrics_path,
+        metadata_path,
+    )
+    if not config["output"]["overwrite"]:
+        existing = [path for path in required_outputs if path.exists()]
+        if len(existing) == len(required_outputs):
+            reports.append(pd.read_csv(summary_path))
+            print(f"Skipped existing complete comparison: {comparison_id}")
+            continue
+        if existing:
+            raise FileExistsError(
+                f"Comparison outputs are incomplete under {output_dir}. "
+                "Set output.overwrite=true to rebuild this method."
+            )
+
+    predictions = pd.read_parquet(predictions_path)
+    comparison = build_model_switch_timeseries(
+        predictions,
+        perfect_targets,
+        method_name=method["name"],
+        threshold=float(config["conversion"]["threshold"]),
+        condition=config["conversion"]["condition"],
+        switch_time=int(config["conversion"]["switch_time"]),
+        apply_min_island_length=bool(
+            config["conversion"]["apply_min_island_length"]
+        ),
+    )
+    summary = compute_model_vs_perfect_metrics(comparison, by_event=False)
+    event_metrics = compute_model_vs_perfect_metrics(comparison, by_event=True)
+    comparison.to_parquet(comparison_path, index=False)
+    summary.to_csv(summary_path, index=False)
+    event_metrics.to_csv(event_metrics_path, index=False)
+
+    saved_figures = []
+    event_order = (
+        perfect_timeseries.groupby("event_id", sort=False)["event_timestamp"]
+        .first()
+        .sort_values()
+        .index[: int(config["plots"]["max_events"])]
+    )
+    for event_id in event_order:
+        perfect_event = perfect_timeseries.loc[
+            perfect_timeseries["event_id"].eq(event_id)
+        ].sort_values("Time", kind="stable")
+        model_event = comparison.loc[
+            comparison["event_id"].eq(event_id),
+            ["Time", "model_switch"],
+        ]
+        lookup = model_event.set_index("Time")["model_switch"]
+        methods: dict[str, np.ndarray] = {
+            "Perfect Switch": perfect_event["perfect_switch"].to_numpy(dtype=float),
+            method["name"]: perfect_event["Time"].map(lookup).to_numpy(dtype=float),
+        }
+        figure_path = figures_dir / f"{event_id}_switch_comparison.png"
+        plot_switch_methods_for_event(
+            perfect_event,
+            methods,
+            figure_path,
+            threshold=float(config["conversion"]["threshold"]),
+            event_title=(
+                f"{event_id} | {perfect_event['dataset_name'].iloc[0]} | "
+                f"Perfect vs {method['name']}"
+            ),
+        )
+        saved_figures.append(relative_project_path(figure_path))
+
+    created_at = datetime.now(timezone.utc).isoformat()
+    fingerprint_config = {
+        "data": config["data"],
+        "method": method,
+        "conversion": config["conversion"],
+        "plots": config["plots"],
+        "output": {**config["output"], "overwrite": False},
+    }
+    metadata = {
+        "comparison_id": comparison_id,
+        "comparison_type": "switch_eval",
+        "method_id": run_id,
+        "method": method,
+        "reference_id": reference_id,
+        "selection_id": selection_id,
+        "split": "test",
+        "prediction_aggregation": (
+            "For every event target timestamp, select the saved forecast with the "
+            "smallest horizon_step, i.e. the latest prediction available."
+        ),
+        "model_switch_rule": (
+            "Pointwise y_pred_raw > threshold followed by right-only minimum-island "
+            "extension. This is distinct from the persistent Perfect Switch oracle."
+        ),
+        "threshold": float(config["conversion"]["threshold"]),
+        "switch_time": int(config["conversion"]["switch_time"]),
+        "input_files": {
+            "perfect_switch_timeseries": relative_project_path(perfect_timeseries_path),
+            "perfect_switch_window_targets": relative_project_path(perfect_targets_path),
+            "predictions": relative_project_path(predictions_path),
+        },
+        "output_files": {
+            "comparison_timeseries": relative_project_path(comparison_path),
+            "switch_metrics_summary": relative_project_path(summary_path),
+            "switch_metrics_by_event": relative_project_path(event_metrics_path),
+            "figures": saved_figures,
+        },
+        "num_events": int(comparison["event_id"].nunique()),
+        "num_figures": len(saved_figures),
+        "config_path": relative_project_path(CONFIG_PATH),
+        "config_fingerprint": config_fingerprint(fingerprint_config),
+        "created_at": created_at,
+    }
+    save_yaml(metadata_path, metadata)
+    upsert_index_row(
+        get_results_index_dir() / "comparisons.csv",
+        {
+            "comparison_id": comparison_id,
+            "method_id": run_id,
+            "reference_id": reference_id,
+            "comparison_type": "switch_eval",
+            "selection_id": selection_id,
+            "results_path": relative_project_path(output_dir),
+            "metrics_path": relative_project_path(output_paths["metrics"]),
+            "figures_path": relative_project_path(output_paths["figures"]),
+            "status": "complete",
+            "created_at": created_at,
+        },
+        id_column="comparison_id",
+        columns=COMPARISON_INDEX_COLUMNS,
+    )
+    reports.append(summary)
+    print(f"Saved comparison: {comparison_id}")
+
+print("=== Compact final report ===")
+print(f"Selection ID: {selection_id}")
+print("Prediction aggregation: latest available forecast (smallest horizon step)")
+print(
+    f"Model switch: y_pred_raw > {config['conversion']['threshold']} then "
+    f"minimum island length {config['conversion']['switch_time']}"
+)
+print(pd.concat(reports, ignore_index=True).to_string(index=False))
