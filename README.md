@@ -23,6 +23,10 @@ The repository currently provides an initial, dependency-light foundation:
 - configurable candidate-event preparation with clean Parquet data,
   event-centered windows, quality/imputation tracking, event-level splits, and
   traceable autoregressive window indices;
+- configurable final supervised autoregressive datasets with modular dataset
+  selection, raw arrays, and context-only standardization;
+- deterministic GRU sequence-to-vector and encoder-decoder forecasting
+  baselines for raw and context-standard dataset variants;
 - configuration templates with unresolved empirical assumptions left explicit;
 - chronological split helpers;
 - no-leakage autoregressive window-index construction;
@@ -80,7 +84,7 @@ conda env export --no-builds | grep -v "^prefix:" > environment.yml
 - `results/data_analysis/`: shared raw-data analysis tables; exploratory
   figures are displayed interactively and are not saved automatically.
 - `results/autoregressive/data_preparation/`: threshold-specific event-dataset
-  preparation summaries.
+  preparation and final supervised-dataset summaries.
 - `results/<task>/<model>/`: model-specific figures, tables, predictions, and
   reports.
 - `results/<task>/comparisons/`: cross-model outputs for one task.

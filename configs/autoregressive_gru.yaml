@@ -1,17 +1,53 @@
 schema_version: 1
 
 experiment:
-  task: autoregressive_forecasting
-  model_family: gru
-  seed: 42
-  device: auto
+  model_name: gru
+  run_name: gru_baselines
+  architectures:
+    - gru_s2v
+    - gru_seq2seq
+  variants:
+    - raw
+    - context_standard
 
-data_config: configs/data.yaml
 data:
-  target_col: Signal
-  input_col: Signal
+  dataset_root: data/processed/autoregressive/threshold_10p0/datasets_L30_h10
+  selection_folder: auto
+  context_length: 30
+  prediction_length: 10
 
 model:
   input_size: 1
-training: {}
-switch_conversion: {}
+  hidden_size: 64
+  num_layers: 1
+  dropout: 0.0
+  bidirectional: false
+
+seq2seq:
+  teacher_forcing_ratio: 0.5
+  decoder_input_strategy: last_observed_value
+  disable_teacher_forcing_eval: true
+
+training:
+  batch_size: 64
+  learning_rate: 0.001
+  max_epochs: 100
+  early_stopping_patience: 12
+  gradient_clip_norm: 1.0
+  loss: mse
+  seed: 42
+
+evaluation:
+  metrics:
+    - mae
+    - rmse
+    - mae_by_horizon
+    - rmse_by_horizon
+  evaluate_in_raw_scale: true
+
+output:
+  models_root: models/autoregressive/gru
+  results_root: results/autoregressive/gru
+  save_predictions: true
+  save_plots: true
+  overwrite: false
