@@ -76,6 +76,7 @@ def train_gru_forecaster(
     early_stopping_patience: int,
     gradient_clip_norm: float,
     teacher_forcing_ratio: float,
+    weight_decay: float = 0.0,
 ) -> GRUTrainingResult:
     """Train with MSE loss and select the best validation-loss checkpoint."""
 
@@ -83,11 +84,17 @@ def train_gru_forecaster(
         raise ValueError("Training rate, epochs, and patience must be positive.")
     if gradient_clip_norm <= 0:
         raise ValueError("gradient_clip_norm must be positive.")
+    if weight_decay < 0:
+        raise ValueError("weight_decay cannot be negative.")
     if len(train_loader.dataset) == 0 or len(validation_loader.dataset) == 0:
         raise ValueError("Training and validation splits must both be non-empty.")
 
     loss_function = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=learning_rate,
+        weight_decay=weight_decay,
+    )
     model.to(device)
     best_loss = float("inf")
     best_epoch = 0

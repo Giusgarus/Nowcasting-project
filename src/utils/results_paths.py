@@ -63,6 +63,18 @@ DATASET_INDEX_COLUMNS = [
     "num_test_windows",
     "created_at",
 ]
+GRID_SEARCH_INDEX_COLUMNS = [
+    "search_id",
+    "model_family",
+    "target_run_id",
+    "selection_id",
+    "selection_metric",
+    "best_trial_id",
+    "results_path",
+    "best_model_path",
+    "status",
+    "created_at",
+]
 
 
 def sanitize_id(value: str) -> str:
@@ -173,6 +185,10 @@ def get_data_preparation_dir(selection_id: str, root: Path = PROJECT_ROOT) -> Pa
 
 def get_results_index_dir(root: Path = PROJECT_ROOT) -> Path:
     return root / "results" / "index"
+
+
+def get_grid_search_dir(search_id: str, root: Path = PROJECT_ROOT) -> Path:
+    return root / "results" / "grid_searches" / sanitize_id(search_id)
 
 
 def ensure_results_subdirs(base_dir: Path, subdirs: Sequence[str]) -> dict[str, Path]:

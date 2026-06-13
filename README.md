@@ -65,6 +65,17 @@ Run project commands in that environment:
 conda run -n Nowcasting python -m pytest
 ```
 
+Run the GRU grid search with live, unbuffered trial output:
+
+```bash
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
+  python scripts/experiments/run_gru_grid_search.py
+```
+
+Before every trial, the script prints its full effective model, optimizer, and
+training parameters. Shared grid parameters apply to both architectures;
+`teacher_forcing_ratio` is expanded only for `gru_seq2seq`.
+
 When dependencies change, export the active environment without its local
 prefix:
 
@@ -86,8 +97,11 @@ conda env export --no-builds | grep -v "^prefix:" > environment.yml
 - `results/switching/perfect_switch/<selection_id>/`: Perfect Switch reference.
 - `results/comparisons/<comparison_id>/`: model and baseline comparisons.
   Each switch-evaluation folder compares exactly one run with one reference.
+- `results/grid_searches/<search_id>/`: validation-only hyperparameter-search
+  trials and selected parameters.
 - `results/data_preparation/<selection_id>/`: human-readable dataset summaries.
-- `results/index/`: central CSV indexes for datasets, runs, references, and comparisons.
+- `results/index/`: central CSV indexes for datasets, runs, references,
+  comparisons, and grid searches.
 - `reports/`: methodological notes and experiment logs.
 - `tests/`: unit tests.
 
