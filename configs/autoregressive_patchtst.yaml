@@ -1,17 +1,41 @@
 schema_version: 1
 
 experiment:
-  task: autoregressive_forecasting
-  model_family: patchtst
-  seed: 42
-  device: auto
+  model_name: patchtst
+  run_name: patchtst_baselines
+  variants:
+    - raw
+    - context_standard
 
-data_config: configs/data.yaml
 data:
-  target_col: Signal
-  input_col: Signal
+  dataset_root: data/processed/autoregressive/threshold_10p0/datasets_L30_h10
+  selection_folder: auto
+  context_length: 30
+  prediction_length: 10
 
 model:
-  num_channels: 1
-training: {}
-switch_conversion: {}
+  input_channels: 1
+  patch_len: 5
+  stride: 5
+  d_model: 64
+  n_heads: 4
+  num_layers: 2
+  dropout: 0.1
+
+training:
+  batch_size: 64
+  learning_rate: 0.0003
+  weight_decay: 0.00001
+  max_epochs: 120
+  early_stopping_patience: 15
+  gradient_clip_norm: 1.0
+  seed: 42
+  loss: mse
+
+evaluation:
+  evaluate_in_raw_scale: true
+
+output:
+  save_predictions: true
+  save_plots: true
+  overwrite: false

@@ -152,9 +152,12 @@ def make_run_id(
     family = sanitize_id(model_family).lower()
     architecture_component = sanitize_id(architecture).lower()
     prefix = f"{family}_"
-    if architecture_component.startswith(prefix):
+    if architecture_component == family:
+        architecture_component = ""
+    elif architecture_component.startswith(prefix):
         architecture_component = architecture_component[len(prefix) :]
-    return f"{family}_{architecture_component}_{variant_id(variant)}_{selection_id}"
+    components = [family, architecture_component, variant_id(variant), selection_id]
+    return "_".join(component for component in components if component)
 
 
 def make_comparison_id(method_id: str, comparison_type: str = "switch_eval") -> str:

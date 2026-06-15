@@ -39,8 +39,12 @@ from src.tuning.grid_search import (
     make_trial_id,
     select_best_trial,
 )
+from src.tuning.parallel_trials import (
+    choose_trial_devices,
+    iter_parallel_trial_results,
+    prepare_trial_device,
+)
 from src.utils.config import config_fingerprint, load_yaml_config, save_yaml
-from src.utils.device import select_device
 from src.utils.paths import project_path
 from src.utils.reproducibility import set_seed
 from src.utils.results_paths import (
@@ -238,6 +242,130 @@ def train_trial(
         validation_raw,
     )
     return result, validation_metrics, model_config
+
+
+def save_gru_trial_checkpoint(
+    path: Path,
+    *,
+    result: GRUTrainingResult,
+    model_config: dict,
+) -> None:
+    """Save one validation-only GRU trial artifact."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            "best_epoch": result.best_epoch,
+            "best_val_loss": result.best_val_loss,
+            "history": result.history,
+            "best_state_dict": result.best_state_dict,
+            "model_config": model_config,
+        },
+        path,
+    )
+
+
+def load_gru_trial_checkpoint(path: Path) -> tuple[GRUTrainingResult, dict]:
+    """Load one trusted project-generated GRU trial checkpoint."""
+
+    checkpoint = torch.load(path, map_location="cpu", weights_only=False)
+    return (
+        GRUTrainingResult(
+            best_epoch=int(checkpoint["best_epoch"]),
+            best_val_loss=float(checkpoint["best_val_loss"]),
+            history=list(checkpoint["history"]),
+            best_state_dict=checkpoint["best_state_dict"],
+        ),
+        dict(checkpoint["model_config"]),
+    )
+
+
+def run_gru_trial_job(job: dict) -> dict:
+    """Train one GRU trial on its assigned worker device."""
+
+    parameters = job["parameters"]
+    trial_id = job["trial_id"]
+    architecture = job["architecture"]
+    variant = job["variant"]
+    training = job["training"]
+    dataset_folder = Path(job["dataset_folder"])
+    checkpoint_path = Path(job["checkpoint_path"])
+    history_path = Path(job["history_path"])
+    device = prepare_trial_device(job["device"])
+    start = time.perf_counter()
+    displayed = trial_display_parameters(
+        architecture=architecture,
+        variant=variant,
+        parameters=parameters,
+        fixed_model=job["fixed_model"],
+        training=training,
+        prediction_length=int(job["prediction_length"]),
+    )
+    print(
+        f"[{job['index']}/{job['total']}] {job['target_run_id']} | {trial_id} "
+        f"device={device}\n  parameters={json.dumps(displayed, sort_keys=True)}",
+        flush=True,
+    )
+    try:
+        result, validation_metrics, model_config = train_trial(
+            architecture=architecture,
+            variant=variant,
+            parameters=parameters,
+            fixed_model=job["fixed_model"],
+            training=training,
+            prediction_length=int(job["prediction_length"]),
+            dataset_folder=dataset_folder,
+            validation_arrays=load_split_arrays(dataset_folder, "val"),
+            device=device,
+        )
+        save_gru_trial_checkpoint(
+            checkpoint_path,
+            result=result,
+            model_config=model_config,
+        )
+        if job["save_trial_history"]:
+            pd.DataFrame(result.history).to_csv(history_path, index=False)
+        row = {
+            "trial_id": trial_id,
+            "status": "complete",
+            "architecture": architecture,
+            "variant": variant,
+            **parameters,
+            "validation_mae_raw": validation_metrics["mae"],
+            "validation_rmse_raw": validation_metrics["rmse"],
+            "best_epoch": result.best_epoch,
+            "best_val_loss_training_scale": result.best_val_loss,
+            "epochs_run": len(result.history),
+            "duration_seconds": time.perf_counter() - start,
+            "checkpoint_path": relative_project_path(checkpoint_path),
+            "device": str(device),
+            "error": "",
+        }
+        print(
+            f"  completed {trial_id} device={device} "
+            f"validation RMSE={validation_metrics['rmse']:.6g} "
+            f"epoch={result.best_epoch}",
+            flush=True,
+        )
+        return row
+    except Exception as error:
+        print(f"  failed {trial_id} device={device}: {error}", flush=True)
+        return {
+            "trial_id": trial_id,
+            "status": "failed",
+            "architecture": architecture,
+            "variant": variant,
+            **parameters,
+            "validation_mae_raw": np.nan,
+            "validation_rmse_raw": np.nan,
+            "best_epoch": np.nan,
+            "best_val_loss_training_scale": np.nan,
+            "epochs_run": np.nan,
+            "duration_seconds": time.perf_counter() - start,
+            "checkpoint_path": relative_project_path(checkpoint_path),
+            "device": str(device),
+            "error": repr(error),
+        }
 
 
 def save_canonical_best_run(
@@ -464,7 +592,8 @@ def main() -> None:
         split: pd.read_parquet(dataset_folder / f"{split}_metadata.parquet")
         for split in ("train", "val", "test")
     }
-    device = torch.device(select_device())
+    devices = choose_trial_devices(config.get("parallel", {}))
+    device = torch.device(devices[0])
     candidate_counts = {
         architecture: len(build_gru_trial_candidates(config, architecture))
         for architecture in search_config["architectures"]
@@ -476,7 +605,7 @@ def main() -> None:
     print(
         "=== GRU grid search ===\n"
         f"Selection: {selection_id}\n"
-        f"Device: {device}\n"
+        f"Trial worker devices: {devices}\n"
         f"Trials per architecture: {json.dumps(candidate_counts, sort_keys=True)}\n"
         f"Total training trials: {total_trials}\n"
         "Teacher forcing is tuned only for gru_seq2seq.\n"
@@ -496,93 +625,50 @@ def main() -> None:
             elif search_dir.exists() and any(search_dir.iterdir()):
                 raise FileExistsError(f"Grid search already exists: {search_dir}")
             histories_dir = search_dir / "validation_histories"
+            checkpoints_dir = search_dir / "checkpoints"
             histories_dir.mkdir(parents=True, exist_ok=True)
+            checkpoints_dir.mkdir(parents=True, exist_ok=True)
             trial_rows = []
-            best_artifact: tuple[str, GRUTrainingResult, dict] | None = None
-            best_metric = float("inf")
             print(
                 f"=== {target_run_id}: {len(candidates)} trials ===",
                 flush=True,
             )
-            for index, parameters in enumerate(candidates, start=1):
-                trial_id = make_trial_id(parameters, index)
-                start = time.perf_counter()
-                display_parameters = trial_display_parameters(
-                    architecture=architecture,
-                    variant=variant,
-                    parameters=parameters,
-                    fixed_model=config["fixed_model"],
-                    training=training,
-                    prediction_length=int(config["data"]["prediction_length"]),
-                )
-                print(
-                    f"[{index}/{len(candidates)}] {target_run_id} | {trial_id}\n"
-                    f"  parameters={json.dumps(display_parameters, sort_keys=True)}",
-                    flush=True,
-                )
-                try:
-                    result, validation_metrics, model_config = train_trial(
-                        architecture=architecture,
-                        variant=variant,
-                        parameters=parameters,
-                        fixed_model=config["fixed_model"],
-                        training=training,
-                        prediction_length=int(config["data"]["prediction_length"]),
-                        dataset_folder=dataset_folder,
-                        validation_arrays=split_arrays["val"],
-                        device=device,
-                    )
-                    duration = time.perf_counter() - start
-                    row = {
-                        "trial_id": trial_id,
-                        "status": "complete",
-                        "architecture": architecture,
-                        "variant": variant,
-                        **parameters,
-                        "validation_mae_raw": validation_metrics["mae"],
-                        "validation_rmse_raw": validation_metrics["rmse"],
-                        "best_epoch": result.best_epoch,
-                        "best_val_loss_training_scale": result.best_val_loss,
-                        "epochs_run": len(result.history),
-                        "duration_seconds": duration,
-                        "error": "",
-                    }
-                    trial_rows.append(row)
-                    if validation_metrics["rmse"] < best_metric:
-                        best_metric = validation_metrics["rmse"]
-                        best_artifact = (trial_id, result, model_config)
-                    if output["save_trial_histories"]:
-                        pd.DataFrame(result.history).to_csv(
-                            histories_dir / f"{trial_id}.csv",
-                            index=False,
-                        )
-                    print(
-                        f"  validation MAE={validation_metrics['mae']:.6g} "
-                        f"RMSE={validation_metrics['rmse']:.6g} "
-                        f"epoch={result.best_epoch}",
-                        flush=True,
-                    )
-                except Exception as error:
-                    duration = time.perf_counter() - start
-                    trial_rows.append(
-                        {
-                            "trial_id": trial_id,
-                            "status": "failed",
-                            "architecture": architecture,
-                            "variant": variant,
-                            **parameters,
-                            "validation_mae_raw": np.nan,
-                            "validation_rmse_raw": np.nan,
-                            "best_epoch": np.nan,
-                            "best_val_loss_training_scale": np.nan,
-                            "epochs_run": np.nan,
-                            "duration_seconds": duration,
-                            "error": repr(error),
-                        }
-                    )
-                    print(f"  failed: {error}", flush=True)
+            jobs = [
+                {
+                    "architecture": architecture,
+                    "variant": variant,
+                    "parameters": parameters,
+                    "fixed_model": config["fixed_model"],
+                    "training": training,
+                    "prediction_length": int(config["data"]["prediction_length"]),
+                    "dataset_folder": str(dataset_folder),
+                    "target_run_id": target_run_id,
+                    "trial_id": make_trial_id(parameters, index),
+                    "index": index,
+                    "total": len(candidates),
+                    "checkpoint_path": str(
+                        checkpoints_dir / f"{make_trial_id(parameters, index)}.pt"
+                    ),
+                    "history_path": str(
+                        histories_dir / f"{make_trial_id(parameters, index)}.csv"
+                    ),
+                    "save_trial_history": bool(output["save_trial_histories"]),
+                }
+                for index, parameters in enumerate(candidates, start=1)
+            ]
+            for row in iter_parallel_trial_results(
+                jobs,
+                run_gru_trial_job,
+                devices,
+            ):
+                trial_rows.append(row)
+                pd.DataFrame(trial_rows).to_csv(search_dir / "trials.csv", index=False)
 
-            trials = pd.DataFrame(trial_rows)
+            trials = (
+                pd.DataFrame(trial_rows)
+                .sort_values("trial_id", kind="stable")
+                .reset_index(drop=True)
+            )
             trials_path = search_dir / "trials.csv"
             trials.to_csv(trials_path, index=False)
             best_trial = select_best_trial(
@@ -590,9 +676,9 @@ def main() -> None:
                 metric=search_config["selection_metric"],
                 mode=search_config["selection_mode"],
             )
-            if best_artifact is None or best_artifact[0] != best_trial["trial_id"]:
-                raise RuntimeError("The retained best artifact does not match selection.")
-            _, best_result, best_model_config = best_artifact
+            best_result, best_model_config = load_gru_trial_checkpoint(
+                PROJECT_ROOT / str(best_trial["checkpoint_path"])
+            )
             best_params = {
                 "search_id": search_id,
                 "target_run_id": target_run_id,
@@ -620,6 +706,7 @@ def main() -> None:
                     "num_complete_trials": int(trials["status"].eq("complete").sum()),
                     "selection_split": "validation",
                     "test_used_for_selection": False,
+                    "trial_worker_devices": devices,
                     "config_path": relative_project_path(CONFIG_PATH),
                     "config_fingerprint": config_fingerprint(config),
                     "trials_path": relative_project_path(trials_path),

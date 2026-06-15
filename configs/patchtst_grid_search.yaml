@@ -1,15 +1,13 @@
 schema_version: 1
 
 search:
-  model_family: gru
-  architectures:
-    - gru_s2v
-    - gru_seq2seq
+  model_family: patchtst
   variants:
     - raw
     - context_standard
   selection_metric: validation_rmse_raw
   selection_mode: min
+  max_trials: 200
 
 parallel:
   enabled: true
@@ -19,30 +17,40 @@ parallel:
 data:
   dataset_root: data/processed/autoregressive/threshold_10p0/datasets_L30_h10
   selection_folder: auto
+  context_length: 30
   prediction_length: 10
 
 fixed_model:
-  input_size: 1
-  dropout: 0.0
-  bidirectional: false
+  input_channels: 1
+  output_length: 10
 
 parameter_grid:
-  hidden_size:
-    - 8
-    - 16
+  patch_len:
+    - 4
+    - 5
+    - 10
+  stride:
+    - 2
+    - 5
+  d_model:
     - 32
     - 64
     - 128
+  n_heads:
+    - 2
+    - 4
   num_layers:
     - 1
     - 2
     - 3
+  dropout:
+    - 0.0
+    - 0.1
   learning_rate:
     - 0.0001
     - 0.0003
     - 0.0005
     - 0.001
-    - 0.003
   weight_decay:
     - 0.0
     - 0.00001
@@ -54,11 +62,10 @@ training:
   early_stopping_patience: 15
   gradient_clip_norm: 1.0
   seed: 42
-
-seq2seq:
-  teacher_forcing_ratio:
-    - 0.0
-    - 0.5
+  loss: mse
+  skip_if_checkpoint_exists: true
+  force_retrain: false
+  resume_from_checkpoint: false
 
 output:
   overwrite: true

@@ -5,12 +5,17 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+import src.tuning.parallel_trials as parallel_trials
 from src.utils.config import load_yaml_config
 
 from src.tuning.grid_search import (
     expand_parameter_grid,
     make_trial_id,
     select_best_trial,
+)
+from src.tuning.parallel_trials import (
+    choose_trial_devices,
+    iter_parallel_trial_results,
 )
 from scripts.experiments.run_gru_grid_search import (
     build_gru_trial_candidates,
@@ -19,6 +24,10 @@ from scripts.experiments.run_gru_grid_search import (
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _serial_trial_worker(job: dict) -> tuple[int, str]:
+    return job["value"] * 2, job["device"]
 
 
 def test_expand_parameter_grid_builds_cartesian_product() -> None:
@@ -109,3 +118,66 @@ def test_trial_display_parameters_includes_all_effective_settings() -> None:
     assert display["model"]["num_layers"] == 2
     assert display["optimizer"]["weight_decay"] == 0.0001
     assert display["training"]["teacher_forcing_ratio"] == 0.5
+
+
+def test_parallel_trial_devices_use_available_cuda_dynamically() -> None:
+    config = {"enabled": True, "max_workers": 3, "cuda_device_ids": "auto"}
+
+    assert choose_trial_devices(config, cuda_count=3, fallback_device="cpu") == [
+        "cuda:0",
+        "cuda:1",
+        "cuda:2",
+    ]
+    assert choose_trial_devices(config, cuda_count=2, fallback_device="cpu") == [
+        "cuda:0",
+        "cuda:1",
+    ]
+    assert choose_trial_devices(config, cuda_count=0, fallback_device="cpu") == [
+        "cpu"
+    ]
+
+
+def test_parallel_trial_devices_filter_unavailable_explicit_ids() -> None:
+    config = {
+        "enabled": True,
+        "max_workers": "auto",
+        "cuda_device_ids": [0, 2, 4],
+    }
+
+    assert choose_trial_devices(config, cuda_count=3, fallback_device="cpu") == [
+        "cuda:0",
+        "cuda:2",
+    ]
+
+
+def test_trial_scheduler_falls_back_to_serial_device_execution() -> None:
+    results = list(
+        iter_parallel_trial_results(
+            [{"value": 1}, {"value": 2}],
+            _serial_trial_worker,
+            ["cpu"],
+        )
+    )
+
+    assert results == [(2, "cpu"), (4, "cpu")]
+
+
+def test_trial_scheduler_falls_back_when_processes_are_unavailable(
+    monkeypatch,
+) -> None:
+    class UnavailableExecutor:
+        def __init__(self, *args, **kwargs) -> None:
+            raise PermissionError("not allowed")
+
+    monkeypatch.setattr(parallel_trials, "ProcessPoolExecutor", UnavailableExecutor)
+    with pytest.warns(RuntimeWarning, match="running trials sequentially"):
+        results = list(
+            iter_parallel_trial_results(
+                [{"value": 1}, {"value": 2}, {"value": 3}],
+                _serial_trial_worker,
+                ["worker:0", "worker:1"],
+            )
+        )
+
+    assert sorted(value for value, _ in results) == [2, 4, 6]
+    assert {device for _, device in results} == {"worker:0", "worker:1"}

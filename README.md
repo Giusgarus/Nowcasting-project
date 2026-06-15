@@ -27,6 +27,8 @@ The repository currently provides an initial, dependency-light foundation:
   selection, raw arrays, and context-only standardization;
 - deterministic GRU sequence-to-vector and encoder-decoder forecasting
   baselines for raw and context-standard dataset variants;
+- a deterministic PatchTST-style Transformer with validation-only
+  hyperparameter search for raw and context-standard variants;
 - configuration templates with unresolved empirical assumptions left explicit;
 - chronological split helpers;
 - no-leakage autoregressive window-index construction;
@@ -76,6 +78,40 @@ Before every trial, the script prints its full effective model, optimizer, and
 training parameters. Shared grid parameters apply to both architectures;
 `teacher_forcing_ratio` is expanded only for `gru_seq2seq`.
 
+Run one PatchTST configuration for each variant using
+`configs/autoregressive_patchtst.yaml`:
+
+```bash
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
+  python scripts/experiments/run_autoregressive_patchtst.py
+```
+
+To execute exactly one run, leave only one value under
+`experiment.variants`, for example `raw`.
+
+Run the PatchTST grid search using `configs/patchtst_grid_search.yaml` after
+reducing its grid or explicitly increasing the configured `search.max_trials`
+safety limit:
+
+```bash
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
+  python scripts/experiments/run_patchtst_grid_search.py
+```
+
+The full PatchTST grid is printed before the safety check. Trial checkpoints
+are reusable, selection uses raw-scale validation RMSE, and only the selected
+trial is evaluated on test. The current full configuration expands to 2,592
+trials per variant and 5,184 total trials, while `search.max_trials: 200`
+intentionally blocks it until the grid is reduced or the limit is increased.
+
+GRU and PatchTST grid searches schedule independent trials across the CUDA GPUs
+available at launch time. Their `parallel.max_workers: 3` setting uses up to
+three GPUs, but automatically falls back to fewer GPU workers or one CPU/MPS
+worker when necessary. `cuda_device_ids: auto` means all GPUs visible to
+PyTorch; set an explicit list such as `[0, 2]`, or restrict
+`CUDA_VISIBLE_DEVICES`, when a visible GPU is reserved or occupied by another
+job.
+
 When dependencies change, export the active environment without its local
 prefix:
 
@@ -106,3 +142,7 @@ conda env export --no-builds | grep -v "^prefix:" > environment.yml
 - `tests/`: unit tests.
 
 See `AGENTS.md` for the full methodological and engineering policy.
+
+See [`EXPERIMENT_GUIDE.md`](EXPERIMENT_GUIDE.md) for the ordered commands and
+configuration workflow from raw-data analysis through model and switch
+evaluation.

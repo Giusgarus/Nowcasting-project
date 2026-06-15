@@ -32,6 +32,10 @@ def test_stable_result_ids() -> None:
     assert selection_id == "autoLargest_L30_h10_thr10"
     assert run_id == "gru_s2v_contextStandard_autoLargest_L30_h10_thr10"
     assert (
+        make_run_id("patchtst", "patchtst", "raw", selection_id)
+        == "patchtst_raw_autoLargest_L30_h10_thr10"
+    )
+    assert (
         make_comparison_id(run_id)
         == "switch_eval_gru_s2v_contextStandard_autoLargest_L30_h10_thr10"
     )
