@@ -18,6 +18,10 @@ methods:
     model_family: gru
     architecture: gru_seq2seq
     variant: context_standard
+  - name: Chronos Zero-Shot Raw
+    model_family: chronos
+    architecture: chronos_zero_shot
+    variant: raw
 
 conversion:
   prediction_aggregation: latest_available
