@@ -44,6 +44,7 @@ from src.tuning.parallel_trials import (
     iter_parallel_trial_results,
     prepare_trial_device,
 )
+from src.tuning.trial_logging import format_trial_start
 from src.utils.config import config_fingerprint, load_yaml_config, save_yaml
 from src.utils.paths import project_path
 from src.utils.reproducibility import set_seed
@@ -302,8 +303,14 @@ def run_gru_trial_job(job: dict) -> dict:
         prediction_length=int(job["prediction_length"]),
     )
     print(
-        f"[{job['index']}/{job['total']}] {job['target_run_id']} | {trial_id} "
-        f"device={device}\n  parameters={json.dumps(displayed, sort_keys=True)}",
+        format_trial_start(
+            index=int(job["index"]),
+            total=int(job["total"]),
+            run_id=job["target_run_id"],
+            trial_id=trial_id,
+            device=device,
+            parameters=displayed,
+        ),
         flush=True,
     )
     try:
