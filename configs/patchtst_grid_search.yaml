@@ -7,7 +7,7 @@ search:
     - context_standard
   selection_metric: validation_rmse_raw
   selection_mode: min
-  max_trials: 200
+  max_trials: 2592
 
 parallel:
   enabled: true
