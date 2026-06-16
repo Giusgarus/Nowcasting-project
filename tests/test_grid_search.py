@@ -17,6 +17,7 @@ from src.tuning.parallel_trials import (
     choose_trial_devices,
     iter_parallel_trial_results,
 )
+from src.tuning.trial_logging import format_trial_start
 from scripts.experiments.run_gru_grid_search import (
     build_gru_trial_candidates,
     trial_display_parameters,
@@ -118,6 +119,51 @@ def test_trial_display_parameters_includes_all_effective_settings() -> None:
     assert display["model"]["num_layers"] == 2
     assert display["optimizer"]["weight_decay"] == 0.0001
     assert display["training"]["teacher_forcing_ratio"] == 0.5
+
+
+def test_trial_start_log_is_readable_and_not_nested_json() -> None:
+    message = format_trial_start(
+        index=27,
+        total=225,
+        run_id="gru_s2v_raw_autoLargest_L30_h10_thr10",
+        trial_id="trial_027_7c3555d3f4",
+        device="cuda:2",
+        parameters={
+            "architecture": "gru_s2v",
+            "variant": "raw",
+            "model": {
+                "input_size": 1,
+                "hidden_size": 8,
+                "num_layers": 2,
+                "prediction_length": 10,
+                "dropout": 0.0,
+                "bidirectional": False,
+            },
+            "optimizer": {
+                "name": "Adam",
+                "learning_rate": 0.001,
+                "weight_decay": 0.0001,
+            },
+            "training": {
+                "batch_size": 64,
+                "max_epochs": 120,
+                "early_stopping_patience": 15,
+                "gradient_clip_norm": 1.0,
+                "seed": 42,
+                "teacher_forcing_ratio": 0.0,
+            },
+        },
+    )
+
+    assert message.splitlines()[0] == (
+        "[027/225] gru_s2v_raw_autoLargest_L30_h10_thr10 | "
+        "trial_027_7c3555d3f4 | device=cuda:2"
+    )
+    assert "  run: architecture=gru_s2v, variant=raw" in message
+    assert "  model: input_size=1, prediction_length=10" in message
+    assert "optimizer: Adam, learning_rate=0.001" in message
+    assert "bidirectional=false" in message
+    assert "parameters={" not in message
 
 
 def test_parallel_trial_devices_use_available_cuda_dynamically() -> None:
