@@ -26,10 +26,12 @@ from src.evaluation.forecast_metrics import (
 )
 from src.models.autoregressive.patchtst import PatchTSTForecaster
 from src.models.autoregressive.patchtst_training import (
+    PatchTSTForecastDataset,
     PatchTSTTrainingResult,
     create_patchtst_data_loader,
     predict_patchtst_forecaster,
     train_patchtst_forecaster,
+    train_patchtst_forecaster_fixed_epochs,
 )
 from src.tuning.grid_search import (
     expand_parameter_grid,
@@ -156,6 +158,30 @@ def build_loaders(
         )
         for split in splits
     }
+
+
+def build_full_development_loader(
+    dataset_folder: Path,
+    *,
+    variant: str,
+    training: dict,
+) -> torch.utils.data.DataLoader:
+    """Build a shuffled train+validation loader for final retraining."""
+
+    generator = torch.Generator()
+    generator.manual_seed(int(training["seed"]))
+    dataset = torch.utils.data.ConcatDataset(
+        [
+            PatchTSTForecastDataset(dataset_folder / "train.npz", variant=variant),
+            PatchTSTForecastDataset(dataset_folder / "val.npz", variant=variant),
+        ]
+    )
+    return torch.utils.data.DataLoader(
+        dataset,
+        batch_size=int(training["batch_size"]),
+        shuffle=True,
+        generator=generator,
+    )
 
 
 def train_trial(
@@ -474,7 +500,32 @@ def save_canonical_run(
 
     result, _, model_config, _, _ = load_trial_checkpoint(checkpoint_path)
     model = build_patchtst_model(model_config)
-    model.load_state_dict(result.best_state_dict)
+    final_training = config.get("final_training", {})
+    final_retraining_enabled = bool(
+        final_training.get("retrain_on_full_development", False)
+    )
+    result_for_artifacts = result
+    if final_retraining_enabled:
+        if not final_training.get("use_best_epoch_from_grid", False):
+            raise ValueError("Final retraining requires use_best_epoch_from_grid=true.")
+        if final_training.get("early_stopping", True):
+            raise ValueError("Final retraining must use early_stopping=false.")
+        set_seed(int(config["training"]["seed"]))
+        result_for_artifacts = train_patchtst_forecaster_fixed_epochs(
+            model,
+            build_full_development_loader(
+                dataset_folder,
+                variant=variant,
+                training=config["training"],
+            ),
+            device=device,
+            learning_rate=float(best_trial["learning_rate"]),
+            weight_decay=float(best_trial["weight_decay"]),
+            max_epochs=int(result.best_epoch),
+            gradient_clip_norm=float(config["training"]["gradient_clip_norm"]),
+        )
+    else:
+        model.load_state_dict(result.best_state_dict)
     model.to(device)
     test_loader = build_loaders(
         dataset_folder,
@@ -520,6 +571,8 @@ def save_canonical_run(
                 "test_mae": test_metrics["mae"],
                 "test_rmse": test_metrics["rmse"],
                 "best_epoch": result.best_epoch,
+                "final_training_epochs": result_for_artifacts.best_epoch,
+                "final_retrained_on_full_development": final_retraining_enabled,
                 "best_val_loss": result.best_val_loss,
                 **{
                     name: best_trial[name]
@@ -541,7 +594,7 @@ def save_canonical_run(
         variant=variant,
         y_pred_variant=prediction_variant,
     )
-    history = pd.DataFrame(result.history)
+    history = pd.DataFrame(result_for_artifacts.history)
     metrics_summary.to_csv(paths["metrics"] / "metrics_summary.csv", index=False)
     horizon_metrics.to_csv(paths["metrics"] / "metrics_by_horizon.csv", index=False)
     grouped_metrics(predictions, "dataset_name").to_csv(
@@ -580,19 +633,21 @@ def save_canonical_run(
 
     torch.save(
         {
-            "model_state_dict": result.best_state_dict,
+            "model_state_dict": result_for_artifacts.best_state_dict,
             "model_config": model_config,
             "grid_search_id": search_id,
             "best_trial_id": best_trial["trial_id"],
+            "final_retrained_on_full_development": final_retraining_enabled,
         },
         model_dir / "best_model.pt",
     )
     torch.save(
         {
-            "model_state_dict": result.last_state_dict,
+            "model_state_dict": result_for_artifacts.last_state_dict,
             "model_config": model_config,
             "grid_search_id": search_id,
             "best_trial_id": best_trial["trial_id"],
+            "final_retrained_on_full_development": final_retraining_enabled,
         },
         model_dir / "last_model.pt",
     )
@@ -604,6 +659,16 @@ def save_canonical_run(
         "selection_metric": config["search"]["selection_metric"],
         "selection_metric_value": float(best_trial["validation_rmse_raw"]),
         "best_epoch": result.best_epoch,
+        "final_training": {
+            "retrain_on_full_development": final_retraining_enabled,
+            "epochs": int(result_for_artifacts.best_epoch),
+            "use_best_epoch_from_grid": bool(
+                final_training.get("use_best_epoch_from_grid", False)
+            ),
+            "early_stopping": bool(final_training.get("early_stopping", False)),
+            "train_split": "train+val" if final_retraining_enabled else "train",
+            "excluded_split": "test",
+        },
         "best_val_loss": result.best_val_loss,
         "learning_rate": float(best_trial["learning_rate"]),
         "weight_decay": float(best_trial["weight_decay"]),
@@ -626,6 +691,9 @@ def save_canonical_run(
             "architecture": "patchtst",
             "variant": variant,
             "metrics_in_raw_scale": True,
+            "test_type": dataset_metadata.get("test_type"),
+            "external_test_dataset": dataset_metadata.get("external_test_dataset"),
+            "selection_mode": dataset_metadata.get("selection_mode"),
             "config_path": relative_project_path(CONFIG_PATH),
             "config_fingerprint": config_fingerprint(config),
             **training_metadata,

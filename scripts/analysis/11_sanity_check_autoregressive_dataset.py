@@ -14,7 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 # Set this when multiple selection folders are available.
-SELECTION_FOLDER: str | None = None
+SELECTION_FOLDER: str | None = "externalHoldout_test_fc_uplink_fade"
 DATASET_ROOT = (
     PROJECT_ROOT
     / "data/processed/autoregressive/threshold_10p0/datasets_L30_h10"
@@ -147,6 +147,15 @@ def check_split(
             arrays[identifier].astype(str),
         ):
             raise ValueError(f"{split} metadata {identifier} is not aligned with NPZ.")
+    for identifier in ("global_window_id", "global_event_id"):
+        if identifier in metadata.columns and identifier in arrays:
+            if not np.array_equal(
+                metadata[identifier].astype(str).to_numpy(),
+                arrays[identifier].astype(str),
+            ):
+                raise ValueError(
+                    f"{split} metadata {identifier} is not aligned with NPZ."
+                )
     expected_split = METADATA_SPLIT_NAMES[split]
     if not metadata["split"].eq(expected_split).all():
         raise ValueError(f"{split} metadata contains incorrect split labels.")
@@ -226,8 +235,8 @@ def check_split(
         .to_string()
     )
     print(
-        f"Unique events={metadata['event_id'].nunique():,}, "
-        f"windows={metadata['window_id'].nunique():,}, "
+        f"Unique events={metadata.get('global_event_id', metadata['event_id']).nunique():,}, "
+        f"windows={metadata.get('global_window_id', metadata['window_id']).nunique():,}, "
         f"datasets={metadata['dataset_id'].nunique():,}"
     )
     return arrays, metadata, {
@@ -318,14 +327,18 @@ for split_name in SPLITS:
 # %%
 # Validate global split integrity and uniqueness
 all_metadata = pd.concat(metadata_by_split.values(), ignore_index=True)
-leaking_events = all_metadata.groupby("event_id")["split"].nunique()
+event_identity = "global_event_id" if "global_event_id" in all_metadata else "event_id"
+window_identity = (
+    "global_window_id" if "global_window_id" in all_metadata else "window_id"
+)
+leaking_events = all_metadata.groupby(event_identity)["split"].nunique()
 leaking_events = leaking_events.loc[leaking_events.gt(1)]
 if len(leaking_events):
     print(f"Events found in multiple splits:\n{leaking_events.to_string()}")
     raise ValueError("Event split leakage detected.")
-if all_metadata["window_id"].duplicated().any():
+if all_metadata[window_identity].duplicated().any():
     duplicates = all_metadata.loc[
-        all_metadata["window_id"].duplicated(keep=False), "window_id"
+        all_metadata[window_identity].duplicated(keep=False), window_identity
     ].unique()
     raise ValueError(f"Duplicate window IDs found: {duplicates.tolist()}")
 print("\nGlobal event split integrity: passed")
@@ -352,7 +365,7 @@ print(f"Selection folder: {selection_path.name}")
 print(f"Train windows: {reports['train']['windows']:,}")
 print(f"Val windows: {reports['val']['windows']:,}")
 print(f"Test windows: {reports['test']['windows']:,}")
-print(f"Unique events: {all_metadata['event_id'].nunique():,}")
+print(f"Unique events: {all_metadata[event_identity].nunique():,}")
 print(f"Unique datasets: {all_metadata['dataset_id'].nunique():,}")
 print(f"Warnings included: {'yes' if total_warnings else 'no'}")
 print(f"Unusable windows present: {'yes' if total_unusable else 'no'}")

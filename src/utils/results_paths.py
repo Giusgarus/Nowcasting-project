@@ -121,6 +121,11 @@ def make_selection_id(
         prefix = f"multi{len(selected_datasets)}"
     elif mode == "all_datasets":
         prefix = "allDatasets"
+    elif mode == "external_holdout":
+        if len(selected_datasets) < 1:
+            raise ValueError("external_holdout selection IDs require selected datasets.")
+        heldout = str(selected_datasets[-1])
+        prefix = f"externalHoldout_test_{sanitize_id(heldout)}"
     else:
         raise ValueError(f"Unsupported dataset selection mode: {mode}")
     return (

@@ -139,6 +139,56 @@ def train_patchtst_forecaster(
     )
 
 
+def train_patchtst_forecaster_fixed_epochs(
+    model: nn.Module,
+    train_loader: DataLoader,
+    *,
+    device: torch.device,
+    learning_rate: float,
+    weight_decay: float,
+    max_epochs: int,
+    gradient_clip_norm: float,
+) -> PatchTSTTrainingResult:
+    """Train for exactly ``max_epochs`` without validation or early stopping."""
+
+    if learning_rate <= 0 or max_epochs < 1:
+        raise ValueError("Training rate and epochs must be positive.")
+    if weight_decay < 0:
+        raise ValueError("weight_decay cannot be negative.")
+    if gradient_clip_norm <= 0:
+        raise ValueError("gradient_clip_norm must be positive.")
+    if len(train_loader.dataset) == 0:
+        raise ValueError("Training split must be non-empty.")
+
+    loss_function = nn.MSELoss()
+    optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=learning_rate,
+        weight_decay=weight_decay,
+    )
+    model.to(device)
+    history = []
+    for epoch in range(1, max_epochs + 1):
+        train_loss = run_patchtst_epoch(
+            model,
+            train_loader,
+            loss_function=loss_function,
+            device=device,
+            optimizer=optimizer,
+            gradient_clip_norm=gradient_clip_norm,
+        )
+        history.append({"epoch": epoch, "train_loss": train_loss, "val_loss": float("nan")})
+
+    final_state = copy.deepcopy(model.state_dict())
+    return PatchTSTTrainingResult(
+        best_epoch=max_epochs,
+        best_val_loss=float("nan"),
+        history=history,
+        best_state_dict=final_state,
+        last_state_dict=final_state,
+    )
+
+
 def run_patchtst_epoch(
     model: nn.Module,
     loader: DataLoader,

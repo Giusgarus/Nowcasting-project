@@ -14,6 +14,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from src.datasets.autoregressive_dataset import (
     SPLIT_FILE_NAMES,
     SPLITS,
+    assign_external_holdout_splits,
     build_autoregressive_arrays_from_window_index,
     filter_window_index,
     rank_datasets_for_autoregressive_training,
@@ -90,14 +91,43 @@ selected_datasets, selection_folder, ranking = select_datasets(
     ranking,
     mode=selection["mode"],
     selected_datasets=selection["selected_datasets"],
+    heldout_test_dataset=selection.get("heldout_test_dataset"),
+    include_all_except_heldout=selection.get("development_datasets", {}).get(
+        "include_all_except_heldout",
+        True,
+    ),
+    explicit_development_datasets=selection.get("development_datasets", {}).get(
+        "explicit_list"
+    ),
 )
 filtered_index = filter_window_index(
     window_index,
     allow_warning_events=selection["allow_warning_events"],
 )
-selected_index = filtered_index.loc[
-    filtered_index["dataset_name"].isin(selected_datasets)
-].copy()
+split_plan = pd.DataFrame()
+if selection["mode"] == "external_holdout":
+    development_config = selection["development_datasets"]
+    if development_config.get("explicit_list"):
+        development_datasets = list(development_config["explicit_list"])
+    else:
+        development_datasets = [
+            dataset
+            for dataset in selected_datasets
+            if dataset != selection["heldout_test_dataset"]
+        ]
+    selected_index, split_plan = assign_external_holdout_splits(
+        filtered_index,
+        heldout_test_dataset=selection["heldout_test_dataset"],
+        development_datasets=development_datasets,
+        train_ratio=float(selection["development_split"]["train_ratio"]),
+        min_events_for_validation_split=int(
+            selection["small_dataset_policy"]["min_events_for_validation_split"]
+        ),
+    )
+else:
+    selected_index = filtered_index.loc[
+        filtered_index["dataset_name"].isin(selected_datasets)
+    ].copy()
 if selected_index.empty:
     raise ValueError("Dataset selection produced no valid autoregressive windows.")
 validate_event_split_integrity(selected_index)
@@ -181,6 +211,8 @@ summary_tables = {
         epsilon=float(context_standard["epsilon"]),
     ),
 }
+if selection["mode"] == "external_holdout":
+    summary_tables["external_holdout_split_plan.csv"] = split_plan
 if output_config["save_summary_csv"]:
     for filename, table in summary_tables.items():
         path = summary_dir / filename
@@ -199,6 +231,7 @@ metadata = {
     "signal_column": forecasting["signal_column"],
     "selected_datasets": selected_datasets,
     "dataset_selection_mode": selection["mode"],
+    "selection_mode": selection["mode"],
     "selection_folder": selection_folder,
     "selection_id": selection_id,
     "allow_warning_events": selection["allow_warning_events"],
@@ -218,6 +251,17 @@ metadata = {
     "num_val_events": int(split_metadata["validation"]["event_id"].nunique()),
     "num_test_events": int(split_metadata["test"]["event_id"].nunique()),
     "num_datasets": len(selected_datasets),
+    "num_development_datasets": int(
+        len(
+            [
+                dataset
+                for dataset in selected_datasets
+                if dataset != selection.get("heldout_test_dataset")
+            ]
+        )
+        if selection["mode"] == "external_holdout"
+        else len(selected_datasets)
+    ),
     "ranking_metric": selection["ranking_metric"],
     "ranking_table": str(
         (summary_dir / "selected_dataset_ranking.csv").relative_to(PROJECT_ROOT)
@@ -227,6 +271,50 @@ metadata = {
     else None,
     "created_at": datetime.now(timezone.utc).isoformat(),
 }
+if selection["mode"] == "external_holdout":
+    heldout_dataset = selection["heldout_test_dataset"]
+    development_datasets = [
+        dataset for dataset in selected_datasets if dataset != heldout_dataset
+    ]
+    metadata.update(
+        {
+            "test_type": "external_holdout",
+            "heldout_test_dataset": heldout_dataset,
+            "external_test_dataset": heldout_dataset,
+            "development_datasets": development_datasets,
+            "small_dataset_policy": selection["small_dataset_policy"],
+            "development_split": selection["development_split"],
+            "external_test": selection["external_test"],
+            "num_events_by_dataset": selected_index.groupby("dataset_name")[
+                "global_event_id"
+            ]
+            .nunique()
+            .astype(int)
+            .to_dict(),
+            "num_windows_by_dataset": selected_index.groupby("dataset_name")
+            .size()
+            .astype(int)
+            .to_dict(),
+            "split_by_dataset": {
+                dataset_name: {
+                    split: int(count)
+                    for split, count in split_counts.items()
+                }
+                for dataset_name, split_counts in selected_index.groupby(
+                    "dataset_name"
+                )["split"].value_counts().unstack(fill_value=0).to_dict(
+                    orient="index"
+                ).items()
+            },
+            "external_holdout_split_plan": split_plan.to_dict(orient="records"),
+            "leakage_checks": {
+                "heldout_only_in_test": True,
+                "global_event_id_single_split": True,
+                "global_window_id_unique": True,
+                "chronological_development_split": True,
+            },
+        }
+    )
 dataset_metadata_path = output_dir / "dataset_metadata.yaml"
 metadata["output_files"]["dataset_metadata"] = str(
     dataset_metadata_path.relative_to(PROJECT_ROOT)
@@ -258,6 +346,12 @@ print("=== Compact final summary ===")
 print(f"Selection mode: {selection['mode']}")
 print(f"Selection ID: {selection_id}")
 print(f"Selected datasets: {', '.join(selected_datasets)}")
+if selection["mode"] == "external_holdout":
+    print(f"Held-out test dataset: {selection['heldout_test_dataset']}")
+    print(
+        "Development datasets: "
+        + ", ".join(dataset for dataset in selected_datasets if dataset != selection["heldout_test_dataset"])
+    )
 print(f"Output folder: {output_dir}")
 print(f"Train windows: {len(split_metadata['train']):,}")
 print(f"Validation windows: {len(split_metadata['validation']):,}")

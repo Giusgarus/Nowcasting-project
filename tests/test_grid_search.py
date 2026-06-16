@@ -72,9 +72,9 @@ def test_gru_grid_search_config_includes_num_layers_in_grid() -> None:
     config = load_yaml_config(PROJECT_ROOT / "configs/gru_grid_search.yaml")
 
     assert config["fixed_model"].get("num_layers") is None
-    assert config["parameter_grid"]["num_layers"] == [1, 2, 3]
-    assert len(build_gru_trial_candidates(config, "gru_s2v")) == 225
-    assert len(build_gru_trial_candidates(config, "gru_seq2seq")) == 450
+    assert config["parameter_grid"]["num_layers"] == [1, 2]
+    assert len(build_gru_trial_candidates(config, "gru_s2v")) == 24
+    assert len(build_gru_trial_candidates(config, "gru_seq2seq")) == 48
 
 
 def test_gru_grid_search_expands_teacher_forcing_only_for_seq2seq() -> None:

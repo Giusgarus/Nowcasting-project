@@ -29,10 +29,12 @@ from src.evaluation.forecast_metrics import (
 )
 from src.models.autoregressive.gru import build_gru_forecaster
 from src.models.autoregressive.gru_training import (
+    GRUForecastDataset,
     GRUTrainingResult,
     create_gru_data_loader,
     predict_gru_forecaster,
     train_gru_forecaster,
+    train_gru_forecaster_fixed_epochs,
 )
 from src.tuning.grid_search import (
     expand_parameter_grid,
@@ -174,6 +176,31 @@ def build_loaders(
         )
         for split in splits
     }
+
+
+def build_full_development_loader(
+    dataset_folder: Path,
+    *,
+    variant: str,
+    batch_size: int,
+    seed: int,
+) -> torch.utils.data.DataLoader:
+    """Build a shuffled train+validation loader for final retraining."""
+
+    generator = torch.Generator()
+    generator.manual_seed(seed)
+    dataset = torch.utils.data.ConcatDataset(
+        [
+            GRUForecastDataset(dataset_folder / "train.npz", variant=variant),
+            GRUForecastDataset(dataset_folder / "val.npz", variant=variant),
+        ]
+    )
+    return torch.utils.data.DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        generator=generator,
+    )
 
 
 def train_trial(
@@ -389,6 +416,7 @@ def save_canonical_best_run(
     split_arrays: dict[str, dict[str, np.ndarray]],
     split_metadata: dict[str, pd.DataFrame],
     training: dict,
+    final_training: dict,
     output: dict,
     device: torch.device,
 ) -> dict:
@@ -416,7 +444,33 @@ def save_canonical_best_run(
         dropout=float(model_config["dropout"]),
         bidirectional=bool(model_config["bidirectional"]),
     )
-    model.load_state_dict(best_result.best_state_dict)
+    final_retraining_enabled = bool(
+        final_training.get("retrain_on_full_development", False)
+    )
+    result_for_artifacts = best_result
+    if final_retraining_enabled:
+        if not final_training.get("use_best_epoch_from_grid", False):
+            raise ValueError("Final retraining requires use_best_epoch_from_grid=true.")
+        if final_training.get("early_stopping", True):
+            raise ValueError("Final retraining must use early_stopping=false.")
+        set_seed(int(training["seed"]))
+        result_for_artifacts = train_gru_forecaster_fixed_epochs(
+            model,
+            build_full_development_loader(
+                dataset_folder,
+                variant=variant,
+                batch_size=int(training["batch_size"]),
+                seed=int(training["seed"]),
+            ),
+            device=device,
+            learning_rate=float(best_trial["learning_rate"]),
+            max_epochs=int(best_result.best_epoch),
+            gradient_clip_norm=float(training["gradient_clip_norm"]),
+            teacher_forcing_ratio=float(best_trial["teacher_forcing_ratio"]),
+            weight_decay=float(best_trial["weight_decay"]),
+        )
+    else:
+        model.load_state_dict(best_result.best_state_dict)
     model.to(device)
     test_loader = build_loaders(
         dataset_folder,
@@ -449,6 +503,8 @@ def save_canonical_best_run(
                 "test_mae": test_metrics["mae"],
                 "test_rmse": test_metrics["rmse"],
                 "best_epoch": best_result.best_epoch,
+                "final_training_epochs": result_for_artifacts.best_epoch,
+                "final_retrained_on_full_development": final_retraining_enabled,
                 "best_val_loss": best_result.best_val_loss,
                 "hidden_size": model_config["hidden_size"],
                 "num_layers": model_config["num_layers"],
@@ -473,7 +529,7 @@ def save_canonical_best_run(
         architecture=architecture,
         variant=variant,
     )
-    history = pd.DataFrame(best_result.history)
+    history = pd.DataFrame(result_for_artifacts.history)
     metrics_summary.to_csv(
         result_paths["metrics"] / "metrics_summary.csv",
         index=False,
@@ -488,6 +544,10 @@ def save_canonical_best_run(
     )
     grouped_metrics(predictions, "quality_flag").to_csv(
         result_paths["metrics"] / "metrics_by_quality_flag.csv",
+        index=False,
+    )
+    grouped_metrics(predictions, "event_id").to_csv(
+        result_paths["metrics"] / "metrics_by_event.csv",
         index=False,
     )
     history.to_csv(result_paths["metrics"] / "training_history.csv", index=False)
@@ -507,10 +567,11 @@ def save_canonical_best_run(
 
     created_at = datetime.now(timezone.utc).isoformat()
     checkpoint = {
-        "model_state_dict": best_result.best_state_dict,
+        "model_state_dict": result_for_artifacts.best_state_dict,
         "model_config": model_config,
         "grid_search_id": search_id,
         "best_trial_id": best_trial["trial_id"],
+        "final_retrained_on_full_development": final_retraining_enabled,
     }
     torch.save(checkpoint, model_dir / "best_model.pt")
     save_yaml(model_dir / "model_config.yaml", model_config)
@@ -520,6 +581,16 @@ def save_canonical_best_run(
         "selection_metric": "validation_rmse_raw",
         "selection_metric_value": float(best_trial["validation_rmse_raw"]),
         "best_epoch": best_result.best_epoch,
+        "final_training": {
+            "retrain_on_full_development": final_retraining_enabled,
+            "epochs": int(result_for_artifacts.best_epoch),
+            "use_best_epoch_from_grid": bool(
+                final_training.get("use_best_epoch_from_grid", False)
+            ),
+            "early_stopping": bool(final_training.get("early_stopping", False)),
+            "train_split": "train+val" if final_retraining_enabled else "train",
+            "excluded_split": "test",
+        },
         "best_val_loss": best_result.best_val_loss,
         "learning_rate": float(best_trial["learning_rate"]),
         "weight_decay": float(best_trial["weight_decay"]),
@@ -544,6 +615,9 @@ def save_canonical_best_run(
             "architecture": architecture,
             "variant": variant,
             "metrics_in_raw_scale": True,
+            "test_type": dataset_metadata.get("test_type"),
+            "external_test_dataset": dataset_metadata.get("external_test_dataset"),
+            "selection_mode": dataset_metadata.get("selection_mode"),
             **training_metadata,
         },
     )
@@ -735,6 +809,7 @@ def main() -> None:
                         split_arrays=split_arrays,
                         split_metadata=split_metadata,
                         training=training,
+                        final_training=config.get("final_training", {}),
                         output=output,
                         device=device,
                     )

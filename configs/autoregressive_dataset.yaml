@@ -11,8 +11,22 @@ forecasting:
   signal_column: Signal_prepared
 
 dataset_selection:
-  mode: auto_largest
+  mode: external_holdout
   selected_datasets: []
+  heldout_test_dataset: fc-uplink-fade.csv
+  development_datasets:
+    include_all_except_heldout: true
+    explicit_list: null
+  small_dataset_policy:
+    min_events_for_validation_split: 3
+    if_fewer_events: put_all_in_train
+  development_split:
+    split_by: event
+    chronological: true
+    train_ratio: 0.85
+    val_ratio: 0.15
+  external_test:
+    use_full_dataset: true
   ranking_metric: num_valid_autoregressive_windows
   allow_warning_events: true
 

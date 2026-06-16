@@ -9,7 +9,7 @@ model:
 
 data:
   dataset_root: data/processed/autoregressive/threshold_10p0/datasets_L30_h10
-  selection_folder: auto
+  selection_folder: externalHoldout_test_fc_uplink_fade
   context_length: 30
   prediction_length: 10
   evaluate_split: test

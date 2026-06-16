@@ -152,10 +152,18 @@ if test_metadata.empty:
     raise ValueError("The selected final dataset has no test windows.")
 if set(test_metadata["split"].unique()) != {"test"}:
     raise ValueError("test_metadata.parquet must contain only the test split.")
-if set(dataset_metadata.get("selected_datasets", [])) != set(
-    test_metadata["dataset_name"].unique()
-):
-    raise ValueError("Selected datasets in dataset_metadata.yaml do not match test metadata.")
+test_dataset_names = set(test_metadata["dataset_name"].unique())
+if dataset_metadata.get("selection_mode") == "external_holdout":
+    heldout_dataset = dataset_metadata.get("heldout_test_dataset")
+    if test_dataset_names != {heldout_dataset}:
+        raise ValueError(
+            "External-holdout test metadata must contain only the held-out dataset."
+        )
+else:
+    if set(dataset_metadata.get("selected_datasets", [])) != test_dataset_names:
+        raise ValueError(
+            "Selected datasets in dataset_metadata.yaml do not match test metadata."
+        )
 
 event_windows = pd.read_parquet(event_windows_path)
 test_event_ids = set(test_metadata["event_id"].astype(str))
@@ -169,8 +177,7 @@ if test_events.empty:
 if set(test_events["event_id"].astype(str)) != test_event_ids:
     missing = sorted(test_event_ids - set(test_events["event_id"].astype(str)))
     raise ValueError(f"Missing event-window data for test events: {missing}")
-if set(test_events["split"].unique()) != {"test"}:
-    raise ValueError("Selected Perfect Switch event rows must contain only the test split.")
+test_events["split"] = "test"
 
 quality_counts = test_metadata.groupby("event_id")["quality_flag"].nunique()
 if quality_counts.gt(1).any():

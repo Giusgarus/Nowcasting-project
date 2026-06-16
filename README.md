@@ -24,7 +24,8 @@ The repository currently provides an initial, dependency-light foundation:
   event-centered windows, quality/imputation tracking, event-level splits, and
   traceable autoregressive window indices;
 - configurable final supervised autoregressive datasets with modular dataset
-  selection, raw arrays, and context-only standardization;
+  selection, external holdout evaluation, raw arrays, and context-only
+  standardization;
 - deterministic GRU sequence-to-vector and encoder-decoder forecasting
   baselines for raw and context-standard dataset variants;
 - a deterministic PatchTST-style Transformer with validation-only
@@ -92,8 +93,7 @@ To execute exactly one run, leave only one value under
 `experiment.variants`, for example `raw`.
 
 Run the PatchTST grid search using `configs/patchtst_grid_search.yaml` after
-reducing its grid or explicitly increasing the configured `search.max_trials`
-safety limit:
+building the external-holdout dataset:
 
 ```bash
 PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
@@ -102,9 +102,21 @@ PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
 
 The full PatchTST grid is printed before the safety check. Trial checkpoints
 are reusable, selection uses raw-scale validation RMSE, and only the selected
-trial is evaluated on test. The current full configuration expands to 2,592
-trials per variant and 5,184 total trials, while `search.max_trials: 200`
-intentionally blocks it until the grid is reduced or the limit is increased.
+trial is evaluated on the external test dataset. The current compact
+configuration expands to 64 trials per variant.
+
+The default supervised dataset setup is an external-holdout protocol:
+
+- `fc-uplink-fade.csv` is used only for final external test evaluation;
+- every other available dataset is development data;
+- development events are split chronologically per dataset into train and
+  validation;
+- development datasets with fewer than three usable events are kept entirely in
+  train;
+- grid search selects only on validation RMSE;
+- enabled GRU/PatchTST grid runs retrain the selected hyperparameters on
+  train+validation for the validation-selected `best_epoch` before external
+  test evaluation.
 
 GRU and PatchTST grid searches schedule independent trials across the CUDA GPUs
 available at launch time. Their `parallel.max_workers: 3` setting uses up to

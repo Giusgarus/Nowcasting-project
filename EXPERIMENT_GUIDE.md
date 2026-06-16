@@ -145,6 +145,23 @@ arrays for:
 - `raw`;
 - `context_standard`, fitted independently using each input context only.
 
+The default selection mode is now:
+
+```yaml
+dataset_selection:
+  mode: external_holdout
+  heldout_test_dataset: fc-uplink-fade.csv
+```
+
+This means:
+
+- `fc-uplink-fade.csv` is excluded from training, validation, early stopping,
+  hyperparameter tuning, and final retraining;
+- all other available datasets are development datasets;
+- development events are split chronologically per dataset into train/val;
+- datasets with fewer than three usable events are kept entirely in train;
+- final `train.npz`, `val.npz`, and `test.npz` are global merged split files.
+
 Run:
 
 ```bash
@@ -157,6 +174,13 @@ Main outputs:
 data/processed/autoregressive/<threshold_folder>/datasets_L<context>_h<horizon>/<selection_folder>/
 results/data_preparation/<selection_id>/
 results/index/datasets.csv
+```
+
+Current external-holdout output path:
+
+```text
+data/processed/autoregressive/threshold_10p0/datasets_L30_h10/externalHoldout_test_fc_uplink_fade/
+results/data_preparation/externalHoldout_test_fc_uplink_fade_L30_h10_thr10/
 ```
 
 The final dataset folder contains:
@@ -173,6 +197,15 @@ dataset_metadata.yaml
 
 `output.overwrite` defaults to `false`. Set it to `true` only when
 intentionally rebuilding the same dataset selection.
+
+Generated pilot datasets can be reviewed with a dry-run cleanup plan:
+
+```bash
+conda run -n Nowcasting python scripts/maintenance/clean_generated_datasets.py --dry-run
+```
+
+Only use `--execute` after checking the printed removal list. The script never
+targets `data/raw`, source code, configs, tests, AGENTS.md, or reports.
 
 ## 5. Final Dataset Sanity Check
 
@@ -258,6 +291,13 @@ PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
   python scripts/experiments/run_gru_grid_search.py
 ```
 
+The compact default GRU grid has 24 trials for `gru_s2v` per variant and 48
+trials for `gru_seq2seq` per variant because teacher forcing is expanded only
+for the encoder-decoder architecture. Selection uses `validation_rmse_raw`.
+With `final_training.retrain_on_full_development: true`, the selected
+hyperparameters are retrained on `train+val` for the selected `best_epoch`
+before evaluating the external `test.npz`.
+
 The grid search:
 
 - tunes every configured architecture and variant independently;
@@ -300,12 +340,13 @@ PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
   python scripts/experiments/run_patchtst_grid_search.py
 ```
 
-The current complete PatchTST grid contains 2,592 trials per variant.
-`search.max_trials: 200` intentionally blocks that full search. Reduce the
-grid or explicitly increase the limit before running it.
+The current compact PatchTST grid contains 64 trials per variant and is capped
+by `search.max_trials: 64`.
 
-The grid selects by raw-scale validation RMSE and evaluates test only after
-selection.
+The grid selects by raw-scale validation RMSE. With
+`final_training.retrain_on_full_development: true`, the selected
+hyperparameters are retrained on `train+val` for the validation-selected
+`best_epoch`, then evaluated once on the external `test.npz`.
 
 ## 9. Chronos Zero-Shot Evaluation
 
@@ -315,8 +356,9 @@ Configuration:
 configs/autoregressive_chronos.yaml
 ```
 
-Chronos evaluates only the final test contexts. It does not load train or
-validation data and does not train or fine-tune the pretrained model.
+Chronos evaluates only the final external-holdout test contexts. It does not
+load train or validation data and does not train or fine-tune the pretrained
+model.
 
 Run:
 

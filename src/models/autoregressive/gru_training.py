@@ -144,6 +144,57 @@ def train_gru_forecaster(
     )
 
 
+def train_gru_forecaster_fixed_epochs(
+    model: nn.Module,
+    train_loader: DataLoader,
+    *,
+    device: torch.device,
+    learning_rate: float,
+    max_epochs: int,
+    gradient_clip_norm: float,
+    teacher_forcing_ratio: float,
+    weight_decay: float = 0.0,
+) -> GRUTrainingResult:
+    """Train for exactly ``max_epochs`` without validation or early stopping."""
+
+    if learning_rate <= 0 or max_epochs < 1:
+        raise ValueError("Training rate and epochs must be positive.")
+    if gradient_clip_norm <= 0:
+        raise ValueError("gradient_clip_norm must be positive.")
+    if weight_decay < 0:
+        raise ValueError("weight_decay cannot be negative.")
+    if len(train_loader.dataset) == 0:
+        raise ValueError("Training split must be non-empty.")
+
+    loss_function = nn.MSELoss()
+    optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=learning_rate,
+        weight_decay=weight_decay,
+    )
+    model.to(device)
+    history = []
+    for epoch in range(1, max_epochs + 1):
+        train_loss = run_gru_epoch(
+            model,
+            train_loader,
+            loss_function=loss_function,
+            device=device,
+            optimizer=optimizer,
+            gradient_clip_norm=gradient_clip_norm,
+            teacher_forcing_ratio=teacher_forcing_ratio,
+        )
+        history.append({"epoch": epoch, "train_loss": train_loss, "val_loss": float("nan")})
+
+    final_state = copy.deepcopy(model.state_dict())
+    return GRUTrainingResult(
+        best_epoch=max_epochs,
+        best_val_loss=float("nan"),
+        history=history,
+        best_state_dict=final_state,
+    )
+
+
 def run_gru_epoch(
     model: nn.Module,
     loader: DataLoader,

@@ -7,7 +7,7 @@ search:
     - context_standard
   selection_metric: validation_rmse_raw
   selection_mode: min
-  max_trials: 2592
+  max_trials: 64
 
 parallel:
   enabled: true
@@ -16,7 +16,7 @@ parallel:
 
 data:
   dataset_root: data/processed/autoregressive/threshold_10p0/datasets_L30_h10
-  selection_folder: auto
+  selection_folder: externalHoldout_test_fc_uplink_fade
   context_length: 30
   prediction_length: 10
 
@@ -26,7 +26,6 @@ fixed_model:
 
 parameter_grid:
   patch_len:
-    - 4
     - 5
     - 10
   stride:
@@ -35,26 +34,24 @@ parameter_grid:
   d_model:
     - 32
     - 64
-    - 128
   n_heads:
     - 2
-    - 4
   num_layers:
     - 1
     - 2
-    - 3
   dropout:
-    - 0.0
     - 0.1
   learning_rate:
-    - 0.0001
     - 0.0003
-    - 0.0005
     - 0.001
   weight_decay:
     - 0.0
-    - 0.00001
     - 0.0001
+
+final_training:
+  retrain_on_full_development: true
+  use_best_epoch_from_grid: true
+  early_stopping: false
 
 training:
   batch_size: 64
