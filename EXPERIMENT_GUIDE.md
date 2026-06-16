@@ -15,7 +15,7 @@ raw data review
     -> model-versus-Perfect-Switch comparisons
 ```
 
-Chronos, Mamba, shapelet, and survival experiments are not implemented yet.
+Mamba, shapelet, and survival experiments are not implemented yet.
 
 ## 1. Environment And Verification
 
@@ -307,7 +307,33 @@ grid or explicitly increase the limit before running it.
 The grid selects by raw-scale validation RMSE and evaluates test only after
 selection.
 
-## 9. Model And Grid-Search Outputs
+## 9. Chronos Zero-Shot Evaluation
+
+Configuration:
+
+```text
+configs/autoregressive_chronos.yaml
+```
+
+Chronos evaluates only the final test contexts. It does not load train or
+validation data and does not train or fine-tune the pretrained model.
+
+Run:
+
+```bash
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
+  python scripts/experiments/run_autoregressive_chronos_zero_shot.py
+```
+
+The default model is `amazon/chronos-t5-small`, evaluated on the raw variant.
+The optional `context_standard_optional` variant can be added explicitly.
+Deterministic metrics use the median of sampled Chronos trajectories; q10,
+q50, and q90 are also saved.
+
+The first run downloads the pretrained model from Hugging Face. No trained
+checkpoint is written locally by this project.
+
+## 10. Model And Grid-Search Outputs
 
 Single runs and grid-search winners publish canonical artifacts under:
 
@@ -352,7 +378,7 @@ run IDs for an equivalent model, variant, and dataset selection. A single-run
 configuration uses `overwrite: false` by default and will stop instead of
 silently replacing an existing grid-search winner.
 
-## 10. Switch Comparisons
+## 11. Switch Comparisons
 
 Configuration:
 
@@ -382,7 +408,7 @@ Each comparison folder contains metrics, aligned model-versus-reference
 predictions, metadata, and event plots showing that model against Perfect
 Switch. Methods are never merged into one switch-evaluation folder.
 
-## 11. Central Result Indexes
+## 12. Central Result Indexes
 
 Use these files to locate generated artifacts without scanning every folder:
 
@@ -394,7 +420,7 @@ results/index/switch_references.csv
 results/index/comparisons.csv
 ```
 
-## 12. Recommended Complete Campaign
+## 13. Recommended Complete Campaign
 
 For a new raw-data or methodological configuration:
 
@@ -406,12 +432,12 @@ For a new raw-data or methodological configuration:
 6. Run `12_compute_perfect_switch.py`.
 7. Run single model experiments for quick validation.
 8. Review grid size, GPU availability, and overwrite settings.
-9. Run GRU and/or PatchTST grid searches.
+9. Run GRU and/or PatchTST grid searches and Chronos zero-shot evaluation.
 10. Add completed canonical runs to `configs/switch_comparison.yaml`.
 11. Run `13_compare_switch_methods.py`.
 12. Inspect forecast metrics, switch metrics, event plots, and central indexes.
 
-## 13. Configuration Consistency Checklist
+## 14. Configuration Consistency Checklist
 
 Before running downstream stages, verify that these values refer to the same
 prepared dataset:

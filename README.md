@@ -29,6 +29,8 @@ The repository currently provides an initial, dependency-light foundation:
   baselines for raw and context-standard dataset variants;
 - a deterministic PatchTST-style Transformer with validation-only
   hyperparameter search for raw and context-standard variants;
+- pretrained Chronos T5 zero-shot evaluation on final autoregressive test
+  contexts, with median and quantile forecasts;
 - configuration templates with unresolved empirical assumptions left explicit;
 - chronological split helpers;
 - no-leakage autoregressive window-index construction;
