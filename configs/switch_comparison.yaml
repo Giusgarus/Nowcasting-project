@@ -34,4 +34,4 @@ plots:
   max_events: 20
 
 output:
-  overwrite: false
+  overwrite: true
