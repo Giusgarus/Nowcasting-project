@@ -1,7 +1,0 @@
-event_id,dataset_id,dataset_name,split,num_points,num_positive_raw,num_positive_after_min_island,num_points_changed_by_min_island,positive_rate_raw,positive_rate_after_min_island,raw_vs_postprocessed_agreement,num_islands_raw,num_islands_after_min_island,first_positive_time_raw,first_positive_time_after_min_island,last_positive_time_raw,last_positive_time_after_min_island,max_signal,quality_flag
-dataset_008_event_00029,dataset_008,uplink_beacon_data_fucino_GX4.csv,test,355,63,63,0,0.17746478873239438,0.17746478873239438,1.0,4,4,2020-12-05 21:19:11,2020-12-05 21:19:11,2020-12-05 22:39:00,2020-12-05 22:39:00,15.3,usable
-dataset_008_event_00030,dataset_008,uplink_beacon_data_fucino_GX4.csv,test,355,12,12,0,0.03380281690140845,0.03380281690140845,1.0,1,1,2020-12-08 00:31:48,2020-12-08 00:31:48,2020-12-08 00:37:23,2020-12-08 00:37:23,15.5,usable
-dataset_008_event_00031,dataset_008,uplink_beacon_data_fucino_GX4.csv,test,355,140,140,0,0.39436619718309857,0.39436619718309857,1.0,2,2,2020-12-28 09:27:35,2020-12-28 09:27:35,2020-12-28 10:57:34,2020-12-28 10:57:34,63.6,usable
-dataset_008_event_00032,dataset_008,uplink_beacon_data_fucino_GX4.csv,test,355,25,25,0,0.07042253521126761,0.07042253521126761,1.0,1,1,2020-12-28 13:38:44,2020-12-28 13:38:44,2020-12-28 13:50:56,2020-12-28 13:50:56,17.6,usable
-dataset_008_event_00033,dataset_008,uplink_beacon_data_fucino_GX4.csv,test,355,0,0,0,0.0,0.0,1.0,0,0,,,,,10.5,usable
-dataset_008_event_00034,dataset_008,uplink_beacon_data_fucino_GX4.csv,test,355,0,0,0,0.0,0.0,1.0,0,0,,,,,10.7,usable

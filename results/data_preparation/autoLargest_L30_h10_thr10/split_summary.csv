@@ -1,4 +1,0 @@
-split,dataset_id,dataset_name,num_windows,num_events,num_usable_windows,num_warning_windows,num_imputed_points
-train,dataset_008,uplink_beacon_data_fucino_GX4.csv,7268,23,7268,0,0
-validation,dataset_008,uplink_beacon_data_fucino_GX4.csv,1580,5,1580,0,0
-test,dataset_008,uplink_beacon_data_fucino_GX4.csv,1896,6,1896,0,0

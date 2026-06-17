@@ -1,2 +1,0 @@
-selection_folder,split,threshold,switch_time,num_events,num_windows,num_points,num_positive_raw,num_positive_after_min_island,num_points_changed_by_min_island,positive_rate_raw,positive_rate_after_min_island,raw_vs_postprocessed_agreement,num_islands_raw,num_islands_after_min_island
-autoLargest_L30_h10_thr10,test,10.0,10,6,1896,2130,240,240,0,0.11267605633802817,0.11267605633802817,1.0,8,8

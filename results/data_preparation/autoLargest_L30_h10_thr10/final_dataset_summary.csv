@@ -1,2 +1,0 @@
-selection_mode,selection_folder,selected_datasets,num_datasets,num_windows_total,num_train_windows,num_val_windows,num_test_windows,num_events_total,num_train_events,num_val_events,num_test_events,context_length,prediction_length,signal_threshold,allow_warning_events,normalization_versions
-auto_largest,auto_largest_uplink_beacon_data_fucino_GX4,uplink_beacon_data_fucino_GX4.csv,1,10744,7268,1580,1896,34,23,5,6,30,10,10.0,True,raw;context_standard

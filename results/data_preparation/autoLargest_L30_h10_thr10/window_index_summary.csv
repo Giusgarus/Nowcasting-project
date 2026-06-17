@@ -1,9 +1,0 @@
-dataset_name,signal_threshold,context_length,prediction_length,num_windows,train_windows,val_windows,test_windows,usable_event_windows,warning_event_windows_used,unusable_event_windows_excluded
-DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv,10.0,30,10,1608,965,322,321,5,0,0
-DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv,10.0,30,10,325,0,0,325,1,0,0
-UPLINK-FADE_Fucino_GX4_AprJun2021.csv,10.0,30,10,2573,1609,322,642,8,0,0
-UPLINK-FADE_Fucino_GX5_AprJun2021.csv,10.0,30,10,2252,1283,321,648,7,0,0
-dati_meteo_beacon.csv,10.0,30,10,3476,2212,632,632,11,0,0
-fc-downlink-fade.csv,10.0,30,10,3217,2252,321,644,10,0,1
-fc-uplink-fade.csv,10.0,30,10,7709,5136,1287,1286,24,0,1
-uplink_beacon_data_fucino_GX4.csv,10.0,30,10,10744,7268,1580,1896,34,0,0

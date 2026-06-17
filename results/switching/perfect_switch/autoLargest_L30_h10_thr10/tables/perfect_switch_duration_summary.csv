@@ -1,7 +1,0 @@
-event_id,dataset_id,dataset_name,split,num_positive_samples_raw,num_positive_samples_after_min_island,duration_positive_raw_seconds,duration_positive_after_min_island_seconds,num_islands_raw,num_islands_after_min_island,max_island_length_raw,max_island_length_after_min_island,mean_island_length_raw,mean_island_length_after_min_island
-dataset_008_event_00029,dataset_008,uplink_beacon_data_fucino_GX4.csv,test,63,63,1922.0,1922.0,4,4,26,26,15.75,15.75
-dataset_008_event_00030,dataset_008,uplink_beacon_data_fucino_GX4.csv,test,12,12,366.0,366.0,1,1,12,12,12.0,12.0
-dataset_008_event_00031,dataset_008,uplink_beacon_data_fucino_GX4.csv,test,140,140,4271.0,4271.0,2,2,94,94,70.0,70.0
-dataset_008_event_00032,dataset_008,uplink_beacon_data_fucino_GX4.csv,test,25,25,762.0,762.0,1,1,25,25,25.0,25.0
-dataset_008_event_00033,dataset_008,uplink_beacon_data_fucino_GX4.csv,test,0,0,0.0,0.0,0,0,0,0,0.0,0.0
-dataset_008_event_00034,dataset_008,uplink_beacon_data_fucino_GX4.csv,test,0,0,0.0,0.0,0,0,0,0,0.0,0.0
