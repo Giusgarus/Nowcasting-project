@@ -1,0 +1,32 @@
+run_id: patchtst_raw_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+selection_id: externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+architecture: patchtst
+variant: raw
+metrics_in_raw_scale: true
+test_type: external_holdout
+external_test_dataset: fc-uplink-fade.csv
+selection_mode: external_holdout
+config_path: configs/patchtst_grid_search.yaml
+config_fingerprint: 475471b4613e42974003fd628f874a82d293bac410f16c10005f5a5f04eb4b9a
+grid_search_id: grid_patchtst_raw_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+best_trial_id: trial_044_543731b005
+selection_metric: validation_rmse_raw
+selection_metric_value: 5.826021154777538
+best_epoch: 13
+final_training:
+  retrain_on_full_development: true
+  epochs: 13
+  use_best_epoch_from_grid: true
+  early_stopping: false
+  train_split: train+val
+  excluded_split: test
+best_val_loss: 33.942522801644984
+learning_rate: 0.001
+weight_decay: 0.0001
+batch_size: 64
+max_epochs: 120
+early_stopping_patience: 15
+gradient_clip_norm: 1.0
+device: cuda:0
+seed: 42
+created_at: '2026-06-17T00:50:17.943923+00:00'

@@ -1,0 +1,2 @@
+dataset_id,dataset_name,split,num_events,num_points,num_positive_raw,num_positive_after_min_island,num_points_changed_by_min_island,positive_rate_raw,positive_rate_after_min_island,raw_vs_postprocessed_agreement,num_islands_raw,num_islands_after_min_island,mean_event_positive_rate_raw,mean_event_positive_rate_after_min_island
+dataset_007,fc-uplink-fade.csv,test,24,8645,455,455,0,0.05263157894736842,0.05263157894736842,1.0,17,17,0.05321143243013765,0.05321143243013765

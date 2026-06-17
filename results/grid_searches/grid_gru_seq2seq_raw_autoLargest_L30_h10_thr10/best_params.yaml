@@ -1,0 +1,11 @@
+search_id: grid_gru_seq2seq_raw_autoLargest_L30_h10_thr10
+target_run_id: gru_seq2seq_raw_autoLargest_L30_h10_thr10
+best_trial_id: trial_425_b08cf4d969
+selection_metric: validation_rmse_raw
+selection_metric_value: 2.0750793904336713
+parameters:
+  hidden_size: 128
+  num_layers: 3
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  teacher_forcing_ratio: 0.0

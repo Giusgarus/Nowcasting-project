@@ -1,0 +1,11 @@
+search_id: grid_gru_s2v_contextStandard_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+target_run_id: gru_s2v_contextStandard_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+best_trial_id: trial_020_2442c5899d
+selection_metric: validation_rmse_raw
+selection_metric_value: 3.715580121219554
+parameters:
+  hidden_size: 64
+  num_layers: 1
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  teacher_forcing_ratio: 0.0

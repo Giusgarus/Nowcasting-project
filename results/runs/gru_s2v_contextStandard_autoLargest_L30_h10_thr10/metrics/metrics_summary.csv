@@ -1,0 +1,2 @@
+architecture,variant,validation_mae_raw,validation_rmse_raw,test_mae,test_rmse,best_epoch,best_val_loss,hidden_size,num_layers,learning_rate,weight_decay,teacher_forcing_ratio,num_train_windows,num_val_windows,num_test_windows
+gru_s2v,context_standard,1.4351173028434756,2.1033404087132412,1.6157735589435835,5.115167395887171,29,2.325704169575172,64,2,0.001,0.0001,0.0,7268,1580,1896

@@ -1,0 +1,2 @@
+method,split,num_points,num_perfect_positive,num_model_positive_raw,num_model_positive,points_changed_by_min_island,sample_interval_seconds,active_duration_seconds,precision,recall,f1,intersection_over_union,balanced_accuracy,false_positive_rate,false_negative_rate,true_positives,true_negatives,false_positives,false_negatives
+GRU S2V Context Standard,test,7925,455,677,975,298,30.0,29250.0,0.4512820512820513,0.967032967032967,0.6153846153846154,0.4444444444444444,0.9477065772246496,0.07161981258366801,0.03296703296703297,440,6935,535,15

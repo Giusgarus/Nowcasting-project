@@ -1,0 +1,5 @@
+comparison_id: patchtst_search_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+selection_id: externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+comparison_type: forecast_metrics_across_tuned_patchtst_runs
+table: results/comparisons/patchtst_search_externalHoldout_test_fc_uplink_fade_L30_h10_thr10/tables/patchtst_variant_comparison.csv
+created_at: '2026-06-17T01:33:11.165080+00:00'

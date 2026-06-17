@@ -1,0 +1,2 @@
+dataset_name,mae,rmse,num_windows,num_events
+uplink_beacon_data_fucino_GX4.csv,4.359672579672561,12.516487030004166,1896,6

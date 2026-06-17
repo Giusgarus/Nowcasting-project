@@ -1,0 +1,2 @@
+method,split,num_points,num_perfect_positive,num_model_positive_raw,num_model_positive,points_changed_by_min_island,sample_interval_seconds,active_duration_seconds,precision,recall,f1,intersection_over_union,balanced_accuracy,false_positive_rate,false_negative_rate,true_positives,true_negatives,false_positives,false_negatives
+GRU Seq2Seq Context Standard,test,7925,455,664,976,312,30.0,29280.0,0.45081967213114754,0.967032967032967,0.6149545772187281,0.4439959636730575,0.9476396428203657,0.0717536813922356,0.03296703296703297,440,6934,536,15

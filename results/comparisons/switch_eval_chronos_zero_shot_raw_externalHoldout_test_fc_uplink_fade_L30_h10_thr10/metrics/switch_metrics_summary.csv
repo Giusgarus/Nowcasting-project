@@ -1,0 +1,2 @@
+method,split,num_points,num_perfect_positive,num_model_positive_raw,num_model_positive,points_changed_by_min_island,sample_interval_seconds,active_duration_seconds,precision,recall,f1,intersection_over_union,balanced_accuracy,false_positive_rate,false_negative_rate,true_positives,true_negatives,false_positives,false_negatives
+Chronos Zero-Shot Raw,test,7925,455,659,1007,348,30.0,30210.0,0.4329692154915591,0.9582417582417583,0.5964432284541724,0.4249512670565302,0.9409013342748282,0.07643908969210174,0.041758241758241756,436,6899,571,19

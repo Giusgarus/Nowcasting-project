@@ -1,0 +1,2 @@
+model_family,architecture,variant,mode,split,test_mae,test_rmse,num_test_windows,num_samples,forecast_mode
+chronos,chronos_zero_shot,raw,zero_shot,test,1.586257439063084,5.462912244797732,1896,20,median

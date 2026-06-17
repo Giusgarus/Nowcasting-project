@@ -1,0 +1,2 @@
+method,split,num_points,num_perfect_positive,num_model_positive_raw,num_model_positive,points_changed_by_min_island,sample_interval_seconds,active_duration_seconds,precision,recall,f1,intersection_over_union,balanced_accuracy,false_positive_rate,false_negative_rate,true_positives,true_negatives,false_positives,false_negatives
+GRU S2V Raw,test,7925,455,629,951,322,30.0,28530.0,0.4616193480546793,0.9648351648351648,0.624466571834993,0.45398138572905894,0.9481471674242758,0.06854082998661312,0.035164835164835165,439,6958,512,16

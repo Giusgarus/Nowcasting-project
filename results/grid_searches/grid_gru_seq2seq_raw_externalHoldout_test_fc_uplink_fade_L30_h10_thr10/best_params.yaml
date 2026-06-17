@@ -1,0 +1,11 @@
+search_id: grid_gru_seq2seq_raw_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+target_run_id: gru_seq2seq_raw_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+best_trial_id: trial_040_c9cbc50250
+selection_metric: validation_rmse_raw
+selection_metric_value: 4.014841408387276
+parameters:
+  hidden_size: 64
+  num_layers: 1
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  teacher_forcing_ratio: 0.5
