@@ -7,7 +7,7 @@ search:
     - context_standard
   selection_metric: validation_rmse_raw
   selection_mode: min
-  max_trials: 64
+  max_trials: 864
 
 parallel:
   enabled: true
@@ -28,18 +28,23 @@ parameter_grid:
   patch_len:
     - 5
     - 10
+    - 15
   stride:
     - 2
     - 5
   d_model:
     - 32
     - 64
+    - 128
   n_heads:
     - 2
+    - 4
   num_layers:
     - 1
     - 2
+    - 3
   dropout:
+    - 0.0
     - 0.1
   learning_rate:
     - 0.0003

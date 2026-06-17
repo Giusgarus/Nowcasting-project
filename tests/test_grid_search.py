@@ -22,6 +22,7 @@ from scripts.experiments.run_gru_grid_search import (
     build_gru_trial_candidates,
     trial_display_parameters,
 )
+from scripts.experiments.run_patchtst_grid_search import validate_config
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -72,9 +73,18 @@ def test_gru_grid_search_config_includes_num_layers_in_grid() -> None:
     config = load_yaml_config(PROJECT_ROOT / "configs/gru_grid_search.yaml")
 
     assert config["fixed_model"].get("num_layers") is None
-    assert config["parameter_grid"]["num_layers"] == [1, 2]
-    assert len(build_gru_trial_candidates(config, "gru_s2v")) == 24
-    assert len(build_gru_trial_candidates(config, "gru_seq2seq")) == 48
+    assert config["parameter_grid"]["num_layers"] == [1, 2, 3]
+    assert len(build_gru_trial_candidates(config, "gru_s2v")) == 72
+    assert len(build_gru_trial_candidates(config, "gru_seq2seq")) == 216
+
+
+def test_patchtst_grid_search_config_uses_explicit_safety_limit() -> None:
+    config = load_yaml_config(PROJECT_ROOT / "configs/patchtst_grid_search.yaml")
+    num_candidates = len(expand_parameter_grid(config["parameter_grid"]))
+
+    assert num_candidates == 864
+    assert config["search"]["max_trials"] == 864
+    validate_config(config, num_candidates)
 
 
 def test_gru_grid_search_expands_teacher_forcing_only_for_seq2seq() -> None:

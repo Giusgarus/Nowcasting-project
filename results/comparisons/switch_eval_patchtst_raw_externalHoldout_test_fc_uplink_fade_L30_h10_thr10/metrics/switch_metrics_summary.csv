@@ -1,0 +1,2 @@
+method,split,num_points,num_perfect_positive,num_model_positive_raw,num_model_positive,points_changed_by_min_island,sample_interval_seconds,active_duration_seconds,precision,recall,f1,intersection_over_union,balanced_accuracy,false_positive_rate,false_negative_rate,true_positives,true_negatives,false_positives,false_negatives
+PatchTST Raw,test,7925,455,1208,1579,371,30.0,47370.0,0.2881570614312856,1.0,0.44739429695181904,0.2881570614312856,0.9247657295850067,0.15046854082998662,0.0,455,6346,1124,0

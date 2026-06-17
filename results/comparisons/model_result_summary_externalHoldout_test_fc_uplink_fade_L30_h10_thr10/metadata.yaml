@@ -1,0 +1,15 @@
+comparison_id: model_result_summary_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+comparison_type: model_result_summary
+selection_id: externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+num_runs: 7
+num_runs_with_validation_metrics: 6
+num_runs_with_switch_metrics: 7
+input_files:
+  run_index: results/index/runs.csv
+  comparison_index: results/index/comparisons.csv
+  switch_comparison_config: configs/switch_comparison.yaml
+output_files:
+  validation_forecast_comparison: results/comparisons/model_result_summary_externalHoldout_test_fc_uplink_fade_L30_h10_thr10/tables/validation_forecast_comparison.csv
+  test_forecast_switch_comparison: results/comparisons/model_result_summary_externalHoldout_test_fc_uplink_fade_L30_h10_thr10/tables/test_forecast_switch_comparison.csv
+config_fingerprint: 11e013399a734978e6a5bf8defaf0d43e2999f564a82f34f8496363d9496fcd7
+created_at: '2026-06-17T10:31:51.513119+00:00'
