@@ -51,9 +51,13 @@ def load_chronos_pipeline(
             ) from error
         pipeline_class = ChronosPipeline
 
-    kwargs = {"device_map": device, "torch_dtype": torch_dtype}
+    kwargs = {"device_map": device, "dtype": torch_dtype}
     try:
-        return pipeline_class.from_pretrained(model_id, **kwargs), device
+        return _load_pipeline_with_dtype_fallback(
+            pipeline_class,
+            model_id,
+            kwargs,
+        ), device
     except Exception as error:
         if device != "mps":
             raise RuntimeError(
@@ -61,10 +65,10 @@ def load_chronos_pipeline(
             ) from error
         try:
             return (
-                pipeline_class.from_pretrained(
+                _load_pipeline_with_dtype_fallback(
+                    pipeline_class,
                     model_id,
-                    device_map="cpu",
-                    torch_dtype=torch_dtype,
+                    {"device_map": "cpu", "dtype": torch_dtype},
                 ),
                 "cpu",
             )
@@ -72,6 +76,23 @@ def load_chronos_pipeline(
             raise RuntimeError(
                 f"Chronos failed on MPS and CPU for model {model_id!r}: {cpu_error}"
             ) from cpu_error
+
+
+def _load_pipeline_with_dtype_fallback(
+    pipeline_class: type,
+    model_id: str,
+    kwargs: dict[str, str],
+) -> Any:
+    """Load Chronos using new ``dtype`` API, falling back for old packages."""
+
+    try:
+        return pipeline_class.from_pretrained(model_id, **kwargs)
+    except TypeError as error:
+        if "dtype" not in str(error):
+            raise
+        legacy_kwargs = dict(kwargs)
+        legacy_kwargs["torch_dtype"] = legacy_kwargs.pop("dtype")
+        return pipeline_class.from_pretrained(model_id, **legacy_kwargs)
 
 
 def variant_contexts_and_targets(

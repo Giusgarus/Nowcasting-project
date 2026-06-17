@@ -176,3 +176,5 @@ def test_mps_loading_falls_back_to_cpu() -> None:
     assert pipeline == "pipeline"
     assert device == "cpu"
     assert [call[1]["device_map"] for call in FakeLoader.calls] == ["mps", "cpu"]
+    assert all("dtype" in call[1] for call in FakeLoader.calls)
+    assert all("torch_dtype" not in call[1] for call in FakeLoader.calls)
