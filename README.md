@@ -11,7 +11,7 @@ diagnostic; switch-level and event-level metrics are the primary evaluation.
 
 ## Current Status
 
-The repository currently provides an initial, dependency-light foundation:
+The repository currently provides an implemented autoregressive workflow:
 
 - strict signal-only defaults using `Signal` as both target and model input;
 - CSV loading with header, no-header, and automatic header-detection modes;
@@ -32,6 +32,10 @@ The repository currently provides an initial, dependency-light foundation:
   hyperparameter search for raw and context-standard variants;
 - pretrained Chronos T5 zero-shot evaluation on final autoregressive test
   contexts, with median and quantile forecasts;
+- independent model-versus-Perfect-Switch comparisons for completed GRU,
+  PatchTST, and Chronos runs;
+- cross-model summary tables for validation forecast metrics and test
+  forecast-plus-switch metrics;
 - configuration templates with unresolved empirical assumptions left explicit;
 - chronological split helpers;
 - no-leakage autoregressive window-index construction;
@@ -102,8 +106,23 @@ PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
 
 The full PatchTST grid is printed before the safety check. Trial checkpoints
 are reusable, selection uses raw-scale validation RMSE, and only the selected
-trial is evaluated on the external test dataset. The current compact
-configuration expands to 64 trials per variant.
+trial is evaluated on the external test dataset. The current extended
+configuration expands to 864 trials per variant.
+
+Run Chronos zero-shot evaluation on the external-holdout test split:
+
+```bash
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
+  python scripts/experiments/run_autoregressive_chronos_zero_shot.py
+```
+
+After model predictions exist, build model-versus-Perfect-Switch comparisons
+and the compact cross-model summary tables:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/13_compare_switch_methods.py
+conda run -n Nowcasting python scripts/analysis/14_compare_model_results.py
+```
 
 The default supervised dataset setup is an external-holdout protocol:
 

@@ -291,9 +291,10 @@ PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
   python scripts/experiments/run_gru_grid_search.py
 ```
 
-The compact default GRU grid has 24 trials for `gru_s2v` per variant and 48
+The extended default GRU grid has 72 trials for `gru_s2v` per variant and 216
 trials for `gru_seq2seq` per variant because teacher forcing is expanded only
-for the encoder-decoder architecture. Selection uses `validation_rmse_raw`.
+for the encoder-decoder architecture. Across the two variants, this is 576
+training trials. Selection uses `validation_rmse_raw`.
 With `final_training.retrain_on_full_development: true`, the selected
 hyperparameters are retrained on `train+val` for the selected `best_epoch`
 before evaluating the external `test.npz`.
@@ -340,8 +341,9 @@ PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
   python scripts/experiments/run_patchtst_grid_search.py
 ```
 
-The current compact PatchTST grid contains 64 trials per variant and is capped
-by `search.max_trials: 64`.
+The current extended PatchTST grid contains 864 trials per variant and is
+capped by `search.max_trials: 864`. Across the two variants, this is 1,728
+training trials.
 
 The grid selects by raw-scale validation RMSE. With
 `final_training.retrain_on_full_development: true`, the selected
@@ -429,9 +431,9 @@ configs/switch_comparison.yaml
 ```
 
 Each configured method is compared independently against the Perfect Switch.
-The configuration currently lists the four GRU architecture/variant runs.
-Add PatchTST or future model runs explicitly when their canonical predictions
-exist.
+The configuration currently lists the four GRU architecture/variant runs, the
+two PatchTST variants, and Chronos zero-shot raw. Add future model runs
+explicitly when their canonical predictions exist.
 
 Run:
 
@@ -450,7 +452,28 @@ Each comparison folder contains metrics, aligned model-versus-reference
 predictions, metadata, and event plots showing that model against Perfect
 Switch. Methods are never merged into one switch-evaluation folder.
 
-## 12. Central Result Indexes
+## 12. Cross-Model Result Tables
+
+After model runs and switch comparisons exist, build the compact summary
+tables:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/14_compare_model_results.py
+```
+
+Main outputs:
+
+```text
+results/comparisons/model_result_summary_<selection_id>/tables/validation_forecast_comparison.csv
+results/comparisons/model_result_summary_<selection_id>/tables/test_forecast_switch_comparison.csv
+```
+
+The validation table contains raw-scale validation MAE and RMSE when available.
+Chronos zero-shot has no validation row metrics because it does not train or
+load validation data. The test table contains raw-scale test MAE/RMSE plus the
+model-vs-Perfect Switch metrics when the switch comparison has been generated.
+
+## 13. Central Result Indexes
 
 Use these files to locate generated artifacts without scanning every folder:
 
@@ -462,7 +485,7 @@ results/index/switch_references.csv
 results/index/comparisons.csv
 ```
 
-## 13. Recommended Complete Campaign
+## 14. Recommended Complete Campaign
 
 For a new raw-data or methodological configuration:
 
@@ -477,9 +500,11 @@ For a new raw-data or methodological configuration:
 9. Run GRU and/or PatchTST grid searches and Chronos zero-shot evaluation.
 10. Add completed canonical runs to `configs/switch_comparison.yaml`.
 11. Run `13_compare_switch_methods.py`.
-12. Inspect forecast metrics, switch metrics, event plots, and central indexes.
+12. Run `14_compare_model_results.py`.
+13. Inspect forecast metrics, switch metrics, event plots, summary tables, and
+    central indexes.
 
-## 14. Configuration Consistency Checklist
+## 15. Configuration Consistency Checklist
 
 Before running downstream stages, verify that these values refer to the same
 prepared dataset:
