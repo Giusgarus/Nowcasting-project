@@ -193,4 +193,26 @@ data/raw/*
 data/interim/*
 data/processed/*
 models/*
-results/*
+
+# Results: keep lightweight CSV/YAML summaries and indexes trackable.
+# Ignore heavy or easily regenerated result artifacts.
+results/**/figures/
+results/**/predictions/
+results/**/checkpoints/
+results/**/validation_histories/
+results/**/*.parquet
+results/**/*.pt
+results/**/*.pth
+results/**/*.ckpt
+results/**/*.png
+results/**/*.jpg
+results/**/*.jpeg
+results/**/*.pdf
+
+# Keep the minimal parquet artifacts needed to recompute switch comparisons
+# and regenerate switch plots on another machine after a pushed model run.
+!results/runs/*/predictions/
+!results/runs/*/predictions/test_predictions.parquet
+!results/switching/perfect_switch/*/tables/
+!results/switching/perfect_switch/*/tables/perfect_switch_timeseries.parquet
+!results/switching/perfect_switch/*/tables/perfect_switch_window_targets.parquet

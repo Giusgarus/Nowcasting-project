@@ -1,0 +1,9 @@
+config_path: configs/data_preparation.yaml
+config_fingerprint: dfe8371bb6954c41d2961547bbefd484975b57756a8ae5f256376c54b919c10a
+threshold_folder: threshold_10p0
+output_folders:
+  clean_signal: data/interim/clean_signal
+  candidate_events: data/interim/candidate_events/threshold_10p0
+  event_windows: data/interim/event_windows/threshold_10p0
+  processed_autoregressive: data/processed/autoregressive/threshold_10p0
+  results: results/data_preparation/autoLargest_L30_h10_thr10

@@ -1,0 +1,9 @@
+config_path: configs/data_preparation.yaml
+config_fingerprint: bfdd356eb000ba7671a4507acbabfbd7d1b057b6fe2805fba12079c27ec08cb6
+threshold_folder: threshold_10p0
+output_folders:
+  clean_signal: data/interim/clean_signal
+  candidate_events: data/interim/candidate_events/threshold_10p0
+  event_windows: data/interim/event_windows/threshold_10p0
+  processed_autoregressive: data/processed/autoregressive/threshold_10p0
+  results: results/data_preparation/threshold_10p0
