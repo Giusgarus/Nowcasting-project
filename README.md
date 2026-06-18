@@ -124,6 +124,12 @@ conda run -n Nowcasting python scripts/analysis/13_compare_switch_methods.py
 conda run -n Nowcasting python scripts/analysis/14_compare_model_results.py
 ```
 
+The current switch-conversion rule is decision-time based: at each
+`input_end_time`, the model switch turns on only if all 10 saved future
+predictions are above the configured 10.0 threshold, then the minimum-island
+post-processing is applied. The required number of above-threshold horizon
+points is configurable in `configs/switch_comparison.yaml`.
+
 The default supervised dataset setup is an external-holdout protocol:
 
 - `fc-uplink-fade.csv` is used only for final external test evaluation;

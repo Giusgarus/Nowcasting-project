@@ -46,6 +46,9 @@ FORECAST_PARAMETER_COLUMNS = [
 ]
 
 SWITCH_METRIC_COLUMNS = [
+    "decision_rule",
+    "required_points_above_threshold",
+    "prediction_horizon_points",
     "num_points",
     "num_perfect_positive",
     "num_model_positive_raw",
@@ -210,6 +213,9 @@ def _ordered_test_columns(frame: pd.DataFrame) -> list[str]:
         "test_mae",
         "test_rmse",
         "switch_metrics_available",
+        "decision_rule",
+        "required_points_above_threshold",
+        "prediction_horizon_points",
         "precision",
         "recall",
         "f1",

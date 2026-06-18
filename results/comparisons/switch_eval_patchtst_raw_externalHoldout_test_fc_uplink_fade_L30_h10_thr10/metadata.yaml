@@ -9,15 +9,19 @@ method:
 reference_id: perfect_switch_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
 selection_id: externalHoldout_test_fc_uplink_fade_L30_h10_thr10
 split: test
-prediction_aggregation: For every event target timestamp, select the saved forecast
-  with the smallest horizon_step, i.e. the latest prediction available.
-model_switch_rule: Pointwise y_pred_raw > threshold followed by right-only minimum-island
-  extension. This is distinct from the persistent Perfect Switch oracle.
+prediction_aggregation: horizon_threshold_count
+model_switch_rule: At every input_end_time t, count how many of the saved horizon
+  forecasts y_hat(t+1)...y_hat(t+h) satisfy the configured threshold condition. model_switch_raw(t)=1
+  if that count is at least required_points_above_threshold. The configured minimum-island
+  post-processing is then applied to the decision-time switch series.
 threshold: 10.0
+condition: greater_than
+required_points_above_threshold: 10
 switch_time: 10
 input_files:
   perfect_switch_timeseries: results/switching/perfect_switch/externalHoldout_test_fc_uplink_fade_L30_h10_thr10/tables/perfect_switch_timeseries.parquet
   perfect_switch_window_targets: results/switching/perfect_switch/externalHoldout_test_fc_uplink_fade_L30_h10_thr10/tables/perfect_switch_window_targets.parquet
+  test_metadata: data/processed/autoregressive/threshold_10p0/datasets_L30_h10/externalHoldout_test_fc_uplink_fade/test_metadata.parquet
   predictions: results/runs/patchtst_raw_externalHoldout_test_fc_uplink_fade_L30_h10_thr10/predictions/test_predictions.parquet
 output_files:
   comparison_timeseries: results/comparisons/switch_eval_patchtst_raw_externalHoldout_test_fc_uplink_fade_L30_h10_thr10/predictions/model_vs_perfect_switch.parquet
@@ -47,5 +51,5 @@ output_files:
 num_events: 24
 num_figures: 20
 config_path: configs/switch_comparison.yaml
-config_fingerprint: 46c939425dd2c5e7f23446fa5cc965c52d4d29c47b3fdd104cf2666060df72b5
-created_at: '2026-06-17T10:31:38.187898+00:00'
+config_fingerprint: e8ef2025b6f9ba5b35cf9c4bca6db417e5bd1b9cc0d900f6045924b8a7613ab6
+created_at: '2026-06-18T08:54:33.070977+00:00'

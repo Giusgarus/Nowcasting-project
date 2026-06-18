@@ -11,5 +11,5 @@ input_files:
 output_files:
   validation_forecast_comparison: results/comparisons/model_result_summary_externalHoldout_test_fc_uplink_fade_L30_h10_thr10/tables/validation_forecast_comparison.csv
   test_forecast_switch_comparison: results/comparisons/model_result_summary_externalHoldout_test_fc_uplink_fade_L30_h10_thr10/tables/test_forecast_switch_comparison.csv
-config_fingerprint: 11e013399a734978e6a5bf8defaf0d43e2999f564a82f34f8496363d9496fcd7
-created_at: '2026-06-17T10:31:51.513119+00:00'
+config_fingerprint: 9a5ab388b1d8cf31f62bcc4d5a80087268e14db0feedeba5c5b908cf06fc1f4e
+created_at: '2026-06-18T08:54:50.606457+00:00'

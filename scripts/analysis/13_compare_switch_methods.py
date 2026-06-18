@@ -43,6 +43,18 @@ perfect_targets_path = perfect_root / "tables/perfect_switch_window_targets.parq
 perfect_timeseries = pd.read_parquet(perfect_timeseries_path)
 perfect_targets = pd.read_parquet(perfect_targets_path)
 reference_id = f"perfect_switch_{selection_id}"
+datasets_index_path = get_results_index_dir() / "datasets.csv"
+datasets_index = pd.read_csv(datasets_index_path)
+dataset_rows = datasets_index.loc[datasets_index["selection_id"].eq(selection_id)]
+if dataset_rows.empty:
+    raise ValueError(f"Dataset index has no row for selection_id={selection_id}.")
+dataset_path = PROJECT_ROOT / str(dataset_rows.iloc[0]["dataset_path"])
+test_metadata_path = dataset_path / "test_metadata.parquet"
+test_metadata = pd.read_parquet(test_metadata_path)
+prediction_aggregation = config["conversion"].get(
+    "prediction_aggregation",
+    "latest_available",
+)
 
 print(
     "=== Analysis overview ===\n"
@@ -52,8 +64,21 @@ print(
     "Switch, with metrics, predictions, metadata, and event plots.\n"
     "Note: uses saved test predictions only; no model is trained or reloaded.\n"
 )
-if config["conversion"]["prediction_aggregation"] != "latest_available":
-    raise ValueError("Only prediction_aggregation=latest_available is supported.")
+if prediction_aggregation not in {"latest_available", "horizon_threshold_count"}:
+    raise ValueError(
+        "Only prediction_aggregation=latest_available or "
+        "horizon_threshold_count is supported."
+    )
+required_points_above_threshold = config["conversion"].get(
+    "required_points_above_threshold"
+)
+if (
+    prediction_aggregation == "horizon_threshold_count"
+    and required_points_above_threshold is None
+):
+    raise ValueError(
+        "horizon_threshold_count requires conversion.required_points_above_threshold."
+    )
 
 # %%
 # Build one independent model-vs-Perfect comparison per method
@@ -108,6 +133,14 @@ for method in config["methods"]:
         apply_min_island_length=bool(
             config["conversion"]["apply_min_island_length"]
         ),
+        prediction_aggregation=prediction_aggregation,
+        required_points_above_threshold=(
+            int(required_points_above_threshold)
+            if required_points_above_threshold is not None
+            else None
+        ),
+        window_metadata=test_metadata,
+        perfect_timeseries=perfect_timeseries,
     )
     summary = compute_model_vs_perfect_metrics(comparison, by_event=False)
     event_metrics = compute_model_vs_perfect_metrics(comparison, by_event=True)
@@ -164,19 +197,32 @@ for method in config["methods"]:
         "reference_id": reference_id,
         "selection_id": selection_id,
         "split": "test",
-        "prediction_aggregation": (
-            "For every event target timestamp, select the saved forecast with the "
-            "smallest horizon_step, i.e. the latest prediction available."
-        ),
+        "prediction_aggregation": prediction_aggregation,
         "model_switch_rule": (
-            "Pointwise y_pred_raw > threshold followed by right-only minimum-island "
-            "extension. This is distinct from the persistent Perfect Switch oracle."
+            "At every input_end_time t, count how many of the saved horizon "
+            "forecasts y_hat(t+1)...y_hat(t+h) satisfy the configured threshold "
+            "condition. model_switch_raw(t)=1 if that count is at least "
+            "required_points_above_threshold. The configured minimum-island "
+            "post-processing is then applied to the decision-time switch series."
+            if prediction_aggregation == "horizon_threshold_count"
+            else (
+                "For every event target timestamp, select the saved forecast with "
+                "the smallest horizon_step, then apply the pointwise threshold and "
+                "minimum-island post-processing."
+            )
         ),
         "threshold": float(config["conversion"]["threshold"]),
+        "condition": config["conversion"]["condition"],
+        "required_points_above_threshold": (
+            int(required_points_above_threshold)
+            if required_points_above_threshold is not None
+            else None
+        ),
         "switch_time": int(config["conversion"]["switch_time"]),
         "input_files": {
             "perfect_switch_timeseries": relative_project_path(perfect_timeseries_path),
             "perfect_switch_window_targets": relative_project_path(perfect_targets_path),
+            "test_metadata": relative_project_path(test_metadata_path),
             "predictions": relative_project_path(predictions_path),
         },
         "output_files": {
@@ -214,9 +260,22 @@ for method in config["methods"]:
 
 print("=== Compact final report ===")
 print(f"Selection ID: {selection_id}")
-print("Prediction aggregation: latest available forecast (smallest horizon step)")
-print(
-    f"Model switch: y_pred_raw > {config['conversion']['threshold']} then "
-    f"minimum island length {config['conversion']['switch_time']}"
-)
+if prediction_aggregation == "horizon_threshold_count":
+    print(
+        "Prediction aggregation: decision-time horizon threshold count "
+        f"(required points={required_points_above_threshold})"
+    )
+    print(
+        f"Model switch: at input_end_time, at least "
+        f"{required_points_above_threshold} horizon predictions satisfy "
+        f"{config['conversion']['condition']} {config['conversion']['threshold']}; "
+        f"then minimum island length {config['conversion']['switch_time']}"
+    )
+else:
+    print("Prediction aggregation: latest available forecast (smallest horizon step)")
+    print(
+        f"Model switch: y_pred_raw {config['conversion']['condition']} "
+        f"{config['conversion']['threshold']} then minimum island length "
+        f"{config['conversion']['switch_time']}"
+    )
 print(pd.concat(reports, ignore_index=True).to_string(index=False))

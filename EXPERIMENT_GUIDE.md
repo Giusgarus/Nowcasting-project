@@ -435,6 +435,21 @@ The configuration currently lists the four GRU architecture/variant runs, the
 two PatchTST variants, and Chronos zero-shot raw. Add future model runs
 explicitly when their canonical predictions exist.
 
+The current operational conversion rule is configured as:
+
+```yaml
+conversion:
+  prediction_aggregation: horizon_threshold_count
+  required_points_above_threshold: 10
+```
+
+At each `input_end_time`, the model switch is activated only when at least the
+configured number of future horizon predictions satisfies the threshold
+condition. With `prediction_length: 10` and
+`required_points_above_threshold: 10`, this means all 10 predicted future
+points must be above the 10.0 signal threshold before minimum-island
+post-processing is applied.
+
 Run:
 
 ```bash
