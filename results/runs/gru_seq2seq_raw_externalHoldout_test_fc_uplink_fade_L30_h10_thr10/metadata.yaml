@@ -7,9 +7,9 @@ test_type: external_holdout
 external_test_dataset: fc-uplink-fade.csv
 selection_mode: external_holdout
 grid_search_id: grid_gru_seq2seq_raw_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
-best_trial_id: trial_040_c9cbc50250
+best_trial_id: trial_126_c9cbc50250
 selection_metric: validation_rmse_raw
-selection_metric_value: 4.014841408387276
+selection_metric_value: 4.023248387095962
 best_epoch: 41
 final_training:
   retrain_on_full_development: true
@@ -18,7 +18,7 @@ final_training:
   early_stopping: false
   train_split: train+val
   excluded_split: test
-best_val_loss: 16.118952126694154
+best_val_loss: 16.18652772318674
 learning_rate: 0.001
 weight_decay: 0.0001
 batch_size: 64
@@ -29,4 +29,4 @@ device: cuda:0
 seed: 42
 teacher_forcing_ratio_training: 0.5
 teacher_forcing_evaluation: 0.0
-created_at: '2026-06-17T03:16:10.732513+00:00'
+created_at: '2026-06-18T02:31:13.840912+00:00'

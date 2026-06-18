@@ -1,20 +1,20 @@
 search_id: grid_gru_seq2seq_contextStandard_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
 target_run_id: gru_seq2seq_contextStandard_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
-best_trial_id: trial_009_35efb2f8a1
+best_trial_id: trial_152_221e47359b
 selection_metric: validation_rmse_raw
-selection_metric_value: 3.7177095846593717
+selection_metric_value: 3.6912040678731493
 parameters:
-  hidden_size: 16
-  num_layers: 2
+  hidden_size: 64
+  num_layers: 3
   learning_rate: 0.0003
   weight_decay: 0.0
-  teacher_forcing_ratio: 0.0
+  teacher_forcing_ratio: 0.25
 model_family: gru
 architecture: gru_seq2seq
 variant: context_standard
 selection_id: externalHoldout_test_fc_uplink_fade_L30_h10_thr10
-num_trials: 48
-num_complete_trials: 48
+num_trials: 216
+num_complete_trials: 216
 selection_split: validation
 test_used_for_selection: false
 trial_worker_devices:
@@ -22,6 +22,6 @@ trial_worker_devices:
 - cuda:1
 - cuda:2
 config_path: configs/gru_grid_search.yaml
-config_fingerprint: 596de27c1bbc8bc5d4292db6c94e52f6c08d26c8c00862a59947de8962d01178
+config_fingerprint: 8b72dfc80d9c05cf5560a57d1ca90b6e72e7d3c67ba906fa7eda73cf254448ba
 trials_path: results/grid_searches/grid_gru_seq2seq_contextStandard_externalHoldout_test_fc_uplink_fade_L30_h10_thr10/trials.csv
-created_at: '2026-06-17T04:49:32.799006+00:00'
+created_at: '2026-06-18T10:26:30.779012+00:00'

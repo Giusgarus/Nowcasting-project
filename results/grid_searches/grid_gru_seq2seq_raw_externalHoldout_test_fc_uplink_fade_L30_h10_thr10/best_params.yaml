@@ -1,8 +1,8 @@
 search_id: grid_gru_seq2seq_raw_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
 target_run_id: gru_seq2seq_raw_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
-best_trial_id: trial_040_c9cbc50250
+best_trial_id: trial_126_c9cbc50250
 selection_metric: validation_rmse_raw
-selection_metric_value: 4.014841408387276
+selection_metric_value: 4.023248387095962
 parameters:
   hidden_size: 64
   num_layers: 1

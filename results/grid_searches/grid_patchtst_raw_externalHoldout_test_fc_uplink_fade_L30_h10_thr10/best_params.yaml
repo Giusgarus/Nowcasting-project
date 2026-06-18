@@ -1,14 +1,14 @@
 search_id: grid_patchtst_raw_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
 target_run_id: patchtst_raw_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
-best_trial_id: trial_044_543731b005
+best_trial_id: trial_431_c12474a58c
 selection_metric: validation_rmse_raw
-selection_metric_value: 5.826021154777538
+selection_metric_value: 5.526201874228703
 parameters:
   patch_len: 10
   stride: 2
-  d_model: 64
-  n_heads: 2
-  num_layers: 1
+  d_model: 128
+  n_heads: 4
+  num_layers: 3
   dropout: 0.1
   learning_rate: 0.001
-  weight_decay: 0.0001
+  weight_decay: 0.0

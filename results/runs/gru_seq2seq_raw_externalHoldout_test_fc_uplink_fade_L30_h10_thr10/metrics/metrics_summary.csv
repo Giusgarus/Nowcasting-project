@@ -1,2 +1,2 @@
 architecture,variant,validation_mae_raw,validation_rmse_raw,test_mae,test_rmse,best_epoch,final_training_epochs,final_retrained_on_full_development,best_val_loss,hidden_size,num_layers,learning_rate,weight_decay,teacher_forcing_ratio,num_train_windows,num_val_windows,num_test_windows
-gru_seq2seq,raw,1.5499152713534898,4.014841408387276,1.326665196611072,3.039848013864004,41,41,True,16.118952126694154,64,1,0.001,0.0001,0.5,19412,4783,7709
+gru_seq2seq,raw,1.550102827503433,4.023248387095962,1.326665196611072,3.039848013864004,41,41,True,16.18652772318674,64,1,0.001,0.0001,0.5,19412,4783,7709
