@@ -216,3 +216,12 @@ results/**/*.pdf
 !results/switching/perfect_switch/*/tables/
 !results/switching/perfect_switch/*/tables/perfect_switch_timeseries.parquet
 !results/switching/perfect_switch/*/tables/perfect_switch_window_targets.parquet
+
+# Keep minimal processed-dataset metadata needed to rerun switch comparisons
+# without tracking model-ready arrays.
+!data/processed/
+!data/processed/autoregressive/
+data/processed/autoregressive/**
+!data/processed/autoregressive/**/
+!data/processed/autoregressive/**/dataset_metadata.yaml
+!data/processed/autoregressive/**/test_metadata.parquet
