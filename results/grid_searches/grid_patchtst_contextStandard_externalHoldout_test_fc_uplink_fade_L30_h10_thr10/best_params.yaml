@@ -1,6 +1,6 @@
 search_id: grid_patchtst_contextStandard_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
 target_run_id: patchtst_contextStandard_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
-best_trial_id: trial_019_9809bad435
+best_trial_id: trial_151_9809bad435
 selection_metric: validation_rmse_raw
 selection_metric_value: 3.814822446964547
 parameters:
