@@ -1,0 +1,24 @@
+data:
+  threshold_folder: threshold_10p0
+  event_windows_path: data/interim/event_windows/threshold_10p0/all_event_windows.parquet
+  window_index_path: data/processed/autoregressive/threshold_10p0/window_index_L120_h10.parquet
+  dataset_root: data/processed/autoregressive/threshold_10p0/datasets_L120_h10
+  selection_folder: externalHoldout_test_fc_uplink_fade
+
+switch:
+  threshold: 10.0
+  condition: greater_than
+  rule: legacy_persistent_threshold
+  switch_time: 10
+  apply_min_island_length: true
+  signal_column: Signal_prepared
+
+plots:
+  max_events: 20
+  reproduce_old_perfect_switch_plots: true
+
+output:
+  results_root: results/switching/perfect_switch
+  save_tables: true
+  save_plots: true
+  overwrite: false

@@ -2,6 +2,7 @@
 
 # %%
 # Path setup and imports
+import argparse
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,7 +37,27 @@ from src.utils.results_paths import (
     upsert_index_row,
 )
 
-CONFIG_PATH = PROJECT_ROOT / "configs/autoregressive_dataset.yaml"
+DEFAULT_CONFIG_PATH = PROJECT_ROOT / "configs/autoregressive_dataset.yaml"
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line options for alternate dataset configurations."""
+
+    parser = argparse.ArgumentParser(
+        description="Build final supervised autoregressive datasets.",
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=DEFAULT_CONFIG_PATH,
+        help="Path to an autoregressive dataset YAML config.",
+    )
+    return parser.parse_args()
+
+
+CONFIG_PATH = parse_args().config
+if not CONFIG_PATH.is_absolute():
+    CONFIG_PATH = PROJECT_ROOT / CONFIG_PATH
 
 # %%
 # Load and validate configuration

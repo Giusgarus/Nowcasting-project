@@ -1,5 +1,6 @@
 """Evaluate pretrained Chronos zero-shot forecasts on the final test dataset."""
 
+import argparse
 import shutil
 import sys
 from datetime import datetime, timezone
@@ -40,7 +41,22 @@ from src.utils.results_paths import (
     upsert_index_row,
 )
 
-CONFIG_PATH = PROJECT_ROOT / "configs/autoregressive_chronos.yaml"
+DEFAULT_CONFIG_PATH = PROJECT_ROOT / "configs/autoregressive_chronos.yaml"
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line options for alternate Chronos configurations."""
+
+    parser = argparse.ArgumentParser(
+        description="Run Chronos zero-shot autoregressive evaluation.",
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=DEFAULT_CONFIG_PATH,
+        help="Path to a Chronos autoregressive YAML config.",
+    )
+    return parser.parse_args()
 
 
 def resolve_selection_folder(dataset_root: Path, configured: str) -> Path:
@@ -211,7 +227,10 @@ def _save_forecast_set(
 def main() -> None:
     """Run Chronos zero-shot inference without loading train or validation data."""
 
-    config = load_yaml_config(CONFIG_PATH)
+    config_path = parse_args().config
+    if not config_path.is_absolute():
+        config_path = PROJECT_ROOT / config_path
+    config = load_yaml_config(config_path)
     validate_config(config)
     set_seed(int(config["seed"]))
     dataset_folder = resolve_selection_folder(
@@ -400,7 +419,7 @@ def main() -> None:
                 "test_only_zero_shot_evaluation": True,
                 "train_data_loaded": False,
                 "validation_data_loaded": False,
-                "config_path": relative_project_path(CONFIG_PATH),
+                "config_path": relative_project_path(config_path),
                 "config_fingerprint": config_fingerprint(config),
                 "dataset_folder": relative_project_path(dataset_folder),
                 "wide_predictions_path": relative_project_path(

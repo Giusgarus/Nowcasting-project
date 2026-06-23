@@ -1,0 +1,9 @@
+dataset_id,dataset_name,num_windows,num_valid_autoregressive_windows,num_usable_windows,num_warning_windows,num_events,num_usable_events,num_warning_events,num_train_windows,num_val_windows,num_test_windows,ranking_metric,is_selected
+dataset_008,uplink_beacon_data_fucino_GX4.csv,7684,7684,7684,0,34,34,0,5198,1130,1356,num_valid_autoregressive_windows,True
+dataset_007,fc-uplink-fade.csv,5549,5549,5549,0,24,24,0,3696,927,926,num_valid_autoregressive_windows,True
+dataset_005,dati_meteo_beacon.csv,2486,2486,2486,0,11,11,0,1582,452,452,num_valid_autoregressive_windows,True
+dataset_006,fc-downlink-fade.csv,2317,2317,2317,0,10,10,0,1622,231,464,num_valid_autoregressive_windows,True
+dataset_003,UPLINK-FADE_Fucino_GX4_AprJun2021.csv,1853,1853,1853,0,8,8,0,1159,232,462,num_valid_autoregressive_windows,True
+dataset_004,UPLINK-FADE_Fucino_GX5_AprJun2021.csv,1622,1622,1622,0,7,7,0,923,231,468,num_valid_autoregressive_windows,True
+dataset_001,DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv,1158,1158,1158,0,5,5,0,695,232,231,num_valid_autoregressive_windows,True
+dataset_002,DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv,235,235,235,0,1,1,0,0,0,235,num_valid_autoregressive_windows,True

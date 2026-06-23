@@ -1,0 +1,57 @@
+schema_version: 1
+
+model:
+  model_family: chronos
+  mode: zero_shot
+  model_id: amazon/chronos-t5-small
+  device: auto
+  torch_dtype: auto
+
+data:
+  dataset_root: data/processed/autoregressive/threshold_10p0/datasets_L120_h10
+  selection_folder: externalHoldout_test_fc_uplink_fade
+  context_length: 120
+  prediction_length: 10
+  evaluate_split: test
+
+variants:
+  - raw
+
+chronos:
+  num_samples: 20
+  batch_size: 32
+  forecast_mode: median
+  quantiles:
+    - 0.1
+    - 0.5
+    - 0.9
+
+evaluation:
+  evaluate_in_raw_scale: true
+  metrics:
+    - mae
+    - rmse
+    - mae_by_horizon
+    - rmse_by_horizon
+  groupby_metrics:
+    - dataset_name
+    - quality_flag
+    - event_id
+
+output:
+  results_root: results/runs
+  models_root: models/chronos
+  index_root: results/index
+  save_predictions: true
+  save_plots: true
+  overwrite: true
+
+plots:
+  plot_forecast_examples: true
+  plot_worst_forecasts: true
+  plot_mae_by_horizon: true
+  plot_rmse_by_horizon: true
+  num_random_forecast_plots: 20
+  num_worst_forecast_plots: 20
+
+seed: 42

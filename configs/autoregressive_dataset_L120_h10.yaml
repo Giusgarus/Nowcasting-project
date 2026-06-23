@@ -1,0 +1,49 @@
+data:
+  threshold_folder: threshold_10p0
+  event_windows_path: data/interim/event_windows/threshold_10p0/all_event_windows.parquet
+  window_index_path: data/processed/autoregressive/threshold_10p0/window_index_L120_h10.parquet
+  output_root: data/processed/autoregressive/threshold_10p0/datasets_L120_h10
+  results_root: results/data_preparation
+
+forecasting:
+  context_length: 120
+  prediction_length: 10
+  signal_column: Signal_prepared
+
+dataset_selection:
+  mode: external_holdout
+  selected_datasets: []
+  heldout_test_dataset: fc-uplink-fade.csv
+  development_datasets:
+    include_all_except_heldout: true
+    explicit_list: null
+  small_dataset_policy:
+    min_events_for_validation_split: 3
+    if_fewer_events: put_all_in_train
+  development_split:
+    split_by: event
+    chronological: true
+    train_ratio: 0.85
+    val_ratio: 0.15
+  external_test:
+    use_full_dataset: true
+  ranking_metric: num_valid_autoregressive_windows
+  allow_warning_events: true
+
+normalization:
+  versions:
+    - raw
+    - context_standard
+  context_standard:
+    center: mean
+    scale: std
+    epsilon: 1.0e-6
+    fit_on: input_context_only
+
+output:
+  save_npz: true
+  save_metadata_parquet: true
+  save_summary_csv: true
+  overwrite: false
+
+seed: 42

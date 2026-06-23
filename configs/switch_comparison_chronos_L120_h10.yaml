@@ -1,0 +1,22 @@
+data:
+  selection_id: externalHoldout_test_fc_uplink_fade_L120_h10_thr10
+
+methods:
+  - name: Chronos Zero-Shot Raw L120
+    model_family: chronos
+    architecture: chronos_zero_shot
+    variant: raw
+
+conversion:
+  prediction_aggregation: horizon_threshold_count
+  threshold: 10.0
+  condition: greater_than
+  required_points_above_threshold: 10
+  switch_time: 10
+  apply_min_island_length: true
+
+plots:
+  max_events: 20
+
+output:
+  overwrite: true
