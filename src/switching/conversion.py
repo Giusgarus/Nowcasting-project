@@ -38,6 +38,37 @@ def ensure_min_island_length(
     return adjusted.reshape(original.shape)
 
 
+def enforce_switch_time(
+    original_switch: Sequence[int | bool] | np.ndarray,
+    mask_signal_over_threshold: Sequence[int | bool] | np.ndarray,
+    switch_time: int,
+) -> np.ndarray:
+    """Reproduce the legacy adjusted-switch post-processing rule."""
+
+    if not isinstance(switch_time, (int, np.integer)) or switch_time < 1:
+        raise ValueError("switch_time must be a positive integer.")
+
+    original = _binary_array(original_switch)
+    outage_mask = _binary_array(mask_signal_over_threshold)
+    if original.shape != outage_mask.shape:
+        raise ValueError("original_switch and mask_signal_over_threshold must match.")
+
+    vector = original.ravel()
+    mask = outage_mask.ravel()
+    adjusted = np.zeros_like(vector, dtype=np.int8)
+    if vector.size == 0:
+        return adjusted.reshape(original.shape)
+
+    changes = np.diff(np.concatenate(([0], vector, [0])))
+    starts = np.flatnonzero(changes == 1)
+    for start in starts:
+        adjusted[start : min(start + switch_time, vector.size)] = 1
+
+    mask_only = (mask == 1) & (vector == 0)
+    adjusted[mask_only] = 1
+    return adjusted.reshape(original.shape)
+
+
 def detect_persistent_threshold_switch(
     signal_values: Sequence[float] | np.ndarray,
     *,

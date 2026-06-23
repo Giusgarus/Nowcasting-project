@@ -7,6 +7,7 @@ from src.switching.conversion import (
     compute_model_switch_from_predictions,
     compute_switch_from_signal_values,
     detect_persistent_threshold_switch,
+    enforce_switch_time,
     ensure_min_island_length,
 )
 from src.switching.metrics import (
@@ -79,6 +80,13 @@ def test_perfect_switch_matches_legacy_persistent_threshold_rule() -> None:
     )
     np.testing.assert_array_equal(processed["perfect_switch"], [0, 1, 1, 1, 0, 0, 0])
     np.testing.assert_array_equal(
+        processed["perfect_switch_min_time"], processed["perfect_switch"]
+    )
+    np.testing.assert_array_equal(
+        processed["perfect_switch_adjusted"], [0, 1, 1, 0, 0, 1, 1]
+    )
+    np.testing.assert_array_equal(processed["outage_mask"], [0, 1, 1, 1, 0, 1, 1])
+    np.testing.assert_array_equal(
         raw_only["perfect_switch"], raw_only["perfect_switch_raw"]
     )
 
@@ -115,6 +123,16 @@ def test_generic_signal_to_switch_rule_is_model_agnostic() -> None:
     np.testing.assert_array_equal(processed, [0, 1, 1, 1])
     np.testing.assert_array_equal(model_raw, raw)
     np.testing.assert_array_equal(model_processed, processed)
+
+
+def test_enforce_switch_time_keeps_start_interval_and_reintroduces_outage_mask() -> None:
+    adjusted = enforce_switch_time(
+        [0, 1, 1, 0, 1, 1, 1, 0],
+        [0, 0, 0, 1, 0, 0, 1, 0],
+        switch_time=2,
+    )
+
+    np.testing.assert_array_equal(adjusted, [0, 1, 1, 1, 1, 1, 0, 0])
 
 
 def test_window_target_alignment_uses_correct_times_and_switch_values() -> None:

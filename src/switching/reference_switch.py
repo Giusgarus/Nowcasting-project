@@ -6,7 +6,9 @@ import numpy as np
 import pandas as pd
 
 from src.switching.conversion import (
+    compute_switch_from_signal_values,
     detect_persistent_threshold_switch,
+    enforce_switch_time,
     ensure_min_island_length,
 )
 
@@ -39,7 +41,10 @@ def compute_perfect_switch_from_true_signal(
     sort_columns = [*group_columns, "Time"] if group_columns else ["Time"]
     output = output.sort_values(sort_columns, kind="stable").reset_index(drop=True)
     output["Signal_true"] = output[signal_column].astype(float)
+    output["outage_mask"] = 0
     output["perfect_switch_raw"] = 0
+    output["perfect_switch_min_time"] = 0
+    output["perfect_switch_adjusted"] = 0
     output["perfect_switch"] = 0
 
     grouped_indices = (
@@ -50,20 +55,34 @@ def compute_perfect_switch_from_true_signal(
     for indices in grouped_indices:
         if condition != "greater_than":
             raise ValueError("The legacy Perfect Switch supports condition='greater_than'.")
+        outage_mask, _ = compute_switch_from_signal_values(
+            output.loc[indices, "Signal_true"].to_numpy(),
+            threshold=threshold,
+            condition=condition,
+            switch_time=1,
+            apply_min_island_length=False,
+        )
         raw = detect_persistent_threshold_switch(
             output.loc[indices, "Signal_true"].to_numpy(),
             threshold=threshold,
             switch_time=switch_time,
         )
-        processed = (
+        min_time = (
             ensure_min_island_length(raw, switch_time)
             if apply_min_island_length
             else raw.copy()
         )
+        adjusted = enforce_switch_time(min_time, outage_mask, switch_time)
+        output.loc[indices, "outage_mask"] = outage_mask
         output.loc[indices, "perfect_switch_raw"] = raw
-        output.loc[indices, "perfect_switch"] = processed
+        output.loc[indices, "perfect_switch_min_time"] = min_time
+        output.loc[indices, "perfect_switch_adjusted"] = adjusted
+        output.loc[indices, "perfect_switch"] = min_time
 
+    output["outage_mask"] = output["outage_mask"].astype("int8")
     output["perfect_switch_raw"] = output["perfect_switch_raw"].astype("int8")
+    output["perfect_switch_min_time"] = output["perfect_switch_min_time"].astype("int8")
+    output["perfect_switch_adjusted"] = output["perfect_switch_adjusted"].astype("int8")
     output["perfect_switch"] = output["perfect_switch"].astype("int8")
     output["threshold"] = float(threshold)
     output["switch_time"] = int(switch_time)
@@ -108,8 +127,19 @@ def align_perfect_switch_to_forecast_windows(
         "window_metadata",
     )
 
+    timeseries = perfect_switch_timeseries.copy()
+    if "perfect_switch_min_time" not in timeseries:
+        timeseries["perfect_switch_min_time"] = timeseries["perfect_switch"]
+    if "outage_mask" not in timeseries:
+        timeseries["outage_mask"] = (
+            timeseries["Signal_true"].astype(float)
+            > timeseries["threshold"].astype(float)
+        ).astype("int8")
+    if "perfect_switch_adjusted" not in timeseries:
+        timeseries["perfect_switch_adjusted"] = timeseries["perfect_switch_min_time"]
+
     event_lookup: dict[str, pd.DataFrame] = {}
-    for event_id, frame in perfect_switch_timeseries.groupby("event_id", sort=False):
+    for event_id, frame in timeseries.groupby("event_id", sort=False):
         ordered = frame.sort_values("event_point_idx", kind="stable")
         if ordered["event_point_idx"].duplicated().any():
             raise ValueError(f"Duplicate event_point_idx values for event {event_id}.")
@@ -146,7 +176,10 @@ def align_perfect_switch_to_forecast_windows(
                     "target_time": point.Time,
                     "y_true_raw": float(point.Signal_true),
                     "perfect_switch_raw": int(point.perfect_switch_raw),
+                    "perfect_switch_min_time": int(point.perfect_switch_min_time),
+                    "perfect_switch_adjusted": int(point.perfect_switch_adjusted),
                     "perfect_switch": int(point.perfect_switch),
+                    "outage_mask": int(point.outage_mask),
                     "threshold": float(point.threshold),
                     "switch_time": int(point.switch_time),
                     "quality_flag": window.quality_flag,

@@ -4,6 +4,7 @@ from src.switching.conversion import (
     compute_model_switch_from_predictions,
     compute_switch_from_signal_values,
     detect_persistent_threshold_switch,
+    enforce_switch_time,
     ensure_min_island_length,
 )
 from src.switching.reference_switch import (
@@ -17,5 +18,6 @@ __all__ = [
     "compute_perfect_switch_from_true_signal",
     "compute_switch_from_signal_values",
     "detect_persistent_threshold_switch",
+    "enforce_switch_time",
     "ensure_min_island_length",
 ]

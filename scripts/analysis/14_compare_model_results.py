@@ -68,6 +68,32 @@ SWITCH_METRIC_COLUMNS = [
     "false_negatives",
 ]
 
+SWITCH_BEHAVIOR_FRONT_COLUMNS = [
+    "method",
+    "switch_behavior_metrics_available",
+    "model_family",
+    "architecture",
+    "variant",
+    "mode",
+    "duration_samples",
+    "outage_time_covered_samples",
+    "events",
+    "outage_mask_agreement_pct",
+    "duration_similarity_vs_perfect_pct",
+    "model_min_time_duration_samples",
+    "model_adjusted_duration_samples",
+    "perfect_min_time_duration_samples",
+    "outage_mask_duration_samples",
+    "num_samples",
+    "run_id",
+    "method_id",
+    "selection_id",
+    "test_type",
+    "dataset_name",
+    "threshold",
+    "switch_time",
+]
+
 
 def _first_row(path: Path) -> dict[str, Any]:
     """Read the first row of a CSV file as a dictionary."""
@@ -113,6 +139,15 @@ def _comparison_summary_path(run_id: str) -> Path:
         get_comparison_dir(comparison_id)
         / "metrics"
         / "switch_metrics_summary.csv"
+    )
+
+
+def _comparison_global_behavior_path(run_id: str) -> Path:
+    comparison_id = make_comparison_id(run_id)
+    return (
+        get_comparison_dir(comparison_id)
+        / "metrics"
+        / "global_switch_metrics.csv"
     )
 
 
@@ -183,6 +218,73 @@ def _merge_switch_rows(test_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return enriched_rows
 
 
+def _build_switch_behavior_rows(
+    runs: pd.DataFrame,
+    method_names: dict[str, str],
+) -> list[dict[str, Any]]:
+    """Build one global switch-behavior row per run plus one Perfect row."""
+
+    rows: list[dict[str, Any]] = []
+    perfect_row: dict[str, Any] | None = None
+    for _, run in runs.sort_values(
+        ["model_family", "architecture", "variant"],
+        kind="stable",
+    ).iterrows():
+        run_id = str(run["run_id"])
+        path = _comparison_global_behavior_path(run_id)
+        label = _run_label(run, method_names)
+        base = {
+            "method": label,
+            "run_id": run_id,
+            "model_family": run["model_family"],
+            "architecture": run["architecture"],
+            "variant": run["variant"],
+            "selection_id": run["selection_id"],
+            "status": run["status"],
+        }
+        if not path.exists():
+            rows.append({**base, "switch_behavior_metrics_available": False})
+            continue
+
+        frame = pd.read_csv(path)
+        model_frame = frame.loc[frame["method_id"].astype(str).eq(run_id)]
+        if model_frame.empty:
+            model_frame = frame.loc[
+                ~frame["method_id"].astype(str).eq("perfect_switch")
+            ]
+        if model_frame.empty:
+            rows.append({**base, "switch_behavior_metrics_available": False})
+        else:
+            metric_row = model_frame.iloc[0].to_dict()
+            rows.append(
+                {
+                    **base,
+                    **metric_row,
+                    "method": label,
+                    "run_id": run_id,
+                    "switch_behavior_metrics_available": True,
+                }
+            )
+
+        if perfect_row is None:
+            perfect_frame = frame.loc[
+                frame["method_id"].astype(str).eq("perfect_switch")
+            ]
+            if not perfect_frame.empty:
+                perfect_metric_row = perfect_frame.iloc[0].to_dict()
+                perfect_row = {
+                    **perfect_metric_row,
+                    "method": "Perfect Switch",
+                    "run_id": "",
+                    "status": "complete",
+                    "switch_behavior_metrics_available": True,
+                }
+
+    if perfect_row is not None:
+        rows.append(perfect_row)
+    return rows
+
+
 def _ordered_validation_columns(frame: pd.DataFrame) -> list[str]:
     front = [
         "method",
@@ -238,6 +340,12 @@ def _ordered_test_columns(frame: pd.DataFrame) -> list[str]:
     return front + [column for column in frame.columns if column not in front]
 
 
+def _ordered_switch_behavior_columns(frame: pd.DataFrame) -> list[str]:
+    return SWITCH_BEHAVIOR_FRONT_COLUMNS + [
+        column for column in frame.columns if column not in SWITCH_BEHAVIOR_FRONT_COLUMNS
+    ]
+
+
 # %%
 # Load run index and build summary tables
 config = load_yaml_config(CONFIG_PATH)
@@ -249,9 +357,10 @@ tables_dir = output_paths["tables"]
 
 print(
     "=== Analysis overview ===\n"
-    "Prints: compact validation and test model comparison tables.\n"
+    "Prints: compact validation, test, and global switch-behavior comparison tables.\n"
     "Displays: no figures.\n"
-    "Saves: one validation forecast table and one test forecast+switch table.\n"
+    "Saves: one validation forecast table, one test forecast+switch table, and "
+    "one separate global switch-behavior table.\n"
     "Note: reads existing run metrics and existing model-vs-Perfect switch "
     "comparisons; it does not train or evaluate models.\n"
 )
@@ -270,11 +379,16 @@ if runs.empty:
 method_names = _method_name_lookup(config, selection_id)
 validation_rows, test_rows = _build_forecast_rows(runs, method_names)
 test_rows = _merge_switch_rows(test_rows)
+switch_behavior_rows = _build_switch_behavior_rows(runs, method_names)
 
 validation_table = pd.DataFrame(validation_rows)
 test_table = pd.DataFrame(test_rows)
+switch_behavior_table = pd.DataFrame(switch_behavior_rows)
 validation_table = validation_table[_ordered_validation_columns(validation_table)]
 test_table = test_table[_ordered_test_columns(test_table)]
+switch_behavior_table = switch_behavior_table[
+    _ordered_switch_behavior_columns(switch_behavior_table)
+]
 
 validation_table = validation_table.sort_values(
     ["validation_available", "validation_rmse", "method"],
@@ -286,11 +400,18 @@ test_table = test_table.sort_values(
     ascending=[True, True],
     kind="stable",
 )
+switch_behavior_table = switch_behavior_table.sort_values(
+    ["switch_behavior_metrics_available", "model_family", "architecture", "variant", "method"],
+    ascending=[False, True, True, True, True],
+    kind="stable",
+)
 
 validation_path = tables_dir / "validation_forecast_comparison.csv"
 test_path = tables_dir / "test_forecast_switch_comparison.csv"
+switch_behavior_path = tables_dir / "global_switch_behavior_comparison.csv"
 validation_table.to_csv(validation_path, index=False)
 test_table.to_csv(test_path, index=False)
+switch_behavior_table.to_csv(switch_behavior_path, index=False)
 
 created_at = datetime.now(timezone.utc).isoformat()
 metadata_path = output_dir / "metadata.yaml"
@@ -305,6 +426,11 @@ metadata = {
     "num_runs_with_switch_metrics": int(
         test_table["switch_metrics_available"].fillna(False).sum()
     ),
+    "num_rows_with_switch_behavior_metrics": int(
+        switch_behavior_table["switch_behavior_metrics_available"]
+        .fillna(False)
+        .sum()
+    ),
     "input_files": {
         "run_index": relative_project_path(RUN_INDEX_PATH),
         "comparison_index": relative_project_path(COMPARISON_INDEX_PATH),
@@ -313,6 +439,9 @@ metadata = {
     "output_files": {
         "validation_forecast_comparison": relative_project_path(validation_path),
         "test_forecast_switch_comparison": relative_project_path(test_path),
+        "global_switch_behavior_comparison": relative_project_path(
+            switch_behavior_path
+        ),
     },
     "config_fingerprint": config_fingerprint(config),
     "created_at": created_at,
@@ -364,6 +493,21 @@ print(
         ]
     ].to_string(index=False)
 )
+print("\n=== Global switch-behavior comparison ===")
+print(
+    switch_behavior_table[
+        [
+            "method",
+            "switch_behavior_metrics_available",
+            "duration_samples",
+            "outage_time_covered_samples",
+            "events",
+            "outage_mask_agreement_pct",
+            "duration_similarity_vs_perfect_pct",
+        ]
+    ].to_string(index=False)
+)
 print("\nSaved:")
 print(f"- {relative_project_path(validation_path)}")
 print(f"- {relative_project_path(test_path)}")
+print(f"- {relative_project_path(switch_behavior_path)}")

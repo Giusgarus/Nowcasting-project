@@ -16,6 +16,7 @@ from src.switching.comparison import (
     build_model_switch_timeseries,
     compute_model_vs_perfect_metrics,
 )
+from src.switching.metrics import build_switch_behavior_metrics_tables
 from src.switching.plots import plot_switch_methods_for_event
 from src.utils.config import config_fingerprint, load_yaml_config, save_yaml
 from src.utils.results_paths import (
@@ -49,6 +50,7 @@ dataset_rows = datasets_index.loc[datasets_index["selection_id"].eq(selection_id
 if dataset_rows.empty:
     raise ValueError(f"Dataset index has no row for selection_id={selection_id}.")
 dataset_path = PROJECT_ROOT / str(dataset_rows.iloc[0]["dataset_path"])
+test_type = str(dataset_rows.iloc[0].get("dataset_selection_mode", "test"))
 test_metadata_path = dataset_path / "test_metadata.parquet"
 test_metadata = pd.read_parquet(test_metadata_path)
 prediction_aggregation = config["conversion"].get(
@@ -61,7 +63,8 @@ print(
     "Prints: forecast-to-switch rule and model-vs-Perfect metrics.\n"
     "Displays: no figures.\n"
     "Saves: one independent shallow comparison folder per method against Perfect "
-    "Switch, with metrics, predictions, metadata, and event plots.\n"
+    "Switch, with switch-summary metrics, switch-behavior metrics, predictions, "
+    "metadata, and event plots.\n"
     "Note: uses saved test predictions only; no model is trained or reloaded.\n"
 )
 if prediction_aggregation not in {"latest_available", "horizon_threshold_count"}:
@@ -101,6 +104,8 @@ for method in config["methods"]:
     comparison_path = output_paths["predictions"] / "model_vs_perfect_switch.parquet"
     summary_path = output_paths["metrics"] / "switch_metrics_summary.csv"
     event_metrics_path = output_paths["metrics"] / "switch_metrics_by_event.csv"
+    global_behavior_path = output_paths["metrics"] / "global_switch_metrics.csv"
+    event_behavior_path = output_paths["metrics"] / "event_switch_metrics.csv"
     metadata_path = output_dir / "metadata.yaml"
     figures_dir = output_paths["figures"] / "event_switch_plots"
 
@@ -108,6 +113,8 @@ for method in config["methods"]:
         comparison_path,
         summary_path,
         event_metrics_path,
+        global_behavior_path,
+        event_behavior_path,
         metadata_path,
     )
     if not config["output"]["overwrite"]:
@@ -144,9 +151,32 @@ for method in config["methods"]:
     )
     summary = compute_model_vs_perfect_metrics(comparison, by_event=False)
     event_metrics = compute_model_vs_perfect_metrics(comparison, by_event=True)
+    method_mode = method.get(
+        "mode",
+        "zero_shot" if method["model_family"] == "chronos" else "trained",
+    )
+    global_behavior, event_behavior = build_switch_behavior_metrics_tables(
+        comparison,
+        method_id=run_id,
+        method_metadata={
+            "method_name": method["name"],
+            "model_family": method["model_family"],
+            "architecture": method["architecture"],
+            "variant": method["variant"],
+            "mode": method_mode,
+        },
+        selection_id=selection_id,
+        test_type=test_type,
+        threshold=float(config["conversion"]["threshold"]),
+        condition=config["conversion"]["condition"],
+        switch_time=int(config["conversion"]["switch_time"]),
+        perfect_timeseries=perfect_timeseries,
+    )
     comparison.to_parquet(comparison_path, index=False)
     summary.to_csv(summary_path, index=False)
     event_metrics.to_csv(event_metrics_path, index=False)
+    global_behavior.to_csv(global_behavior_path, index=False)
+    event_behavior.to_csv(event_behavior_path, index=False)
 
     saved_figures = []
     event_order = (
@@ -229,6 +259,8 @@ for method in config["methods"]:
             "comparison_timeseries": relative_project_path(comparison_path),
             "switch_metrics_summary": relative_project_path(summary_path),
             "switch_metrics_by_event": relative_project_path(event_metrics_path),
+            "global_switch_metrics": relative_project_path(global_behavior_path),
+            "event_switch_metrics": relative_project_path(event_behavior_path),
             "figures": saved_figures,
         },
         "num_events": int(comparison["event_id"].nunique()),
