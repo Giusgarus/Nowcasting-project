@@ -116,6 +116,14 @@ PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
   python scripts/experiments/run_autoregressive_chronos_zero_shot.py
 ```
 
+To evaluate the longer-context Chronos variant, use the dedicated config:
+
+```bash
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
+  python scripts/experiments/run_autoregressive_chronos_zero_shot.py \
+  --config configs/autoregressive_chronos_L120_h10.yaml
+```
+
 After model predictions exist, build model-versus-Perfect-Switch comparisons
 and the compact cross-model summary tables:
 
@@ -181,6 +189,12 @@ conda env export --no-builds | grep -v "^prefix:" > environment.yml
   comparisons, and grid searches.
 - `reports/`: methodological notes and experiment logs.
 - `tests/`: unit tests.
+
+The repository tracks lightweight CSV/YAML summaries and the
+`predictions/test_predictions.parquet` files needed to regenerate switch
+comparisons on another machine. Heavy generated artifacts such as figures,
+trial checkpoints, validation histories, and most intermediate Parquet files
+remain ignored.
 
 See `AGENTS.md` for the full methodological and engineering policy.
 

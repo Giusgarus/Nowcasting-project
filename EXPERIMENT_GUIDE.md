@@ -168,6 +168,19 @@ Run:
 conda run -n Nowcasting python scripts/analysis/10_build_autoregressive_datasets.py
 ```
 
+Alternate dataset configurations can be passed explicitly:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/10_build_autoregressive_datasets.py \
+  --config configs/autoregressive_dataset_L120_h10.yaml
+```
+
+The `L120_h10` dataset config expects the matching
+`window_index_L120_h10.parquet` to exist under
+`data/processed/autoregressive/threshold_10p0/`. It reuses the already
+prepared event windows and creates a separate selection ID:
+`externalHoldout_test_fc_uplink_fade_L120_h10_thr10`.
+
 Main outputs:
 
 ```text
@@ -243,6 +256,13 @@ Run:
 
 ```bash
 conda run -n Nowcasting python scripts/analysis/12_compute_perfect_switch.py
+```
+
+For a non-default selection, use its dedicated config:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/12_compute_perfect_switch.py \
+  --config configs/perfect_switch_L120_h10.yaml
 ```
 
 Main outputs:
@@ -369,6 +389,14 @@ PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
   python scripts/experiments/run_autoregressive_chronos_zero_shot.py
 ```
 
+Longer-context Chronos zero-shot evaluation uses:
+
+```bash
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
+  python scripts/experiments/run_autoregressive_chronos_zero_shot.py \
+  --config configs/autoregressive_chronos_L120_h10.yaml
+```
+
 The default model is `amazon/chronos-t5-small`, evaluated on the raw variant.
 The optional `context_standard_optional` variant can be added explicitly.
 Deterministic metrics use the median of sampled Chronos trajectories; q10,
@@ -422,6 +450,12 @@ run IDs for an equivalent model, variant, and dataset selection. A single-run
 configuration uses `overwrite: false` by default and will stop instead of
 silently replacing an existing grid-search winner.
 
+Git tracks lightweight CSV/YAML summaries and
+`results/runs/<selection_id>/<run_id>/predictions/test_predictions.parquet`, so
+switch comparisons can be regenerated on another machine after a push. Figures,
+checkpoints, validation histories, and most intermediate Parquet outputs remain
+ignored.
+
 ## 11. Switch Comparisons
 
 Configuration:
@@ -454,6 +488,13 @@ Run:
 
 ```bash
 conda run -n Nowcasting python scripts/analysis/13_compare_switch_methods.py
+```
+
+For the Chronos `L120_h10` variant:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/13_compare_switch_methods.py \
+  --config configs/switch_comparison_chronos_L120_h10.yaml
 ```
 
 Main outputs:
