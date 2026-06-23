@@ -228,11 +228,22 @@ reconstruction, split integrity, NaNs, infinities, and event leakage.
 Run:
 
 ```bash
-conda run -n Nowcasting python scripts/analysis/11_sanity_check_autoregressive_dataset.py
+conda run -n Nowcasting python scripts/analysis/11_sanity_check_autoregressive_dataset.py \
+  --no-plots
 ```
 
-If multiple selection folders exist, set `SELECTION_FOLDER` near the top of
-the script. Set `SHOW_PLOTS = false` for a non-interactive machine.
+Pass a different dataset configuration explicitly when checking an alternate
+context length:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/11_sanity_check_autoregressive_dataset.py \
+  --config configs/autoregressive_dataset_L120_h10.yaml \
+  --no-plots
+```
+
+If multiple selection folders exist under the configured dataset root, pass
+`--selection-folder`. Use `--plots` when running interactively and you want
+random raw/context-standard window plots.
 
 Do not start a model campaign unless this script finishes with:
 

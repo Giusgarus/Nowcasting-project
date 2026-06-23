@@ -1,28 +1,20 @@
-"""One-off sanity checks for final supervised autoregressive datasets."""
+"""Sanity checks for final supervised autoregressive datasets."""
 
 # %%
 # Configuration and imports
+import argparse
 import sys
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-# Set this when multiple selection folders are available.
-SELECTION_FOLDER: str | None = "externalHoldout_test_fc_uplink_fade"
-DATASET_ROOT = (
-    PROJECT_ROOT
-    / "data/processed/autoregressive/threshold_10p0/datasets_L30_h10"
-)
-SHOW_PLOTS = True
-PLOTS_PER_SPLIT = 5
-RANDOM_SEED = 42
+from src.utils.config import load_yaml_config
 
+DEFAULT_CONFIG_PATH = PROJECT_ROOT / "configs/autoregressive_dataset.yaml"
 SPLITS = ("train", "val", "test")
 REQUIRED_ARRAY_KEYS = {
     "X_raw",
@@ -56,6 +48,66 @@ REQUIRED_METADATA_COLUMNS = {
 METADATA_SPLIT_NAMES = {"train": "train", "val": "validation", "test": "test"}
 
 
+def project_path(path: str | Path) -> Path:
+    """Resolve an absolute or repository-relative path."""
+
+    resolved = Path(path)
+    if not resolved.is_absolute():
+        resolved = PROJECT_ROOT / resolved
+    return resolved
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line options for a configurable sanity check."""
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=DEFAULT_CONFIG_PATH,
+        help="Autoregressive dataset config to inspect.",
+    )
+    parser.add_argument(
+        "--dataset-root",
+        type=Path,
+        default=None,
+        help="Override the config data.output_root folder.",
+    )
+    parser.add_argument(
+        "--selection-folder",
+        type=str,
+        default=None,
+        help="Selection folder under the dataset root. Defaults to the only folder.",
+    )
+    plot_group = parser.add_mutually_exclusive_group()
+    plot_group.add_argument(
+        "--plots",
+        dest="show_plots",
+        action="store_true",
+        default=True,
+        help="Display random sanity-check plots. This is the default.",
+    )
+    plot_group.add_argument(
+        "--no-plots",
+        dest="show_plots",
+        action="store_false",
+        help="Disable interactive plots for non-interactive runs.",
+    )
+    parser.add_argument(
+        "--plots-per-split",
+        type=int,
+        default=5,
+        help="Number of random windows to plot for each split when plots are enabled.",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Override the random seed from the config.",
+    )
+    return parser.parse_args()
+
+
 def find_selection_folder(root: Path, configured: str | None) -> Path:
     """Resolve the requested selection folder or the only available folder."""
 
@@ -73,7 +125,7 @@ def find_selection_folder(root: Path, configured: str | None) -> Path:
     print("Multiple selection folders are available:")
     for folder in folders:
         print(f"  - {folder.name}")
-    raise ValueError("Set SELECTION_FOLDER at the top of this script.")
+    raise ValueError("Pass --selection-folder to choose one dataset selection.")
 
 
 def assert_shape(name: str, array: np.ndarray, expected: tuple[int, ...]) -> None:
@@ -193,17 +245,21 @@ def check_split(
         arrays["y_context_standard"][sample_indices] * stds[:, None]
         + means[:, None]
     )
-    reconstructed_X = (
+    reconstructed_x = (
         arrays["X_context_standard"][sample_indices] * stds[:, None, None]
         + means[:, None, None]
     )
-    y_error = float(
-        np.max(np.abs(reconstructed_y - arrays["y_raw"][sample_indices]))
-    ) if sample_size else 0.0
-    X_error = float(
-        np.max(np.abs(reconstructed_X - arrays["X_raw"][sample_indices]))
-    ) if sample_size else 0.0
-    print(f"Maximum inverse-transform error: X={X_error:.6g}, y={y_error:.6g}")
+    y_error = (
+        float(np.max(np.abs(reconstructed_y - arrays["y_raw"][sample_indices])))
+        if sample_size
+        else 0.0
+    )
+    x_error = (
+        float(np.max(np.abs(reconstructed_x - arrays["X_raw"][sample_indices])))
+        if sample_size
+        else 0.0
+    )
+    print(f"Maximum inverse-transform error: X={x_error:.6g}, y={y_error:.6g}")
     if not np.allclose(
         reconstructed_y,
         arrays["y_raw"][sample_indices],
@@ -212,7 +268,7 @@ def check_split(
     ):
         raise ValueError(f"{split} y inverse-transform check failed.")
     if not np.allclose(
-        reconstructed_X,
+        reconstructed_x,
         arrays["X_raw"][sample_indices],
         atol=1e-5,
         rtol=1e-5,
@@ -258,6 +314,8 @@ def plot_sample_windows(
 ) -> None:
     """Display raw and context-standard views for a small random sample."""
 
+    import matplotlib.pyplot as plt
+
     for split in SPLITS:
         arrays = arrays_by_split[split]
         metadata = metadata_by_split[split]
@@ -291,87 +349,124 @@ def plot_sample_windows(
     plt.close("all")
 
 
-# %%
-# Resolve dataset folder and metadata
-print("=== Final autoregressive dataset sanity check ===")
-selection_path = find_selection_folder(DATASET_ROOT, SELECTION_FOLDER)
-with (selection_path / "dataset_metadata.yaml").open(encoding="utf-8") as stream:
-    dataset_metadata = yaml.safe_load(stream)
-context_length = int(dataset_metadata.get("context_length", 30))
-prediction_length = int(dataset_metadata.get("prediction_length", 10))
-epsilon = float(dataset_metadata.get("normalization_epsilon", 1.0e-6))
-print(f"Selection folder: {selection_path.name}")
-print(f"Context length: {context_length}")
-print(f"Prediction length: {prediction_length}")
-print(f"Normalization epsilon: {epsilon}")
+def run_sanity_check(
+    *,
+    config_path: Path,
+    dataset_root_override: Path | None,
+    selection_folder: str | None,
+    show_plots: bool,
+    plots_per_split: int,
+    seed_override: int | None,
+) -> None:
+    """Run all final-dataset sanity checks for the configured dataset."""
 
-# %%
-# Validate all splits
-rng = np.random.default_rng(RANDOM_SEED)
-arrays_by_split = {}
-metadata_by_split = {}
-reports = {}
-for split_name in SPLITS:
-    arrays, metadata, report = check_split(
-        selection_path,
-        split_name,
-        context_length=context_length,
-        prediction_length=prediction_length,
-        epsilon=epsilon,
-        rng=rng,
+    config_path = project_path(config_path)
+    config = load_yaml_config(config_path)
+    dataset_root = project_path(
+        dataset_root_override or config["data"]["output_root"]
     )
-    arrays_by_split[split_name] = arrays
-    metadata_by_split[split_name] = metadata
-    reports[split_name] = report
+    seed = int(seed_override if seed_override is not None else config.get("seed", 42))
 
-# %%
-# Validate global split integrity and uniqueness
-all_metadata = pd.concat(metadata_by_split.values(), ignore_index=True)
-event_identity = "global_event_id" if "global_event_id" in all_metadata else "event_id"
-window_identity = (
-    "global_window_id" if "global_window_id" in all_metadata else "window_id"
-)
-leaking_events = all_metadata.groupby(event_identity)["split"].nunique()
-leaking_events = leaking_events.loc[leaking_events.gt(1)]
-if len(leaking_events):
-    print(f"Events found in multiple splits:\n{leaking_events.to_string()}")
-    raise ValueError("Event split leakage detected.")
-if all_metadata[window_identity].duplicated().any():
-    duplicates = all_metadata.loc[
-        all_metadata[window_identity].duplicated(keep=False), window_identity
-    ].unique()
-    raise ValueError(f"Duplicate window IDs found: {duplicates.tolist()}")
-print("\nGlobal event split integrity: passed")
-print("Global window ID uniqueness: passed")
+    print("=== Final autoregressive dataset sanity check ===")
+    print(f"Config: {config_path.relative_to(PROJECT_ROOT)}")
+    print(f"Dataset root: {dataset_root.relative_to(PROJECT_ROOT)}")
+    print(
+        "Prints: split shapes, metadata alignment, value ranges, normalization "
+        "reconstruction, and leakage checks."
+    )
+    print(
+        "Displays: random raw/context-standard windows only when plots are enabled."
+    )
+    print("Saves: no files.\n")
 
-# %%
-# Optional interactive plots
-if SHOW_PLOTS:
-    plot_sample_windows(
-        arrays_by_split,
-        metadata_by_split,
-        plots_per_split=PLOTS_PER_SPLIT,
-        rng=rng,
+    selection_path = find_selection_folder(dataset_root, selection_folder)
+    dataset_metadata = load_yaml_config(selection_path / "dataset_metadata.yaml")
+    context_length = int(dataset_metadata.get("context_length", 30))
+    prediction_length = int(dataset_metadata.get("prediction_length", 10))
+    epsilon = float(dataset_metadata.get("normalization_epsilon", 1.0e-6))
+    print(f"Selection folder: {selection_path.name}")
+    print(f"Context length: {context_length}")
+    print(f"Prediction length: {prediction_length}")
+    print(f"Normalization epsilon: {epsilon}")
+    print(f"Random seed: {seed}")
+
+    rng = np.random.default_rng(seed)
+    arrays_by_split = {}
+    metadata_by_split = {}
+    reports = {}
+    for split_name in SPLITS:
+        arrays, metadata, report = check_split(
+            selection_path,
+            split_name,
+            context_length=context_length,
+            prediction_length=prediction_length,
+            epsilon=epsilon,
+            rng=rng,
+        )
+        arrays_by_split[split_name] = arrays
+        metadata_by_split[split_name] = metadata
+        reports[split_name] = report
+
+    all_metadata = pd.concat(metadata_by_split.values(), ignore_index=True)
+    event_identity = "global_event_id" if "global_event_id" in all_metadata else "event_id"
+    window_identity = (
+        "global_window_id" if "global_window_id" in all_metadata else "window_id"
+    )
+    leaking_events = all_metadata.groupby(event_identity)["split"].nunique()
+    leaking_events = leaking_events.loc[leaking_events.gt(1)]
+    if len(leaking_events):
+        print(f"Events found in multiple splits:\n{leaking_events.to_string()}")
+        raise ValueError("Event split leakage detected.")
+    if all_metadata[window_identity].duplicated().any():
+        duplicates = all_metadata.loc[
+            all_metadata[window_identity].duplicated(keep=False), window_identity
+        ].unique()
+        raise ValueError(f"Duplicate window IDs found: {duplicates.tolist()}")
+    print("\nGlobal event split integrity: passed")
+    print("Global window ID uniqueness: passed")
+
+    if show_plots:
+        plot_sample_windows(
+            arrays_by_split,
+            metadata_by_split,
+            plots_per_split=plots_per_split,
+            rng=rng,
+        )
+
+    total_warnings = sum(report["warnings"] for report in reports.values())
+    total_unusable = sum(report["unusable"] for report in reports.values())
+    total_nans = sum(report["nan_count"] for report in reports.values())
+    total_infs = sum(report["inf_count"] for report in reports.values())
+    print("\nDataset sanity check completed.\n")
+    print(f"Selection folder: {selection_path.name}")
+    print(f"Train windows: {reports['train']['windows']:,}")
+    print(f"Val windows: {reports['val']['windows']:,}")
+    print(f"Test windows: {reports['test']['windows']:,}")
+    print(f"Unique events: {all_metadata[event_identity].nunique():,}")
+    print(f"Unique datasets: {all_metadata['dataset_id'].nunique():,}")
+    print(f"Warnings included: {'yes' if total_warnings else 'no'}")
+    print(f"Unusable windows present: {'yes' if total_unusable else 'no'}")
+    print(f"NaNs present: {'yes' if total_nans else 'no'}")
+    print(f"Inf values present: {'yes' if total_infs else 'no'}")
+    print("Normalization reconstruction: passed")
+    print("Event split leakage: passed")
+    print("Window ID uniqueness: passed")
+    print("\nAll sanity checks passed.")
+
+
+def main() -> None:
+    """CLI entry point."""
+
+    args = parse_args()
+    run_sanity_check(
+        config_path=args.config,
+        dataset_root_override=args.dataset_root,
+        selection_folder=args.selection_folder,
+        show_plots=args.show_plots,
+        plots_per_split=args.plots_per_split,
+        seed_override=args.seed,
     )
 
-# %%
-# Compact final report
-total_warnings = sum(report["warnings"] for report in reports.values())
-total_unusable = sum(report["unusable"] for report in reports.values())
-total_nans = sum(report["nan_count"] for report in reports.values())
-total_infs = sum(report["inf_count"] for report in reports.values())
-print("\nDataset sanity check completed.\n")
-print(f"Selection folder: {selection_path.name}")
-print(f"Train windows: {reports['train']['windows']:,}")
-print(f"Val windows: {reports['val']['windows']:,}")
-print(f"Test windows: {reports['test']['windows']:,}")
-print(f"Unique events: {all_metadata[event_identity].nunique():,}")
-print(f"Unique datasets: {all_metadata['dataset_id'].nunique():,}")
-print(f"Warnings included: {'yes' if total_warnings else 'no'}")
-print(f"Unusable windows present: {'yes' if total_unusable else 'no'}")
-print(f"NaNs present: {'yes' if total_nans else 'no'}")
-print(f"Inf values present: {'yes' if total_infs else 'no'}")
-print("Normalization reconstruction: passed")
-print("Event split leakage: passed")
-print("Window ID uniqueness: passed")
-print("\nAll sanity checks passed.")
+
+if __name__ == "__main__":
+    main()

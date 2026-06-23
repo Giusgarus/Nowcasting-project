@@ -180,6 +180,7 @@ def test_external_holdout_selection_and_selection_id() -> None:
 
 
 def test_cleanup_discovery_dry_run_does_not_delete(tmp_path: Path) -> None:
+    index_path = tmp_path / "results" / "index" / "datasets.csv"
     obsolete = (
         tmp_path
         / "data"
@@ -191,14 +192,44 @@ def test_cleanup_discovery_dry_run_does_not_delete(tmp_path: Path) -> None:
     )
     current = obsolete.parent / "externalHoldout_test_fc_uplink_fade"
     raw = tmp_path / "data" / "raw" / "fc-uplink-fade.csv"
+    stale_threshold = (
+        tmp_path
+        / "data"
+        / "processed"
+        / "autoregressive"
+        / "threshold_5p0"
+    )
+    stale_interim = tmp_path / "data" / "interim" / "event_windows" / "threshold_5p0"
     obsolete.mkdir(parents=True)
     current.mkdir(parents=True)
+    stale_threshold.mkdir(parents=True)
+    stale_interim.mkdir(parents=True)
     raw.parent.mkdir(parents=True)
     raw.write_text("raw", encoding="utf-8")
+    index_path.parent.mkdir(parents=True)
+    index_path.write_text(
+        "\n".join(
+            [
+                "selection_id,dataset_selection_mode,selected_datasets,threshold,"
+                "context_length,prediction_length,dataset_path,num_train_windows,"
+                "num_val_windows,num_test_windows,created_at",
+                "externalHoldout_test_fc_uplink_fade_L30_h10_thr10,"
+                "external_holdout,fc-uplink-fade.csv,10.0,30,10,"
+                "data/processed/autoregressive/threshold_10p0/"
+                "datasets_L30_h10/externalHoldout_test_fc_uplink_fade,"
+                "1,1,1,2026-01-01T00:00:00+00:00",
+            ]
+        ),
+        encoding="utf-8",
+    )
 
     candidates, uncertain = discover_cleanup_candidates(tmp_path)
 
-    assert [candidate.path for candidate in candidates] == [obsolete]
+    assert {candidate.path for candidate in candidates} == {
+        obsolete,
+        stale_threshold,
+        stale_interim,
+    }
     assert raw.exists()
     assert current.exists()
     assert uncertain == []
