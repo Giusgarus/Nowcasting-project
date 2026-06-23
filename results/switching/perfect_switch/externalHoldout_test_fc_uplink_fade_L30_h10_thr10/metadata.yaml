@@ -78,4 +78,4 @@ architecture_scope: Perfect Switch is a model-agnostic and task-agnostic oracle/
   The switching utilities are not specific to GRU or only to autoregressive forecasting.
   They are intended to support future autoregressive, survival, shapelet, classification,
   duration, Smart baseline, and other baseline methods.
-created_at: '2026-06-16T23:38:35.983436+00:00'
+created_at: '2026-06-23T09:50:40.848070+00:00'

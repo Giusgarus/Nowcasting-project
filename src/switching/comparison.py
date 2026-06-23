@@ -9,6 +9,7 @@ from src.evaluation.switch_metrics import compute_switch_metrics
 from src.switching.conversion import (
     compute_switch_from_signal_values,
     enforce_switch_time,
+    hold_while_signal_above_threshold,
     ensure_min_island_length,
 )
 
@@ -56,6 +57,7 @@ def align_forecast_predictions_to_targets(
         for column in (
             "outage_mask",
             "perfect_switch_raw",
+            "perfect_switch_min_island_old",
             "perfect_switch_min_time",
             "perfect_switch_adjusted",
         )
@@ -228,6 +230,7 @@ def select_horizon_threshold_count_decisions(
         for column in (
             "outage_mask",
             "perfect_switch_raw",
+            "perfect_switch_min_island_old",
             "perfect_switch_min_time",
             "perfect_switch_adjusted",
         )
@@ -279,47 +282,66 @@ def _complete_explicit_switch_versions(
     output["outage_mask"] = output.get("outage_mask", pd.Series(outage_mask)).fillna(
         pd.Series(outage_mask)
     ).astype(np.int8)
-    if "perfect_switch_min_time" not in output:
-        output["perfect_switch_min_time"] = output["perfect_switch"]
-    if "perfect_switch_raw" not in output:
-        output["perfect_switch_raw"] = output["perfect_switch_min_time"]
+    has_perfect_raw = "perfect_switch_raw" in output
+    if not has_perfect_raw:
+        output["perfect_switch_raw"] = output["perfect_switch"]
 
+    output["model_switch_min_island_old"] = np.int8(0)
     output["model_switch_min_time"] = np.int8(0)
     output["model_switch_adjusted"] = np.int8(0)
-    if "perfect_switch_adjusted" not in output:
-        output["perfect_switch_adjusted"] = np.int8(0)
-    else:
-        output["perfect_switch_adjusted"] = output["perfect_switch_adjusted"].fillna(0)
+    output["perfect_switch_min_island_old"] = np.int8(0)
+    output["perfect_switch_min_time"] = np.int8(0)
+    output["perfect_switch_adjusted"] = np.int8(0)
 
     for _, indices in output.groupby("event_id", sort=False).indices.items():
         raw = output.loc[indices, "model_switch_raw"].to_numpy(dtype=np.int8)
         if apply_min_island_length:
-            model_min_time = ensure_min_island_length(raw, switch_time)
+            model_min_island_old = ensure_min_island_length(raw, switch_time)
         else:
-            model_min_time = raw.copy()
+            model_min_island_old = raw.copy()
         outage = output.loc[indices, "outage_mask"].to_numpy(dtype=np.int8)
+        model_min_time = hold_while_signal_above_threshold(
+            model_min_island_old, outage
+        )
         model_adjusted = enforce_switch_time(model_min_time, outage, switch_time)
+        output.loc[indices, "model_switch_min_island_old"] = model_min_island_old
         output.loc[indices, "model_switch_min_time"] = model_min_time
         output.loc[indices, "model_switch_adjusted"] = model_adjusted
 
-        perfect_min_time = output.loc[
-            indices, "perfect_switch_min_time"
-        ].to_numpy(dtype=np.int8)
-        if output.loc[indices, "perfect_switch_adjusted"].isna().any() or not output.loc[
-            indices, "perfect_switch_adjusted"
-        ].to_numpy(dtype=np.int8).any():
-            perfect_adjusted = enforce_switch_time(perfect_min_time, outage, switch_time)
-            output.loc[indices, "perfect_switch_adjusted"] = perfect_adjusted
+        if has_perfect_raw:
+            perfect_raw = output.loc[indices, "perfect_switch_raw"].to_numpy(
+                dtype=np.int8
+            )
+            if apply_min_island_length:
+                perfect_min_island_old = ensure_min_island_length(
+                    perfect_raw, switch_time
+                )
+            else:
+                perfect_min_island_old = perfect_raw.copy()
+            perfect_min_time = hold_while_signal_above_threshold(
+                perfect_min_island_old, outage
+            )
+        else:
+            perfect_min_time = output.loc[indices, "perfect_switch"].to_numpy(
+                dtype=np.int8
+            )
+            perfect_min_island_old = perfect_min_time.copy()
+        perfect_adjusted = enforce_switch_time(perfect_min_time, outage, switch_time)
+        output.loc[indices, "perfect_switch_min_island_old"] = perfect_min_island_old
+        output.loc[indices, "perfect_switch_min_time"] = perfect_min_time
+        output.loc[indices, "perfect_switch_adjusted"] = perfect_adjusted
 
     output["model_switch"] = output["model_switch_min_time"].astype(np.int8)
     output["perfect_switch"] = output["perfect_switch_min_time"].astype(np.int8)
     for column in (
         "outage_mask",
         "perfect_switch_raw",
+        "perfect_switch_min_island_old",
         "perfect_switch_min_time",
         "perfect_switch_adjusted",
         "perfect_switch",
         "model_switch_raw",
+        "model_switch_min_island_old",
         "model_switch_min_time",
         "model_switch_adjusted",
         "model_switch",
@@ -443,10 +465,12 @@ def build_model_switch_timeseries(
             *optional_columns,
             "outage_mask",
             "perfect_switch_raw",
+            "perfect_switch_min_island_old",
             "perfect_switch_min_time",
             "perfect_switch_adjusted",
             "perfect_switch",
             "model_switch_raw",
+            "model_switch_min_island_old",
             "model_switch_min_time",
             "model_switch_adjusted",
             "model_switch",

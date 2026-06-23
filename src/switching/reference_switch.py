@@ -9,6 +9,7 @@ from src.switching.conversion import (
     compute_switch_from_signal_values,
     detect_persistent_threshold_switch,
     enforce_switch_time,
+    hold_while_signal_above_threshold,
     ensure_min_island_length,
 )
 
@@ -43,6 +44,7 @@ def compute_perfect_switch_from_true_signal(
     output["Signal_true"] = output[signal_column].astype(float)
     output["outage_mask"] = 0
     output["perfect_switch_raw"] = 0
+    output["perfect_switch_min_island_old"] = 0
     output["perfect_switch_min_time"] = 0
     output["perfect_switch_adjusted"] = 0
     output["perfect_switch"] = 0
@@ -67,20 +69,25 @@ def compute_perfect_switch_from_true_signal(
             threshold=threshold,
             switch_time=switch_time,
         )
-        min_time = (
+        min_island_old = (
             ensure_min_island_length(raw, switch_time)
             if apply_min_island_length
             else raw.copy()
         )
+        min_time = hold_while_signal_above_threshold(min_island_old, outage_mask)
         adjusted = enforce_switch_time(min_time, outage_mask, switch_time)
         output.loc[indices, "outage_mask"] = outage_mask
         output.loc[indices, "perfect_switch_raw"] = raw
+        output.loc[indices, "perfect_switch_min_island_old"] = min_island_old
         output.loc[indices, "perfect_switch_min_time"] = min_time
         output.loc[indices, "perfect_switch_adjusted"] = adjusted
         output.loc[indices, "perfect_switch"] = min_time
 
     output["outage_mask"] = output["outage_mask"].astype("int8")
     output["perfect_switch_raw"] = output["perfect_switch_raw"].astype("int8")
+    output["perfect_switch_min_island_old"] = output[
+        "perfect_switch_min_island_old"
+    ].astype("int8")
     output["perfect_switch_min_time"] = output["perfect_switch_min_time"].astype("int8")
     output["perfect_switch_adjusted"] = output["perfect_switch_adjusted"].astype("int8")
     output["perfect_switch"] = output["perfect_switch"].astype("int8")
@@ -130,6 +137,10 @@ def align_perfect_switch_to_forecast_windows(
     timeseries = perfect_switch_timeseries.copy()
     if "perfect_switch_min_time" not in timeseries:
         timeseries["perfect_switch_min_time"] = timeseries["perfect_switch"]
+    if "perfect_switch_min_island_old" not in timeseries:
+        timeseries["perfect_switch_min_island_old"] = timeseries[
+            "perfect_switch_min_time"
+        ]
     if "outage_mask" not in timeseries:
         timeseries["outage_mask"] = (
             timeseries["Signal_true"].astype(float)
@@ -176,6 +187,9 @@ def align_perfect_switch_to_forecast_windows(
                     "target_time": point.Time,
                     "y_true_raw": float(point.Signal_true),
                     "perfect_switch_raw": int(point.perfect_switch_raw),
+                    "perfect_switch_min_island_old": int(
+                        point.perfect_switch_min_island_old
+                    ),
                     "perfect_switch_min_time": int(point.perfect_switch_min_time),
                     "perfect_switch_adjusted": int(point.perfect_switch_adjusted),
                     "perfect_switch": int(point.perfect_switch),

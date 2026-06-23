@@ -205,6 +205,7 @@ timeseries_columns = [
     "Signal_true",
     "outage_mask",
     "perfect_switch_raw",
+    "perfect_switch_min_island_old",
     "perfect_switch_min_time",
     "perfect_switch_adjusted",
     "perfect_switch",

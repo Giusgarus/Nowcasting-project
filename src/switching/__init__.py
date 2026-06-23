@@ -5,6 +5,7 @@ from src.switching.conversion import (
     compute_switch_from_signal_values,
     detect_persistent_threshold_switch,
     enforce_switch_time,
+    hold_while_signal_above_threshold,
     ensure_min_island_length,
 )
 from src.switching.reference_switch import (
@@ -19,5 +20,6 @@ __all__ = [
     "compute_switch_from_signal_values",
     "detect_persistent_threshold_switch",
     "enforce_switch_time",
+    "hold_while_signal_above_threshold",
     "ensure_min_island_length",
 ]

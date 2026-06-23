@@ -191,9 +191,9 @@ for method in config["methods"]:
         ].sort_values("Time", kind="stable")
         model_event = comparison.loc[
             comparison["event_id"].eq(event_id),
-            ["Time", "model_switch"],
+            ["Time", "model_switch_min_time"],
         ]
-        lookup = model_event.set_index("Time")["model_switch"]
+        lookup = model_event.set_index("Time")["model_switch_min_time"]
         methods: dict[str, np.ndarray] = {
             "Perfect Switch": perfect_event["perfect_switch"].to_numpy(dtype=float),
             method["name"]: perfect_event["Time"].map(lookup).to_numpy(dtype=float),

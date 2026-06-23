@@ -197,6 +197,7 @@ def _complete_behavior_switch_columns(
                 column
                 for column in (
                     "perfect_switch_raw",
+                    "perfect_switch_min_island_old",
                     "perfect_switch_min_time",
                     "perfect_switch_adjusted",
                     "outage_mask",
@@ -219,8 +220,12 @@ def _complete_behavior_switch_columns(
             frame["perfect_switch_raw"] = frame["perfect_switch"]
     if "perfect_switch_min_time" not in frame:
         frame["perfect_switch_min_time"] = frame["perfect_switch"]
+    if "perfect_switch_min_island_old" not in frame:
+        frame["perfect_switch_min_island_old"] = frame["perfect_switch_min_time"]
     if "perfect_switch_adjusted" not in frame:
         frame["perfect_switch_adjusted"] = frame["perfect_switch_min_time"]
+    if "model_switch_min_island_old" not in frame:
+        frame["model_switch_min_island_old"] = frame["model_switch"]
     if "model_switch_min_time" not in frame:
         frame["model_switch_min_time"] = frame["model_switch"]
     if "model_switch_adjusted" not in frame:

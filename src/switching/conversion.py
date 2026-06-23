@@ -69,6 +69,28 @@ def enforce_switch_time(
     return adjusted.reshape(original.shape)
 
 
+def hold_while_signal_above_threshold(
+    switch_after_min_island: Sequence[int | bool] | np.ndarray,
+    outage_mask: Sequence[int | bool] | np.ndarray,
+) -> np.ndarray:
+    """Keep an active switch on while the currently observed signal is in outage."""
+
+    switch = _binary_array(switch_after_min_island)
+    mask = _binary_array(outage_mask)
+    if switch.shape != mask.shape:
+        raise ValueError("switch_after_min_island and outage_mask must match.")
+
+    vector = switch.ravel()
+    mask_vector = mask.ravel()
+    final = vector.copy()
+    for index in range(1, len(final)):
+        if final[index - 1] == 1 and mask_vector[index] == 1:
+            final[index] = 1
+        else:
+            final[index] = vector[index]
+    return final.reshape(switch.shape)
+
+
 def detect_persistent_threshold_switch(
     signal_values: Sequence[float] | np.ndarray,
     *,
