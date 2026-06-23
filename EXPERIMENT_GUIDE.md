@@ -383,7 +383,7 @@ Single runs and grid-search winners publish canonical artifacts under:
 
 ```text
 models/<model_family>/<run_id>/
-results/runs/<run_id>/
+results/runs/<selection_id>/<run_id>/
 ```
 
 Typical canonical model artifacts:
@@ -400,7 +400,7 @@ checkpoint to use for final predictions and comparisons.
 Grid-search details are saved separately under:
 
 ```text
-results/grid_searches/<search_id>/
+results/grid_searches/<selection_id>/<search_id>/
 ```
 
 They include trial checkpoints, rankings, validation histories, metadata, and
@@ -459,7 +459,7 @@ conda run -n Nowcasting python scripts/analysis/13_compare_switch_methods.py
 Main outputs:
 
 ```text
-results/comparisons/switch_eval_<run_id>/
+results/comparisons/switch_eval/<selection_id>/switch_eval_<run_id>/
 results/index/comparisons.csv
 ```
 
@@ -479,8 +479,8 @@ conda run -n Nowcasting python scripts/analysis/14_compare_model_results.py
 Main outputs:
 
 ```text
-results/comparisons/model_result_summary_<selection_id>/tables/validation_forecast_comparison.csv
-results/comparisons/model_result_summary_<selection_id>/tables/test_forecast_switch_comparison.csv
+results/comparisons/model_summary/<selection_id>/model_result_summary_<selection_id>/tables/validation_forecast_comparison.csv
+results/comparisons/model_summary/<selection_id>/model_result_summary_<selection_id>/tables/test_forecast_switch_comparison.csv
 ```
 
 The validation table contains raw-scale validation MAE and RMSE when available.

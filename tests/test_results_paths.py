@@ -6,8 +6,10 @@ import pandas as pd
 
 from src.utils.results_paths import (
     RUN_INDEX_COLUMNS,
+    comparison_group_from_id,
     get_comparison_dir,
     get_data_preparation_dir,
+    get_grid_search_dir,
     get_model_dir,
     get_perfect_switch_dir,
     get_run_dir,
@@ -15,6 +17,7 @@ from src.utils.results_paths import (
     make_run_id,
     make_selection_id,
     resolve_processed_dataset_dir,
+    selection_id_from_artifact_id,
     upsert_index_row,
 )
 
@@ -41,20 +44,42 @@ def test_stable_result_ids() -> None:
     )
 
 
-def test_result_and_model_paths_are_shallow(tmp_path: Path) -> None:
+def test_result_paths_are_grouped_by_selection_and_type(tmp_path: Path) -> None:
     run_id = "gru_s2v_raw_autoLargest_L30_h10_thr10"
 
-    assert get_run_dir(run_id, tmp_path) == tmp_path / "results/runs" / run_id
+    assert get_run_dir(run_id, tmp_path) == (
+        tmp_path / "results/runs/autoLargest_L30_h10_thr10" / run_id
+    )
     assert get_model_dir("gru", run_id, tmp_path) == tmp_path / "models/gru" / run_id
     assert get_perfect_switch_dir("selection", tmp_path) == (
         tmp_path / "results/switching/perfect_switch/selection"
     )
-    assert get_comparison_dir("comparison", tmp_path) == (
-        tmp_path / "results/comparisons/comparison"
+    comparison_id = make_comparison_id(run_id)
+    assert get_comparison_dir(comparison_id, tmp_path) == (
+        tmp_path
+        / "results/comparisons/switch_eval/autoLargest_L30_h10_thr10"
+        / comparison_id
+    )
+    assert get_grid_search_dir(f"grid_{run_id}", tmp_path) == (
+        tmp_path / "results/grid_searches/autoLargest_L30_h10_thr10" / f"grid_{run_id}"
     )
     assert get_data_preparation_dir("selection", tmp_path) == (
         tmp_path / "results/data_preparation/selection"
     )
+
+
+def test_artifact_id_selection_and_comparison_group_helpers() -> None:
+    comparison_id = (
+        "model_result_summary_externalHoldout_test_fc_uplink_fade_L120_h10_thr10"
+    )
+
+    assert selection_id_from_artifact_id(comparison_id) == (
+        "externalHoldout_test_fc_uplink_fade_L120_h10_thr10"
+    )
+    assert comparison_group_from_id(comparison_id) == "model_summary"
+    assert comparison_group_from_id(
+        "gru_architecture_variant_externalHoldout_test_fc_uplink_fade_L30_h10_thr10"
+    ) == "model_selection"
 
 
 def test_processed_dataset_resolver_supports_new_and_legacy_paths(

@@ -76,6 +76,33 @@ GRID_SEARCH_INDEX_COLUMNS = [
     "created_at",
 ]
 
+UNSCOPED_SELECTION_ID = "_unscoped"
+
+
+def selection_id_from_artifact_id(value: str) -> str:
+    """Extract the dataset selection ID embedded in a run/comparison/search ID."""
+
+    pattern = (
+        r"(autoLargest|allDatasets|multi\d+|single_[A-Za-z0-9_]+|"
+        r"externalHoldout_test_[A-Za-z0-9_]+)"
+        r"_L\d+_h\d+_thr[0-9A-Za-zmp]+"
+    )
+    match = re.search(pattern, str(value))
+    return match.group(0) if match else UNSCOPED_SELECTION_ID
+
+
+def comparison_group_from_id(comparison_id: str) -> str:
+    """Return the top-level comparison category for a stable comparison ID."""
+
+    value = str(comparison_id)
+    if value.startswith("switch_eval_"):
+        return "switch_eval"
+    if value.startswith("model_result_summary_"):
+        return "model_summary"
+    if value.startswith(("gru_architecture_variant_", "patchtst_search_")):
+        return "model_selection"
+    return "other"
+
 
 def sanitize_id(value: str) -> str:
     """Return a compact filesystem-safe identifier component."""
@@ -172,7 +199,8 @@ def make_comparison_id(method_id: str, comparison_type: str = "switch_eval") -> 
 
 
 def get_run_dir(run_id: str, root: Path = PROJECT_ROOT) -> Path:
-    return root / "results" / "runs" / run_id
+    selection_id = selection_id_from_artifact_id(run_id)
+    return root / "results" / "runs" / selection_id / run_id
 
 
 def get_model_dir(model_family: str, run_id: str, root: Path = PROJECT_ROOT) -> Path:
@@ -184,7 +212,9 @@ def get_perfect_switch_dir(selection_id: str, root: Path = PROJECT_ROOT) -> Path
 
 
 def get_comparison_dir(comparison_id: str, root: Path = PROJECT_ROOT) -> Path:
-    return root / "results" / "comparisons" / comparison_id
+    selection_id = selection_id_from_artifact_id(comparison_id)
+    group = comparison_group_from_id(comparison_id)
+    return root / "results" / "comparisons" / group / selection_id / comparison_id
 
 
 def get_data_preparation_dir(selection_id: str, root: Path = PROJECT_ROOT) -> Path:
@@ -196,7 +226,9 @@ def get_results_index_dir(root: Path = PROJECT_ROOT) -> Path:
 
 
 def get_grid_search_dir(search_id: str, root: Path = PROJECT_ROOT) -> Path:
-    return root / "results" / "grid_searches" / sanitize_id(search_id)
+    sanitized = sanitize_id(search_id)
+    selection_id = selection_id_from_artifact_id(sanitized)
+    return root / "results" / "grid_searches" / selection_id / sanitized
 
 
 def ensure_results_subdirs(base_dir: Path, subdirs: Sequence[str]) -> dict[str, Path]:

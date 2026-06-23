@@ -1,4 +1,4 @@
-"""Conservatively mirror known artifacts into the stable shallow result structure."""
+"""Conservatively mirror known artifacts into the stable grouped result structure."""
 
 import filecmp
 import shutil

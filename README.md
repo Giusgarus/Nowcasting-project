@@ -168,12 +168,14 @@ conda env export --no-builds | grep -v "^prefix:" > environment.yml
 - `models/<model_family>/<run_id>/`: trained checkpoints and model metadata.
 - `results/data_analysis/`: shared raw-data analysis tables; exploratory
   figures are displayed interactively and are not saved automatically.
-- `results/runs/<run_id>/`: one shallow folder for each model run.
+- `results/runs/<selection_id>/<run_id>/`: one folder for each model run,
+  grouped by dataset/context selection.
 - `results/switching/perfect_switch/<selection_id>/`: Perfect Switch reference.
-- `results/comparisons/<comparison_id>/`: model and baseline comparisons.
+- `results/comparisons/<comparison_type>/<selection_id>/<comparison_id>/`:
+  model summaries, model-selection comparisons, and switch evaluations.
   Each switch-evaluation folder compares exactly one run with one reference.
-- `results/grid_searches/<search_id>/`: validation-only hyperparameter-search
-  trials and selected parameters.
+- `results/grid_searches/<selection_id>/<search_id>/`: validation-only
+  hyperparameter-search trials and selected parameters.
 - `results/data_preparation/<selection_id>/`: human-readable dataset summaries.
 - `results/index/`: central CSV indexes for datasets, runs, references,
   comparisons, and grid searches.

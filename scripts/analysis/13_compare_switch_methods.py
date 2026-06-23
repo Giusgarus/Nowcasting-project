@@ -83,7 +83,7 @@ print(
     "=== Analysis overview ===\n"
     "Prints: forecast-to-switch rule and model-vs-Perfect metrics.\n"
     "Displays: no figures.\n"
-    "Saves: one independent shallow comparison folder per method against Perfect "
+    "Saves: one independent grouped comparison folder per method against Perfect "
     "Switch, with switch-summary metrics, switch-behavior metrics, predictions, "
     "metadata, and event plots.\n"
     "Note: uses saved test predictions only; no model is trained or reloaded.\n"
