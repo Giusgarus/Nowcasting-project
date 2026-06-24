@@ -6,6 +6,8 @@ from src.tasks.current_level_persistence.data.dataset import (
     build_current_level_persistence_index,
     relative_to_current,
     remaining_persistence_samples,
+    split_metadata_for_yaml,
+    target_statistics_seconds_for_yaml,
 )
 
 
@@ -66,3 +68,40 @@ def test_dataset_arrays_include_current_level_targets_and_representations() -> N
     assert metadata["train"].loc[0, "global_window_id"].startswith(
         "toy.csv::clp_window_"
     )
+
+
+def test_dataset_metadata_helpers_use_required_split_names() -> None:
+    metadata = {
+        "train": pd.DataFrame(
+            {
+                "global_event_id": ["toy.csv::event_001", "toy.csv::event_001"],
+                "dataset_name": ["toy.csv", "toy.csv"],
+                "remaining_persistence_seconds": [30.0, 90.0],
+            }
+        ),
+        "validation": pd.DataFrame(
+            {
+                "global_event_id": ["toy.csv::event_002"],
+                "dataset_name": ["toy.csv"],
+                "remaining_persistence_seconds": [60.0],
+            }
+        ),
+        "test": pd.DataFrame(
+            columns=[
+                "global_event_id",
+                "dataset_name",
+                "remaining_persistence_seconds",
+            ]
+        ),
+    }
+
+    splits = split_metadata_for_yaml(metadata)
+    stats = target_statistics_seconds_for_yaml(metadata)
+
+    assert set(splits) == {"train", "val", "test"}
+    assert splits["train"]["n_samples"] == 2
+    assert splits["train"]["n_events"] == 1
+    assert splits["val"]["n_samples"] == 1
+    assert stats["train"]["mean"] == 60.0
+    assert stats["train"]["p10"] == 36.0
+    assert stats["test"]["mean"] is None

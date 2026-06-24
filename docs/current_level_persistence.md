@@ -81,6 +81,23 @@ reports metrics in raw seconds and minutes.
 
 ## Artifact Conventions
 
+Dataset configuration:
+
+```text
+configs/current_level_persistence_dataset_delta_0p5_L30_external_holdout.yaml
+```
+
+Build command:
+
+```bash
+python scripts/experiments/build_current_level_persistence_dataset.py \
+  --config configs/current_level_persistence_dataset_delta_0p5_L30_external_holdout.yaml
+```
+
+If the dataset folder already contains a complete build, the script skips
+without overwriting. Pass `--force` only when intentionally rebuilding the same
+dataset.
+
 Datasets are stored under:
 
 ```text

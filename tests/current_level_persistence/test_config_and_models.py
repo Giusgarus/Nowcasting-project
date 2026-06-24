@@ -14,12 +14,17 @@ CONFIG_DIR = Path("configs/current_level_persistence")
 
 
 def test_current_level_persistence_configs_can_be_parsed() -> None:
-    config_paths = sorted(CONFIG_DIR.glob("*.yaml"))
+    config_paths = sorted(CONFIG_DIR.glob("*.yaml")) + [
+        Path("configs/current_level_persistence_dataset_delta_0p5_L30_external_holdout.yaml")
+    ]
 
     assert config_paths
     for path in config_paths:
         config = load_yaml_config(path)
         assert config["task_name"] == "current_level_persistence"
+        if "dataset" in path.name:
+            assert config["input_columns"]["time"] == "Time"
+            assert config["input_columns"]["signal"] == "Signal_prepared"
 
 
 def test_three_shapelet_model_ids_are_supported() -> None:

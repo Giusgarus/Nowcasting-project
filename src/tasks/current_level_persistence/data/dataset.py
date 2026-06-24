@@ -274,3 +274,51 @@ def summarize_split_metadata(split_metadata: Mapping[str, pd.DataFrame]) -> pd.D
             }
         )
     return pd.DataFrame(rows)
+
+
+def split_metadata_for_yaml(
+    split_metadata: Mapping[str, pd.DataFrame],
+) -> dict[str, dict[str, Any]]:
+    """Return compact split metadata for ``dataset_metadata.yaml``."""
+
+    output: dict[str, dict[str, Any]] = {}
+    for split, frame in split_metadata.items():
+        key = "val" if split == "validation" else split
+        output[key] = {
+            "n_samples": int(len(frame)),
+            "n_events": int(frame["global_event_id"].nunique()) if len(frame) else 0,
+            "datasets": sorted(frame["dataset_name"].astype(str).unique().tolist())
+            if len(frame)
+            else [],
+        }
+    return output
+
+
+def target_statistics_seconds_for_yaml(
+    split_metadata: Mapping[str, pd.DataFrame],
+) -> dict[str, dict[str, float | None]]:
+    """Return target-duration statistics in seconds for each split."""
+
+    output: dict[str, dict[str, float | None]] = {}
+    for split, frame in split_metadata.items():
+        key = "val" if split == "validation" else split
+        if frame.empty:
+            output[key] = {
+                "mean": None,
+                "median": None,
+                "min": None,
+                "max": None,
+                "p10": None,
+                "p90": None,
+            }
+            continue
+        values = frame["remaining_persistence_seconds"].to_numpy(dtype=float)
+        output[key] = {
+            "mean": float(np.mean(values)),
+            "median": float(np.median(values)),
+            "min": float(np.min(values)),
+            "max": float(np.max(values)),
+            "p10": float(np.percentile(values, 10)),
+            "p90": float(np.percentile(values, 90)),
+        }
+    return output
