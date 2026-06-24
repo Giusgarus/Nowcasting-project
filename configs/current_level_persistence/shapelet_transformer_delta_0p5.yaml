@@ -44,6 +44,7 @@ evaluation:
     - rmse_minutes
     - median_ae_minutes
     - mae_log1p_seconds
+    - rmse_log1p_seconds
     - event_mae_seconds_mean
     - event_mae_seconds_median
     - event_rmse_seconds_mean

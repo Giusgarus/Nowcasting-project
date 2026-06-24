@@ -52,6 +52,7 @@ def compute_duration_metrics(
         "rmse_minutes": float(np.sqrt(np.mean(np.square(error_minutes)))),
         "median_ae_minutes": float(np.median(abs_error_minutes)),
         "mae_log1p_seconds": float(np.mean(np.abs(log_error))),
+        "rmse_log1p_seconds": float(np.sqrt(np.mean(np.square(log_error)))),
     }
 
 

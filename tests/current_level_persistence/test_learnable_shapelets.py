@@ -35,16 +35,18 @@ def test_shapelet_layer_accepts_common_input_conventions() -> None:
     assert layer(flat.unsqueeze(1)).shape == (2, 4)
 
 
-def test_convolution_response_maps_are_padded_to_common_length() -> None:
+def test_convolution_response_maps_are_available_by_length() -> None:
     layer = MultiscaleLearnableShapeletLayer(
         context_length=30,
         shapelet_lengths=(5, 10, 15),
         n_shapelets_per_length=3,
     )
 
-    maps = layer.response_maps(torch.randn(2, 30))
+    maps = layer.response_maps_by_length(torch.randn(2, 30))
 
-    assert maps.shape == (2, 9, 26)
+    assert maps[5].shape == (2, 3, 26)
+    assert maps[10].shape == (2, 3, 21)
+    assert maps[15].shape == (2, 3, 16)
 
 
 def test_each_shapelet_model_outputs_one_scalar_per_window_and_backpropagates() -> None:

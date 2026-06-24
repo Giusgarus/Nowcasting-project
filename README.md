@@ -338,6 +338,3 @@ use the task-scoped modules and directories.
 - Do not use non-signal covariates.
 - Record run metadata, config fingerprints, selected device, metrics, and
   artifact paths.
-
-See [AGENTS.md](AGENTS.md) for the complete engineering and methodological
-policy.

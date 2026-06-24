@@ -143,6 +143,20 @@ class MultiscaleLearnableShapeletLayer(nn.Module):
             maps.append(distances)
         return torch.cat(maps, dim=1)
 
+    def response_maps_by_length(self, inputs: torch.Tensor) -> dict[int, torch.Tensor]:
+        """Return unpadded response maps grouped by shapelet length.
+
+        Each value has shape ``(B, n_shapelets_per_length, positions_for_length)``.
+        This is the preferred representation for convolutional heads because it
+        avoids padding response maps with artificial distances.
+        """
+
+        values = self._normalize_inputs(inputs)
+        return {
+            int(length): self._distance_map_for_length(values, length).transpose(1, 2)
+            for length in self.shapelet_lengths
+        }
+
     def shapelets_by_length(self) -> dict[int, torch.Tensor]:
         """Return learned shapelet tensors grouped by length."""
 
@@ -227,7 +241,12 @@ class MultiscaleLearnableShapeletTransformer(nn.Module):
 
 
 class MultiscaleLearnableShapeletConvolution(nn.Module):
-    """Shapelet feature extractor with a convolutional regression head."""
+    """Shapelet extractor with per-scale convolutional regression heads.
+
+    Response maps have different temporal lengths for different shapelet
+    lengths. This head processes each scale separately, pools each scale, then
+    concatenates the pooled scale features before the final regression layer.
+    """
 
     model_id = MODEL_ID_CONVOLUTION
 
@@ -239,38 +258,45 @@ class MultiscaleLearnableShapeletConvolution(nn.Module):
             n_shapelets_per_length=config.n_shapelets_per_length,
         )
         self.pooling = config.pooling
-        layers = []
-        input_channels = self.shapelets.output_size
+        self.scale_convolutions = nn.ModuleDict()
         padding = config.kernel_size // 2
-        for _ in range(config.num_conv_layers):
-            layers.extend(
-                [
-                    nn.Conv1d(
-                        input_channels,
-                        config.conv_channels,
-                        kernel_size=config.kernel_size,
-                        padding=padding,
-                    ),
-                    nn.GELU(),
-                    nn.Dropout(config.dropout),
-                ]
-            )
-            input_channels = config.conv_channels
-        self.convolution = nn.Sequential(*layers)
-        self.head = nn.Linear(config.conv_channels, 1)
+        for length in self.shapelets.shapelet_lengths:
+            layers: list[nn.Module] = []
+            input_channels = self.shapelets.n_shapelets_per_length
+            for _ in range(config.num_conv_layers):
+                layers.extend(
+                    [
+                        nn.Conv1d(
+                            input_channels,
+                            config.conv_channels,
+                            kernel_size=config.kernel_size,
+                            padding=padding,
+                        ),
+                        nn.GELU(),
+                        nn.Dropout(config.dropout),
+                    ]
+                )
+                input_channels = config.conv_channels
+            self.scale_convolutions[str(length)] = nn.Sequential(*layers)
+        self.head = nn.Linear(
+            config.conv_channels * len(self.shapelets.shapelet_lengths),
+            1,
+        )
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         """Predict log1p remaining persistence seconds."""
 
-        maps = self.shapelets.response_maps(inputs)
-        encoded = self.convolution(maps)
-        if self.pooling == "mean":
-            pooled = encoded.mean(dim=-1)
-        elif self.pooling == "max":
-            pooled = encoded.max(dim=-1).values
-        else:
-            raise ValueError(f"Unsupported convolution pooling: {self.pooling}")
-        return self.head(pooled).squeeze(-1)
+        pooled_by_scale = []
+        for length, maps in self.shapelets.response_maps_by_length(inputs).items():
+            encoded = self.scale_convolutions[str(length)](maps)
+            if self.pooling == "mean":
+                pooled = encoded.mean(dim=-1)
+            elif self.pooling == "max":
+                pooled = encoded.max(dim=-1).values
+            else:
+                raise ValueError(f"Unsupported convolution pooling: {self.pooling}")
+            pooled_by_scale.append(pooled)
+        return self.head(torch.cat(pooled_by_scale, dim=1)).squeeze(-1)
 
 
 def build_learnable_shapelet_model(
@@ -291,3 +317,8 @@ def build_learnable_shapelet_model(
     if model_id == MODEL_ID_CONVOLUTION:
         return MultiscaleLearnableShapeletConvolution(config)
     raise ValueError(f"Unsupported current-level persistence model_id: {model_id}")
+
+
+MultiscaleShapeletMLP = MultiscaleLearnableShapeletMLP
+MultiscaleShapeletTransformer = MultiscaleLearnableShapeletTransformer
+MultiscaleShapeletConvolution = MultiscaleLearnableShapeletConvolution

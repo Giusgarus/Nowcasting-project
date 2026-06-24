@@ -148,6 +148,11 @@ X_relative_to_current
   -> predicted log1p remaining persistence seconds
 ```
 
+For the convolutional variant, response maps have different lengths because
+the shapelet lengths differ. The implementation processes each shapelet length
+as a separate scale, pools each scale, then concatenates the pooled scale
+features before the final regression layer.
+
 ## Train Learnable-Shapelet Models
 
 Use the top-level wrapper when running from the repository root:

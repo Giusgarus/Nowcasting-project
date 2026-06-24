@@ -34,3 +34,4 @@ def test_duration_metrics_are_reported_in_seconds_and_minutes() -> None:
     assert metrics["rmse_minutes"] == pytest.approx(0.5)
     assert metrics["median_ae_minutes"] == pytest.approx(0.5)
     assert metrics["mae_log1p_seconds"] > 0.0
+    assert metrics["rmse_log1p_seconds"] > 0.0
