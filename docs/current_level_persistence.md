@@ -84,14 +84,14 @@ reports metrics in raw seconds and minutes.
 Dataset configuration:
 
 ```text
-configs/current_level_persistence_dataset_delta_0p5_L30_external_holdout.yaml
+configs/current_level_persistence/dataset_delta_0p5_L30_external_holdout.yaml
 ```
 
 Build command:
 
 ```bash
 python scripts/experiments/build_current_level_persistence_dataset.py \
-  --config configs/current_level_persistence_dataset_delta_0p5_L30_external_holdout.yaml
+  --config configs/current_level_persistence/dataset_delta_0p5_L30_external_holdout.yaml
 ```
 
 If the dataset folder already contains a complete build, the script skips
@@ -146,6 +146,38 @@ X_relative_to_current
   -> multiscale learnable shapelet layer
   -> head
   -> predicted log1p remaining persistence seconds
+```
+
+## Train Learnable-Shapelet Models
+
+Use the top-level wrapper when running from the repository root:
+
+```bash
+python scripts/experiments/run_shapelet_current_level_persistence.py \
+  --config configs/current_level_persistence/shapelet_mlp_delta_0p5.yaml
+```
+
+The other implemented variants use:
+
+```bash
+python scripts/experiments/run_shapelet_current_level_persistence.py \
+  --config configs/current_level_persistence/shapelet_transformer_delta_0p5.yaml
+
+python scripts/experiments/run_shapelet_current_level_persistence.py \
+  --config configs/current_level_persistence/shapelet_convolution_delta_0p5.yaml
+```
+
+Each run saves validation/test predictions, metrics, diagnostic figures,
+learned-shapelet plots, `metadata.yaml`, and `config_resolved.yaml` under:
+
+```text
+results/runs/current_level_persistence/<selection_id>/<run_id>/
+```
+
+Best and last checkpoints are saved under:
+
+```text
+models/current_level_persistence/<model_id>/<run_id>/
 ```
 
 ## Future Switch Derivation

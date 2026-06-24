@@ -29,7 +29,7 @@ from src.utils.results_paths import relative_project_path
 
 DEFAULT_CONFIG_PATH = (
     PROJECT_ROOT
-    / "configs/current_level_persistence_dataset_delta_0p5_L30_external_holdout.yaml"
+    / "configs/current_level_persistence/dataset_delta_0p5_L30_external_holdout.yaml"
 )
 
 

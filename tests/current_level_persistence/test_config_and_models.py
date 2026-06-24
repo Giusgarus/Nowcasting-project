@@ -15,7 +15,7 @@ CONFIG_DIR = Path("configs/current_level_persistence")
 
 def test_current_level_persistence_configs_can_be_parsed() -> None:
     config_paths = sorted(CONFIG_DIR.glob("*.yaml")) + [
-        Path("configs/current_level_persistence_dataset_delta_0p5_L30_external_holdout.yaml")
+        Path("configs/current_level_persistence/dataset_delta_0p5_L30_external_holdout.yaml")
     ]
 
     assert config_paths

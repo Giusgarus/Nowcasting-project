@@ -26,7 +26,22 @@ class ShapeletConfig:
     shapelet_lengths: tuple[int, ...] = (5, 10, 15)
     n_shapelets_per_length: int = 32
     hidden_size: int = 128
+    hidden_dim: int | None = None
+    num_hidden_layers: int = 2
+    d_model: int = 64
+    n_heads: int = 4
+    transformer_layers: int = 1
+    pooling: str = "mean"
+    conv_channels: int = 64
+    num_conv_layers: int = 2
+    kernel_size: int = 3
     dropout: float = 0.1
+
+    @property
+    def mlp_hidden_dim(self) -> int:
+        """Return the MLP hidden width, accepting both config key conventions."""
+
+        return int(self.hidden_dim if self.hidden_dim is not None else self.hidden_size)
 
 
 class MultiscaleLearnableShapeletLayer(nn.Module):
@@ -67,27 +82,74 @@ class MultiscaleLearnableShapeletLayer(nn.Module):
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         """Return multiscale minimum-distance features.
 
-        ``inputs`` may have shape ``(batch, context_length)`` or
-        ``(batch, context_length, 1)``.
+        ``inputs`` may have shape ``(batch, context_length)``,
+        ``(batch, context_length, 1)``, or ``(batch, 1, context_length)``.
         """
+
+        values = self._normalize_inputs(inputs)
+        features = []
+        for length in self.shapelet_lengths:
+            distances = self._distance_map_for_length(values, length)
+            min_distances = distances.min(dim=1).values
+            features.append(min_distances)
+        return torch.cat(features, dim=1)
+
+    def _normalize_inputs(self, inputs: torch.Tensor) -> torch.Tensor:
+        """Return inputs as ``(batch, context_length)``."""
 
         if inputs.ndim == 3 and inputs.shape[-1] == 1:
             values = inputs.squeeze(-1)
+        elif inputs.ndim == 3 and inputs.shape[1] == 1:
+            values = inputs.squeeze(1)
         elif inputs.ndim == 2:
             values = inputs
         else:
-            raise ValueError("inputs must have shape (B, L) or (B, L, 1).")
+            raise ValueError("inputs must have shape (B, L), (B, L, 1), or (B, 1, L).")
         if values.shape[1] != self.context_length:
             raise ValueError("inputs context length does not match model config.")
+        return values
 
-        features = []
+    def _distance_map_for_length(
+        self,
+        values: torch.Tensor,
+        length: int,
+    ) -> torch.Tensor:
+        """Return mean-squared distance maps with shape ``(B, positions, S)``."""
+
+        windows = values.unfold(dimension=1, size=length, step=1)
+        shapelets = self.shapelets[str(length)]
+        distances = torch.square(windows[:, :, None, :] - shapelets[None, None])
+        return distances.mean(dim=-1)
+
+    def response_maps(self, inputs: torch.Tensor) -> torch.Tensor:
+        """Return padded multiscale shapelet distance maps for convolution heads.
+
+        Response-map lengths differ by shapelet length. This method pads shorter
+        maps on the right to the longest map length, then concatenates all
+        shapelets along the channel dimension, returning ``(B, total_shapelets, T)``.
+        """
+
+        values = self._normalize_inputs(inputs)
+
+        max_positions = max(
+            self.context_length - length + 1 for length in self.shapelet_lengths
+        )
+        maps = []
         for length in self.shapelet_lengths:
-            windows = values.unfold(dimension=1, size=length, step=1)
-            shapelets = self.shapelets[str(length)]
-            distances = torch.square(windows[:, :, None, :] - shapelets[None, None])
-            min_distances = distances.mean(dim=-1).min(dim=1).values
-            features.append(min_distances)
-        return torch.cat(features, dim=1)
+            distances = self._distance_map_for_length(values, length).transpose(1, 2)
+            pad_width = max_positions - distances.shape[-1]
+            if pad_width > 0:
+                distances = torch.nn.functional.pad(distances, (0, pad_width))
+            maps.append(distances)
+        return torch.cat(maps, dim=1)
+
+    def shapelets_by_length(self) -> dict[int, torch.Tensor]:
+        """Return learned shapelet tensors grouped by length."""
+
+        return {
+            int(length): self.shapelets[str(length)].detach().cpu()
+            for length in self.shapelet_lengths
+        }
 
 
 class MultiscaleLearnableShapeletMLP(nn.Module):
@@ -102,13 +164,19 @@ class MultiscaleLearnableShapeletMLP(nn.Module):
             shapelet_lengths=config.shapelet_lengths,
             n_shapelets_per_length=config.n_shapelets_per_length,
         )
-        self.head = nn.Sequential(
-            nn.LayerNorm(self.shapelets.output_size),
-            nn.Linear(self.shapelets.output_size, config.hidden_size),
-            nn.GELU(),
-            nn.Dropout(config.dropout),
-            nn.Linear(config.hidden_size, 1),
-        )
+        layers: list[nn.Module] = [nn.LayerNorm(self.shapelets.output_size)]
+        input_dim = self.shapelets.output_size
+        for _ in range(config.num_hidden_layers):
+            layers.extend(
+                [
+                    nn.Linear(input_dim, config.mlp_hidden_dim),
+                    nn.GELU(),
+                    nn.Dropout(config.dropout),
+                ]
+            )
+            input_dim = config.mlp_hidden_dim
+        layers.append(nn.Linear(input_dim, 1))
+        self.head = nn.Sequential(*layers)
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         """Predict log1p remaining persistence seconds."""
@@ -121,31 +189,41 @@ class MultiscaleLearnableShapeletTransformer(nn.Module):
 
     model_id = MODEL_ID_TRANSFORMER
 
-    def __init__(self, config: ShapeletConfig, *, n_heads: int = 4) -> None:
+    def __init__(self, config: ShapeletConfig) -> None:
         super().__init__()
         self.shapelets = MultiscaleLearnableShapeletLayer(
             context_length=config.context_length,
             shapelet_lengths=config.shapelet_lengths,
             n_shapelets_per_length=config.n_shapelets_per_length,
         )
-        self.projection = nn.Linear(1, config.hidden_size)
+        self.pooling = config.pooling
+        self.projection = nn.Linear(1, config.d_model)
         encoder_layer = nn.TransformerEncoderLayer(
-            d_model=config.hidden_size,
-            nhead=n_heads,
-            dim_feedforward=config.hidden_size * 2,
+            d_model=config.d_model,
+            nhead=config.n_heads,
+            dim_feedforward=config.d_model * 2,
             dropout=config.dropout,
             batch_first=True,
             activation="gelu",
         )
-        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=1)
-        self.head = nn.Linear(config.hidden_size, 1)
+        self.encoder = nn.TransformerEncoder(
+            encoder_layer,
+            num_layers=config.transformer_layers,
+        )
+        self.head = nn.Linear(config.d_model, 1)
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         """Predict log1p remaining persistence seconds."""
 
         features = self.shapelets(inputs).unsqueeze(-1)
         encoded = self.encoder(self.projection(features))
-        return self.head(encoded.mean(dim=1)).squeeze(-1)
+        if self.pooling == "mean":
+            pooled = encoded.mean(dim=1)
+        elif self.pooling == "max":
+            pooled = encoded.max(dim=1).values
+        else:
+            raise ValueError(f"Unsupported transformer pooling: {self.pooling}")
+        return self.head(pooled).squeeze(-1)
 
 
 class MultiscaleLearnableShapeletConvolution(nn.Module):
@@ -160,20 +238,39 @@ class MultiscaleLearnableShapeletConvolution(nn.Module):
             shapelet_lengths=config.shapelet_lengths,
             n_shapelets_per_length=config.n_shapelets_per_length,
         )
-        self.head = nn.Sequential(
-            nn.Conv1d(1, config.hidden_size, kernel_size=3, padding=1),
-            nn.GELU(),
-            nn.Dropout(config.dropout),
-            nn.AdaptiveAvgPool1d(1),
-            nn.Flatten(),
-            nn.Linear(config.hidden_size, 1),
-        )
+        self.pooling = config.pooling
+        layers = []
+        input_channels = self.shapelets.output_size
+        padding = config.kernel_size // 2
+        for _ in range(config.num_conv_layers):
+            layers.extend(
+                [
+                    nn.Conv1d(
+                        input_channels,
+                        config.conv_channels,
+                        kernel_size=config.kernel_size,
+                        padding=padding,
+                    ),
+                    nn.GELU(),
+                    nn.Dropout(config.dropout),
+                ]
+            )
+            input_channels = config.conv_channels
+        self.convolution = nn.Sequential(*layers)
+        self.head = nn.Linear(config.conv_channels, 1)
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         """Predict log1p remaining persistence seconds."""
 
-        features = self.shapelets(inputs).unsqueeze(1)
-        return self.head(features).squeeze(-1)
+        maps = self.shapelets.response_maps(inputs)
+        encoded = self.convolution(maps)
+        if self.pooling == "mean":
+            pooled = encoded.mean(dim=-1)
+        elif self.pooling == "max":
+            pooled = encoded.max(dim=-1).values
+        else:
+            raise ValueError(f"Unsupported convolution pooling: {self.pooling}")
+        return self.head(pooled).squeeze(-1)
 
 
 def build_learnable_shapelet_model(

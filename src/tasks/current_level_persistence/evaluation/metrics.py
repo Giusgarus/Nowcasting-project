@@ -55,6 +55,43 @@ def compute_duration_metrics(
     }
 
 
+def compute_event_duration_metrics(
+    event_ids: np.ndarray,
+    y_true_log1p_seconds: np.ndarray,
+    y_pred_log1p_seconds: np.ndarray,
+    *,
+    clip_negative_predictions: bool = True,
+) -> dict[str, float]:
+    """Summarize per-event duration errors."""
+
+    ids = np.asarray(event_ids)
+    y_true_log = np.asarray(y_true_log1p_seconds, dtype=float)
+    y_pred_log = np.asarray(y_pred_log1p_seconds, dtype=float)
+    if not (len(ids) == len(y_true_log) == len(y_pred_log)):
+        raise ValueError("event_ids, y_true, and y_pred must have matching lengths.")
+    if len(ids) == 0:
+        raise ValueError("Metric inputs cannot be empty.")
+
+    y_true_seconds = seconds_from_log1p(y_true_log, clip_negative=False)
+    y_pred_seconds = seconds_from_log1p(
+        y_pred_log,
+        clip_negative=clip_negative_predictions,
+    )
+    event_mae = []
+    event_rmse = []
+    for event_id in np.unique(ids):
+        mask = ids == event_id
+        error = y_pred_seconds[mask] - y_true_seconds[mask]
+        event_mae.append(float(np.mean(np.abs(error))))
+        event_rmse.append(float(np.sqrt(np.mean(np.square(error)))))
+    return {
+        "event_mae_seconds_mean": float(np.mean(event_mae)),
+        "event_mae_seconds_median": float(np.median(event_mae)),
+        "event_rmse_seconds_mean": float(np.mean(event_rmse)),
+        "event_rmse_seconds_median": float(np.median(event_rmse)),
+    }
+
+
 def prediction_table_columns() -> list[str]:
     """Return the standard prediction table schema for this task."""
 
@@ -65,6 +102,7 @@ def prediction_table_columns() -> list[str]:
         "window_id",
         "global_event_id",
         "global_window_id",
+        "split",
         "y_true_seconds",
         "y_true_log1p_seconds",
         "y_pred_seconds",
@@ -73,5 +111,4 @@ def prediction_table_columns() -> list[str]:
         "absolute_error_minutes",
         "model_id",
         "run_id",
-        "split",
     ]

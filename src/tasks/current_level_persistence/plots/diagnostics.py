@@ -107,6 +107,29 @@ def plot_learned_shapelets(
 
     destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
+    n_lengths = len(shapelets_by_length)
+    fig, axes = plt.subplots(
+        n_lengths,
+        1,
+        figsize=(9, max(3, 3 * n_lengths)),
+        squeeze=False,
+    )
+    for axis, (length, shapelets) in zip(
+        axes.ravel(),
+        sorted(shapelets_by_length.items()),
+        strict=False,
+    ):
+        values = np.asarray(shapelets)
+        for shapelet in values:
+            axis.plot(shapelet, alpha=0.35)
+        axis.set_title(f"Length {length}")
+        axis.set_xlabel("Shapelet sample")
+        axis.set_ylabel("Relative signal")
+    fig.suptitle("Learned Shapelets by Length")
+    fig.tight_layout()
+    fig.savefig(destination / "learned_shapelets_by_length.png", dpi=150)
+    plt.close(fig)
+
     for length, shapelets in sorted(shapelets_by_length.items()):
         values = np.asarray(shapelets)
         fig, ax = plt.subplots(figsize=(9, 5))

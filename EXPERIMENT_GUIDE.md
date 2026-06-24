@@ -3,6 +3,9 @@
 This document is the operational runbook for the currently implemented
 pipeline. Run every command from the repository root.
 
+For the task-level methodological summary of the autoregressive branch, see
+`docs/autoregressive.md`.
+
 The complete implemented workflow is:
 
 ```text
@@ -15,7 +18,9 @@ raw data review
     -> model-versus-Perfect-Switch comparisons
 ```
 
-Mamba, shapelet, and survival experiments are not implemented yet.
+Mamba and survival experiments are not implemented yet. The separate
+`current_level_persistence` task has a learnable-shapelet training runner; see
+`docs/current_level_persistence.md` for its dataset and model commands.
 
 ## 1. Environment And Verification
 
@@ -120,7 +125,7 @@ data/interim/clean_signal/
 data/interim/candidate_events/
 data/interim/event_windows/<threshold_folder>/
 data/processed/autoregressive/<threshold_folder>/window_index_L<context>_h<horizon>.parquet
-results/data_preparation/<threshold_folder>/
+results/data_preparation/autoregressive/<threshold_folder>/
 ```
 
 This stage creates event-centered data and the official no-leakage window
@@ -193,7 +198,7 @@ Current external-holdout output path:
 
 ```text
 data/processed/autoregressive/threshold_10p0/datasets_L30_h10/externalHoldout_test_fc_uplink_fade/
-results/data_preparation/externalHoldout_test_fc_uplink_fade_L30_h10_thr10/
+results/data_preparation/autoregressive/externalHoldout_test_fc_uplink_fade_L30_h10_thr10/
 ```
 
 The final dataset folder contains:
@@ -511,7 +516,7 @@ conda run -n Nowcasting python scripts/analysis/autoregressive/13_compare_switch
 Main outputs:
 
 ```text
-results/comparisons/switch_eval/<selection_id>/switch_eval_<run_id>/
+results/comparisons/switch_eval/autoregressive/<selection_id>/switch_eval_<run_id>/
 results/index/comparisons.csv
 ```
 
@@ -531,8 +536,8 @@ conda run -n Nowcasting python scripts/analysis/autoregressive/14_compare_model_
 Main outputs:
 
 ```text
-results/comparisons/model_summary/<selection_id>/model_result_summary_<selection_id>/tables/validation_forecast_comparison.csv
-results/comparisons/model_summary/<selection_id>/model_result_summary_<selection_id>/tables/test_forecast_switch_comparison.csv
+results/comparisons/model_summary/autoregressive/<selection_id>/model_result_summary_<selection_id>/tables/validation_forecast_comparison.csv
+results/comparisons/model_summary/autoregressive/<selection_id>/model_result_summary_<selection_id>/tables/test_forecast_switch_comparison.csv
 ```
 
 The validation table contains raw-scale validation MAE and RMSE when available.
