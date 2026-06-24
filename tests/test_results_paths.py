@@ -13,9 +13,11 @@ from src.utils.results_paths import (
     get_model_dir,
     get_perfect_switch_dir,
     get_run_dir,
+    get_legacy_run_dir,
     make_comparison_id,
     make_run_id,
     make_selection_id,
+    resolve_run_dir,
     resolve_processed_dataset_dir,
     selection_id_from_artifact_id,
     upsert_index_row,
@@ -48,24 +50,39 @@ def test_result_paths_are_grouped_by_selection_and_type(tmp_path: Path) -> None:
     run_id = "gru_s2v_raw_autoLargest_L30_h10_thr10"
 
     assert get_run_dir(run_id, tmp_path) == (
+        tmp_path / "results/runs/autoregressive/autoLargest_L30_h10_thr10" / run_id
+    )
+    assert get_legacy_run_dir(run_id, tmp_path) == (
         tmp_path / "results/runs/autoLargest_L30_h10_thr10" / run_id
     )
-    assert get_model_dir("gru", run_id, tmp_path) == tmp_path / "models/gru" / run_id
+    assert get_model_dir("gru", run_id, tmp_path) == (
+        tmp_path / "models/autoregressive/gru" / run_id
+    )
     assert get_perfect_switch_dir("selection", tmp_path) == (
-        tmp_path / "results/switching/perfect_switch/selection"
+        tmp_path / "results/switching/perfect_switch/autoregressive/selection"
     )
     comparison_id = make_comparison_id(run_id)
     assert get_comparison_dir(comparison_id, tmp_path) == (
         tmp_path
-        / "results/comparisons/switch_eval/autoLargest_L30_h10_thr10"
+        / "results/comparisons/switch_eval/autoregressive/autoLargest_L30_h10_thr10"
         / comparison_id
     )
     assert get_grid_search_dir(f"grid_{run_id}", tmp_path) == (
-        tmp_path / "results/grid_searches/autoLargest_L30_h10_thr10" / f"grid_{run_id}"
+        tmp_path
+        / "results/grid_searches/autoregressive/autoLargest_L30_h10_thr10"
+        / f"grid_{run_id}"
     )
     assert get_data_preparation_dir("selection", tmp_path) == (
-        tmp_path / "results/data_preparation/selection"
+        tmp_path / "results/data_preparation/autoregressive/selection"
     )
+
+
+def test_result_path_resolvers_fall_back_to_legacy_layout(tmp_path: Path) -> None:
+    run_id = "gru_s2v_raw_autoLargest_L30_h10_thr10"
+    legacy = tmp_path / "results/runs/autoLargest_L30_h10_thr10" / run_id
+    legacy.mkdir(parents=True)
+
+    assert resolve_run_dir(run_id, tmp_path) == legacy
 
 
 def test_artifact_id_selection_and_comparison_group_helpers() -> None:

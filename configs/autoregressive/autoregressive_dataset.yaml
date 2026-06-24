@@ -3,7 +3,7 @@ data:
   event_windows_path: data/interim/event_windows/threshold_10p0/all_event_windows.parquet
   window_index_path: data/processed/autoregressive/threshold_10p0/window_index_L30_h10.parquet
   output_root: data/processed/autoregressive/threshold_10p0/datasets_L30_h10
-  results_root: results/data_preparation
+  results_root: results/data_preparation/autoregressive
 
 forecasting:
   context_length: 30

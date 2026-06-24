@@ -18,11 +18,11 @@ from src.tuning.parallel_trials import (
     iter_parallel_trial_results,
 )
 from src.tuning.trial_logging import format_trial_start
-from scripts.experiments.run_gru_grid_search import (
+from scripts.experiments.autoregressive.run_gru_grid_search import (
     build_gru_trial_candidates,
     trial_display_parameters,
 )
-from scripts.experiments.run_patchtst_grid_search import validate_config
+from scripts.experiments.autoregressive.run_patchtst_grid_search import validate_config
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -70,7 +70,7 @@ def test_grid_and_selection_reject_invalid_inputs() -> None:
 
 
 def test_gru_grid_search_config_includes_num_layers_in_grid() -> None:
-    config = load_yaml_config(PROJECT_ROOT / "configs/gru_grid_search.yaml")
+    config = load_yaml_config(PROJECT_ROOT / "configs/autoregressive/gru_grid_search.yaml")
 
     assert config["fixed_model"].get("num_layers") is None
     assert config["parameter_grid"]["num_layers"] == [1, 2, 3]
@@ -79,7 +79,9 @@ def test_gru_grid_search_config_includes_num_layers_in_grid() -> None:
 
 
 def test_patchtst_grid_search_config_uses_explicit_safety_limit() -> None:
-    config = load_yaml_config(PROJECT_ROOT / "configs/patchtst_grid_search.yaml")
+    config = load_yaml_config(
+        PROJECT_ROOT / "configs/autoregressive/patchtst_grid_search.yaml"
+    )
     num_candidates = len(expand_parameter_grid(config["parameter_grid"]))
 
     assert num_candidates == 864

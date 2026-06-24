@@ -215,9 +215,14 @@ results/**/*.pdf
 !results/runs/*/predictions/test_predictions.parquet
 !results/runs/*/*/predictions/
 !results/runs/*/*/predictions/test_predictions.parquet
+!results/runs/*/*/*/predictions/
+!results/runs/*/*/*/predictions/test_predictions.parquet
 !results/switching/perfect_switch/*/tables/
 !results/switching/perfect_switch/*/tables/perfect_switch_timeseries.parquet
 !results/switching/perfect_switch/*/tables/perfect_switch_window_targets.parquet
+!results/switching/perfect_switch/*/*/tables/
+!results/switching/perfect_switch/*/*/tables/perfect_switch_timeseries.parquet
+!results/switching/perfect_switch/*/*/tables/perfect_switch_window_targets.parquet
 
 # Keep minimal processed-dataset metadata needed to rerun switch comparisons
 # without tracking model-ready arrays.

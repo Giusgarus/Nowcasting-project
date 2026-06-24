@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.datasets.autoregressive_dataset import (
+from src.tasks.autoregressive.data.autoregressive_dataset import (
     build_autoregressive_arrays_from_window_index,
     compute_context_standardization,
     filter_window_index,

@@ -1,0 +1,39 @@
+from src.tasks.current_level_persistence.utils.paths import (
+    make_run_id,
+    make_selection_id,
+    model_dir,
+    processed_dataset_dir,
+    run_dir,
+)
+
+
+def test_current_level_persistence_paths_are_task_separated() -> None:
+    selection_id = make_selection_id("fc-uplink-fade.csv")
+    run_id = make_run_id(
+        delta=0.5,
+        context_length=30,
+        model_id="multiscale_shapelet_mlp",
+        selection_id=selection_id,
+    )
+
+    dataset_path = processed_dataset_dir(
+        delta=0.5,
+        context_length=30,
+        selection_id=selection_id,
+    )
+    result_path = run_dir(run_id)
+    checkpoint_path = model_dir(run_id)
+
+    assert selection_id == "externalHoldout_test_fc_uplink_fade"
+    assert "current_level_persistence" in str(dataset_path)
+    assert "current_level_persistence" in str(result_path)
+    assert "current_level_persistence" in str(checkpoint_path)
+    assert selection_id in str(result_path)
+    assert "multiscale_shapelet_mlp" in str(checkpoint_path)
+    assert "autoregressive" not in str(dataset_path)
+    assert "autoregressive" not in str(result_path)
+    assert "autoregressive" not in str(checkpoint_path)
+    assert run_id == (
+        "currentLevelPersistence_delta0p5_L30_multiscale_shapelet_mlp_"
+        "externalHoldout_test_fc_uplink_fade"
+    )

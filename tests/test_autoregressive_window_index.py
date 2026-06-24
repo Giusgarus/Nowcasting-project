@@ -3,7 +3,7 @@
 import pandas as pd
 
 from src.analysis.event_preparation import summarize_threshold_balance
-from src.datasets.windowed_forecasting import build_autoregressive_window_index
+from src.tasks.autoregressive.data.windowed_forecasting import build_autoregressive_window_index
 
 
 def test_window_index_stays_inside_event_and_segment() -> None:

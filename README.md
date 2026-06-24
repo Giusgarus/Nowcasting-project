@@ -78,7 +78,7 @@ Run the GRU grid search with live, unbuffered trial output:
 
 ```bash
 PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
-  python scripts/experiments/run_gru_grid_search.py
+  python scripts/experiments/autoregressive/run_gru_grid_search.py
 ```
 
 Before every trial, the script prints its full effective model, optimizer, and
@@ -86,22 +86,23 @@ training parameters. Shared grid parameters apply to both architectures;
 `teacher_forcing_ratio` is expanded only for `gru_seq2seq`.
 
 Run one PatchTST configuration for each variant using
-`configs/autoregressive_patchtst.yaml`:
+`configs/autoregressive/autoregressive_patchtst.yaml`:
 
 ```bash
 PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
-  python scripts/experiments/run_autoregressive_patchtst.py
+  python scripts/experiments/autoregressive/run_autoregressive_patchtst.py
 ```
 
 To execute exactly one run, leave only one value under
 `experiment.variants`, for example `raw`.
 
-Run the PatchTST grid search using `configs/patchtst_grid_search.yaml` after
-building the external-holdout dataset:
+Run the PatchTST grid search using
+`configs/autoregressive/patchtst_grid_search.yaml` after building the
+external-holdout dataset:
 
 ```bash
 PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
-  python scripts/experiments/run_patchtst_grid_search.py
+  python scripts/experiments/autoregressive/run_patchtst_grid_search.py
 ```
 
 The full PatchTST grid is printed before the safety check. Trial checkpoints
@@ -113,23 +114,23 @@ Run Chronos zero-shot evaluation on the external-holdout test split:
 
 ```bash
 PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
-  python scripts/experiments/run_autoregressive_chronos_zero_shot.py
+  python scripts/experiments/autoregressive/run_autoregressive_chronos_zero_shot.py
 ```
 
 To evaluate the longer-context Chronos variant, use the dedicated config:
 
 ```bash
 PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
-  python scripts/experiments/run_autoregressive_chronos_zero_shot.py \
-  --config configs/autoregressive_chronos_L120_h10.yaml
+  python scripts/experiments/autoregressive/run_autoregressive_chronos_zero_shot.py \
+  --config configs/autoregressive/autoregressive_chronos_L120_h10.yaml
 ```
 
 After model predictions exist, build model-versus-Perfect-Switch comparisons
 and the compact cross-model summary tables:
 
 ```bash
-conda run -n Nowcasting python scripts/analysis/13_compare_switch_methods.py
-conda run -n Nowcasting python scripts/analysis/14_compare_model_results.py
+conda run -n Nowcasting python scripts/analysis/autoregressive/13_compare_switch_methods.py
+conda run -n Nowcasting python scripts/analysis/autoregressive/14_compare_model_results.py
 ```
 
 The current switch-conversion rule is decision-time based: at each
@@ -168,23 +169,30 @@ conda env export --no-builds | grep -v "^prefix:" > environment.yml
 
 ## Repository Layout
 
-- `configs/`: data preparation and autoregressive experiment configurations.
+- `configs/autoregressive/`: autoregressive data and experiment configurations.
+- `configs/current_level_persistence/`: current-level persistence configurations.
 - `data/`: raw, interim, and processed data. Raw data must never be modified.
-- `scripts/analysis/`: interactive Python analysis scripts using `# %%` cells.
-- `scripts/experiments/`: executable autoregressive experiments.
+- `scripts/analysis/autoregressive/`: autoregressive preparation, Perfect
+  Switch, and comparison scripts.
+- `scripts/experiments/autoregressive/`: executable autoregressive experiments.
+- `scripts/experiments/current_level_persistence/`: current-level persistence
+  dataset and model entrypoints.
 - `src/`: reusable analysis, data, dataset, model, evaluation, and utility code.
-- `models/<model_family>/<run_id>/`: trained checkpoints and model metadata.
+- `models/<task>/<model_family>/<run_id>/`: trained checkpoints and model
+  metadata for task-scoped model runs.
 - `results/data_analysis/`: shared raw-data analysis tables; exploratory
   figures are displayed interactively and are not saved automatically.
-- `results/runs/<selection_id>/<run_id>/`: one folder for each model run,
-  grouped by dataset/context selection.
-- `results/switching/perfect_switch/<selection_id>/`: Perfect Switch reference.
-- `results/comparisons/<comparison_type>/<selection_id>/<comparison_id>/`:
+- `results/runs/<task>/<selection_id>/<run_id>/`: one folder for each model
+  run, grouped by task and dataset/context selection.
+- `results/switching/perfect_switch/<task>/<selection_id>/`: Perfect Switch
+  reference.
+- `results/comparisons/<comparison_type>/<task>/<selection_id>/<comparison_id>/`:
   model summaries, model-selection comparisons, and switch evaluations.
   Each switch-evaluation folder compares exactly one run with one reference.
-- `results/grid_searches/<selection_id>/<search_id>/`: validation-only
+- `results/grid_searches/<task>/<selection_id>/<search_id>/`: validation-only
   hyperparameter-search trials and selected parameters.
-- `results/data_preparation/<selection_id>/`: human-readable dataset summaries.
+- `results/data_preparation/<task>/<selection_id>/`: human-readable dataset
+  summaries.
 - `results/index/`: central CSV indexes for datasets, runs, references,
   comparisons, and grid searches.
 - `reports/`: methodological notes and experiment logs.

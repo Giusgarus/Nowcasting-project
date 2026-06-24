@@ -1,0 +1,38 @@
+task_name: current_level_persistence
+model_family: learnable_shapelets
+model_id: multiscale_shapelet_convolution
+
+dataset:
+  path: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/
+  input_key: X_relative_to_current
+  target_key: y_log1p_remaining_persistence_seconds
+
+target:
+  train_space: log1p_seconds
+  eval_space: seconds
+
+training:
+  loss: huber
+  batch_size: 256
+  max_epochs: 200
+  early_stopping_patience: 20
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  device: auto
+  mixed_precision: true
+  seed: 42
+
+shapelets:
+  shapelet_lengths: [5, 10, 15]
+  n_shapelets_per_length: 32
+
+evaluation:
+  primary_selection_metric: val_mae_seconds
+  metrics:
+    - mae_seconds
+    - rmse_seconds
+    - median_ae_seconds
+    - mae_minutes
+    - rmse_minutes
+    - median_ae_minutes
+    - mae_log1p_seconds

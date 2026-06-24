@@ -9,7 +9,7 @@ from src.evaluation.forecast_metrics import (
     compute_trajectory_metrics,
     inverse_context_standardization,
 )
-from src.models.autoregressive.gru import (
+from src.tasks.autoregressive.models.gru import (
     GRUSeq2SeqForecaster,
     GRUSequenceToVectorForecaster,
 )

@@ -5,11 +5,11 @@ import pandas as pd
 import pytest
 import torch
 
-from scripts.experiments.run_autoregressive_patchtst import (
+from scripts.experiments.autoregressive.run_autoregressive_patchtst import (
     build_single_run_model_config,
     validate_config as validate_single_run_config,
 )
-from scripts.experiments.run_patchtst_grid_search import (
+from scripts.experiments.autoregressive.run_patchtst_grid_search import (
     build_prediction_table,
     load_trial_checkpoint,
     save_trial_checkpoint,
@@ -20,11 +20,11 @@ from src.evaluation.forecast_metrics import (
     compute_trajectory_metrics,
     inverse_context_standardization,
 )
-from src.models.autoregressive.patchtst import (
+from src.tasks.autoregressive.models.patchtst import (
     PatchTSTForecaster,
     compute_num_patches,
 )
-from src.models.autoregressive.patchtst_training import PatchTSTTrainingResult
+from src.tasks.autoregressive.models.patchtst_training import PatchTSTTrainingResult
 
 
 def _model(**overrides) -> PatchTSTForecaster:

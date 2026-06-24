@@ -1,6 +1,6 @@
 """Tests for autoregressive window index construction."""
 
-from src.datasets.windowed_forecasting import build_window_indices
+from src.tasks.autoregressive.data.windowed_forecasting import build_window_indices
 
 
 def test_builds_no_leakage_windows() -> None:

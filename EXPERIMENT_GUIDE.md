@@ -110,7 +110,7 @@ Important settings include:
 Run:
 
 ```bash
-conda run -n Nowcasting python scripts/analysis/09_prepare_event_windows.py
+conda run -n Nowcasting python scripts/analysis/autoregressive/09_prepare_event_windows.py
 ```
 
 Main outputs:
@@ -136,7 +136,7 @@ consistent.
 Configuration:
 
 ```text
-configs/autoregressive_dataset.yaml
+configs/autoregressive/autoregressive_dataset.yaml
 ```
 
 This stage selects datasets and builds aligned `train`, `val`, and `test`
@@ -165,14 +165,14 @@ This means:
 Run:
 
 ```bash
-conda run -n Nowcasting python scripts/analysis/10_build_autoregressive_datasets.py
+conda run -n Nowcasting python scripts/analysis/autoregressive/10_build_autoregressive_datasets.py
 ```
 
 Alternate dataset configurations can be passed explicitly:
 
 ```bash
-conda run -n Nowcasting python scripts/analysis/10_build_autoregressive_datasets.py \
-  --config configs/autoregressive_dataset_L120_h10.yaml
+conda run -n Nowcasting python scripts/analysis/autoregressive/10_build_autoregressive_datasets.py \
+  --config configs/autoregressive/autoregressive_dataset_L120_h10.yaml
 ```
 
 The `L120_h10` dataset config expects the matching
@@ -185,7 +185,7 @@ Main outputs:
 
 ```text
 data/processed/autoregressive/<threshold_folder>/datasets_L<context>_h<horizon>/<selection_folder>/
-results/data_preparation/<selection_id>/
+results/data_preparation/autoregressive/<selection_id>/
 results/index/datasets.csv
 ```
 
@@ -228,7 +228,7 @@ reconstruction, split integrity, NaNs, infinities, and event leakage.
 Run:
 
 ```bash
-conda run -n Nowcasting python scripts/analysis/11_sanity_check_autoregressive_dataset.py \
+conda run -n Nowcasting python scripts/analysis/autoregressive/11_sanity_check_autoregressive_dataset.py \
   --no-plots
 ```
 
@@ -236,8 +236,8 @@ Pass a different dataset configuration explicitly when checking an alternate
 context length:
 
 ```bash
-conda run -n Nowcasting python scripts/analysis/11_sanity_check_autoregressive_dataset.py \
-  --config configs/autoregressive_dataset_L120_h10.yaml \
+conda run -n Nowcasting python scripts/analysis/autoregressive/11_sanity_check_autoregressive_dataset.py \
+  --config configs/autoregressive/autoregressive_dataset_L120_h10.yaml \
   --no-plots
 ```
 
@@ -266,20 +266,20 @@ switch comparisons.
 Run:
 
 ```bash
-conda run -n Nowcasting python scripts/analysis/12_compute_perfect_switch.py
+conda run -n Nowcasting python scripts/analysis/autoregressive/12_compute_perfect_switch.py
 ```
 
 For a non-default selection, use its dedicated config:
 
 ```bash
-conda run -n Nowcasting python scripts/analysis/12_compute_perfect_switch.py \
+conda run -n Nowcasting python scripts/analysis/autoregressive/12_compute_perfect_switch.py \
   --config configs/perfect_switch_L120_h10.yaml
 ```
 
 Main outputs:
 
 ```text
-results/switching/perfect_switch/<selection_id>/
+results/switching/perfect_switch/autoregressive/<selection_id>/
 results/index/switch_references.csv
 ```
 
@@ -294,7 +294,7 @@ methodological change.
 Configuration:
 
 ```text
-configs/autoregressive_gru.yaml
+configs/autoregressive/autoregressive_gru.yaml
 ```
 
 The configured architectures and variants are trained once each. Edit
@@ -304,7 +304,7 @@ Run:
 
 ```bash
 PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
-  python scripts/experiments/run_autoregressive_gru.py
+  python scripts/experiments/autoregressive/run_autoregressive_gru.py
 ```
 
 ### 7.2 GRU Grid Search
@@ -312,14 +312,14 @@ PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
 Configuration:
 
 ```text
-configs/gru_grid_search.yaml
+configs/autoregressive/gru_grid_search.yaml
 ```
 
 Run:
 
 ```bash
 PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
-  python scripts/experiments/run_gru_grid_search.py
+  python scripts/experiments/autoregressive/run_gru_grid_search.py
 ```
 
 The extended default GRU grid has 72 trials for `gru_s2v` per variant and 216
@@ -345,14 +345,14 @@ The grid search:
 Configuration:
 
 ```text
-configs/autoregressive_patchtst.yaml
+configs/autoregressive/autoregressive_patchtst.yaml
 ```
 
 Run:
 
 ```bash
 PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
-  python scripts/experiments/run_autoregressive_patchtst.py
+  python scripts/experiments/autoregressive/run_autoregressive_patchtst.py
 ```
 
 To execute exactly one run, leave one value under `experiment.variants`.
@@ -362,14 +362,14 @@ To execute exactly one run, leave one value under `experiment.variants`.
 Configuration:
 
 ```text
-configs/patchtst_grid_search.yaml
+configs/autoregressive/patchtst_grid_search.yaml
 ```
 
 Run:
 
 ```bash
 PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
-  python scripts/experiments/run_patchtst_grid_search.py
+  python scripts/experiments/autoregressive/run_patchtst_grid_search.py
 ```
 
 The current extended PatchTST grid contains 864 trials per variant and is
@@ -386,7 +386,7 @@ hyperparameters are retrained on `train+val` for the validation-selected
 Configuration:
 
 ```text
-configs/autoregressive_chronos.yaml
+configs/autoregressive/autoregressive_chronos.yaml
 ```
 
 Chronos evaluates only the final external-holdout test contexts. It does not
@@ -397,15 +397,15 @@ Run:
 
 ```bash
 PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
-  python scripts/experiments/run_autoregressive_chronos_zero_shot.py
+  python scripts/experiments/autoregressive/run_autoregressive_chronos_zero_shot.py
 ```
 
 Longer-context Chronos zero-shot evaluation uses:
 
 ```bash
 PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
-  python scripts/experiments/run_autoregressive_chronos_zero_shot.py \
-  --config configs/autoregressive_chronos_L120_h10.yaml
+  python scripts/experiments/autoregressive/run_autoregressive_chronos_zero_shot.py \
+  --config configs/autoregressive/autoregressive_chronos_L120_h10.yaml
 ```
 
 The default model is `amazon/chronos-t5-small`, evaluated on the raw variant.
@@ -421,8 +421,8 @@ checkpoint is written locally by this project.
 Single runs and grid-search winners publish canonical artifacts under:
 
 ```text
-models/<model_family>/<run_id>/
-results/runs/<selection_id>/<run_id>/
+models/autoregressive/<model_family>/<run_id>/
+results/runs/autoregressive/<selection_id>/<run_id>/
 ```
 
 Typical canonical model artifacts:
@@ -439,7 +439,7 @@ checkpoint to use for final predictions and comparisons.
 Grid-search details are saved separately under:
 
 ```text
-results/grid_searches/<selection_id>/<search_id>/
+results/grid_searches/autoregressive/<selection_id>/<search_id>/
 ```
 
 They include trial checkpoints, rankings, validation histories, metadata, and
@@ -462,7 +462,7 @@ configuration uses `overwrite: false` by default and will stop instead of
 silently replacing an existing grid-search winner.
 
 Git tracks lightweight CSV/YAML summaries and
-`results/runs/<selection_id>/<run_id>/predictions/test_predictions.parquet`, so
+`results/runs/autoregressive/<selection_id>/<run_id>/predictions/test_predictions.parquet`, so
 switch comparisons can be regenerated on another machine after a push. Figures,
 checkpoints, validation histories, and most intermediate Parquet outputs remain
 ignored.
@@ -498,13 +498,13 @@ post-processing is applied.
 Run:
 
 ```bash
-conda run -n Nowcasting python scripts/analysis/13_compare_switch_methods.py
+conda run -n Nowcasting python scripts/analysis/autoregressive/13_compare_switch_methods.py
 ```
 
 For the Chronos `L120_h10` variant:
 
 ```bash
-conda run -n Nowcasting python scripts/analysis/13_compare_switch_methods.py \
+conda run -n Nowcasting python scripts/analysis/autoregressive/13_compare_switch_methods.py \
   --config configs/switch_comparison_chronos_L120_h10.yaml
 ```
 
@@ -525,7 +525,7 @@ After model runs and switch comparisons exist, build the compact summary
 tables:
 
 ```bash
-conda run -n Nowcasting python scripts/analysis/14_compare_model_results.py
+conda run -n Nowcasting python scripts/analysis/autoregressive/14_compare_model_results.py
 ```
 
 Main outputs:

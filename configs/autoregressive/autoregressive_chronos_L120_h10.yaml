@@ -39,8 +39,8 @@ evaluation:
     - event_id
 
 output:
-  results_root: results/runs
-  models_root: models/chronos
+  results_root: results/runs/autoregressive
+  models_root: models/autoregressive/chronos
   index_root: results/index
   save_predictions: true
   save_plots: true

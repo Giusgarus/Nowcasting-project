@@ -77,6 +77,13 @@ GRID_SEARCH_INDEX_COLUMNS = [
 ]
 
 UNSCOPED_SELECTION_ID = "_unscoped"
+TASK_AUTOREGRESSIVE = "autoregressive"
+
+
+def task_id(value: str) -> str:
+    """Return a compact filesystem-safe task identifier."""
+
+    return sanitize_id(value).lower()
 
 
 def selection_id_from_artifact_id(value: str) -> str:
@@ -198,37 +205,247 @@ def make_comparison_id(method_id: str, comparison_type: str = "switch_eval") -> 
     return f"{sanitize_id(comparison_type)}_{sanitize_id(method_id)}"
 
 
-def get_run_dir(run_id: str, root: Path = PROJECT_ROOT) -> Path:
+def get_legacy_run_dir(run_id: str, root: Path = PROJECT_ROOT) -> Path:
     selection_id = selection_id_from_artifact_id(run_id)
     return root / "results" / "runs" / selection_id / run_id
 
 
-def get_model_dir(model_family: str, run_id: str, root: Path = PROJECT_ROOT) -> Path:
+def get_run_dir(
+    run_id: str,
+    root: Path = PROJECT_ROOT,
+    *,
+    task_name: str = TASK_AUTOREGRESSIVE,
+) -> Path:
+    selection_id = selection_id_from_artifact_id(run_id)
+    return root / "results" / "runs" / task_id(task_name) / selection_id / run_id
+
+
+def resolve_run_dir(
+    run_id: str,
+    root: Path = PROJECT_ROOT,
+    *,
+    task_name: str = TASK_AUTOREGRESSIVE,
+) -> Path:
+    """Return the task-scoped run folder, falling back to the legacy layout."""
+
+    candidates = [
+        get_run_dir(run_id, root, task_name=task_name),
+        get_legacy_run_dir(run_id, root),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
+
+
+def get_legacy_model_dir(
+    model_family: str,
+    run_id: str,
+    root: Path = PROJECT_ROOT,
+) -> Path:
     return root / "models" / sanitize_id(model_family).lower() / run_id
 
 
-def get_perfect_switch_dir(selection_id: str, root: Path = PROJECT_ROOT) -> Path:
+def get_model_dir(
+    model_family: str,
+    run_id: str,
+    root: Path = PROJECT_ROOT,
+    *,
+    task_name: str = TASK_AUTOREGRESSIVE,
+) -> Path:
+    return (
+        root
+        / "models"
+        / task_id(task_name)
+        / sanitize_id(model_family).lower()
+        / run_id
+    )
+
+
+def resolve_model_dir(
+    model_family: str,
+    run_id: str,
+    root: Path = PROJECT_ROOT,
+    *,
+    task_name: str = TASK_AUTOREGRESSIVE,
+) -> Path:
+    """Return the task-scoped model folder, falling back to the legacy layout."""
+
+    candidates = [
+        get_model_dir(model_family, run_id, root, task_name=task_name),
+        get_legacy_model_dir(model_family, run_id, root),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
+
+
+def get_legacy_perfect_switch_dir(
+    selection_id: str,
+    root: Path = PROJECT_ROOT,
+) -> Path:
     return root / "results" / "switching" / "perfect_switch" / selection_id
 
 
-def get_comparison_dir(comparison_id: str, root: Path = PROJECT_ROOT) -> Path:
+def get_perfect_switch_dir(
+    selection_id: str,
+    root: Path = PROJECT_ROOT,
+    *,
+    task_name: str = TASK_AUTOREGRESSIVE,
+) -> Path:
+    return (
+        root
+        / "results"
+        / "switching"
+        / "perfect_switch"
+        / task_id(task_name)
+        / selection_id
+    )
+
+
+def resolve_perfect_switch_dir(
+    selection_id: str,
+    root: Path = PROJECT_ROOT,
+    *,
+    task_name: str = TASK_AUTOREGRESSIVE,
+) -> Path:
+    """Return the task-scoped Perfect Switch folder, with legacy fallback."""
+
+    candidates = [
+        get_perfect_switch_dir(selection_id, root, task_name=task_name),
+        get_legacy_perfect_switch_dir(selection_id, root),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
+
+
+def get_legacy_comparison_dir(
+    comparison_id: str,
+    root: Path = PROJECT_ROOT,
+) -> Path:
     selection_id = selection_id_from_artifact_id(comparison_id)
     group = comparison_group_from_id(comparison_id)
     return root / "results" / "comparisons" / group / selection_id / comparison_id
 
 
-def get_data_preparation_dir(selection_id: str, root: Path = PROJECT_ROOT) -> Path:
+def get_comparison_dir(
+    comparison_id: str,
+    root: Path = PROJECT_ROOT,
+    *,
+    task_name: str = TASK_AUTOREGRESSIVE,
+) -> Path:
+    selection_id = selection_id_from_artifact_id(comparison_id)
+    group = comparison_group_from_id(comparison_id)
+    return (
+        root
+        / "results"
+        / "comparisons"
+        / group
+        / task_id(task_name)
+        / selection_id
+        / comparison_id
+    )
+
+
+def resolve_comparison_dir(
+    comparison_id: str,
+    root: Path = PROJECT_ROOT,
+    *,
+    task_name: str = TASK_AUTOREGRESSIVE,
+) -> Path:
+    """Return the task-scoped comparison folder, with legacy fallback."""
+
+    candidates = [
+        get_comparison_dir(comparison_id, root, task_name=task_name),
+        get_legacy_comparison_dir(comparison_id, root),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
+
+
+def get_legacy_data_preparation_dir(
+    selection_id: str,
+    root: Path = PROJECT_ROOT,
+) -> Path:
     return root / "results" / "data_preparation" / selection_id
+
+
+def get_data_preparation_dir(
+    selection_id: str,
+    root: Path = PROJECT_ROOT,
+    *,
+    task_name: str = TASK_AUTOREGRESSIVE,
+) -> Path:
+    return root / "results" / "data_preparation" / task_id(task_name) / selection_id
+
+
+def resolve_data_preparation_dir(
+    selection_id: str,
+    root: Path = PROJECT_ROOT,
+    *,
+    task_name: str = TASK_AUTOREGRESSIVE,
+) -> Path:
+    """Return the task-scoped data-preparation folder, with legacy fallback."""
+
+    candidates = [
+        get_data_preparation_dir(selection_id, root, task_name=task_name),
+        get_legacy_data_preparation_dir(selection_id, root),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
 
 
 def get_results_index_dir(root: Path = PROJECT_ROOT) -> Path:
     return root / "results" / "index"
 
 
-def get_grid_search_dir(search_id: str, root: Path = PROJECT_ROOT) -> Path:
+def get_legacy_grid_search_dir(search_id: str, root: Path = PROJECT_ROOT) -> Path:
     sanitized = sanitize_id(search_id)
     selection_id = selection_id_from_artifact_id(sanitized)
     return root / "results" / "grid_searches" / selection_id / sanitized
+
+
+def get_grid_search_dir(
+    search_id: str,
+    root: Path = PROJECT_ROOT,
+    *,
+    task_name: str = TASK_AUTOREGRESSIVE,
+) -> Path:
+    sanitized = sanitize_id(search_id)
+    selection_id = selection_id_from_artifact_id(sanitized)
+    return (
+        root
+        / "results"
+        / "grid_searches"
+        / task_id(task_name)
+        / selection_id
+        / sanitized
+    )
+
+
+def resolve_grid_search_dir(
+    search_id: str,
+    root: Path = PROJECT_ROOT,
+    *,
+    task_name: str = TASK_AUTOREGRESSIVE,
+) -> Path:
+    """Return the task-scoped grid-search folder, with legacy fallback."""
+
+    candidates = [
+        get_grid_search_dir(search_id, root, task_name=task_name),
+        get_legacy_grid_search_dir(search_id, root),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
 
 
 def ensure_results_subdirs(base_dir: Path, subdirs: Sequence[str]) -> dict[str, Path]:
