@@ -12,7 +12,7 @@ import torch
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.evaluation.forecast_metrics import (
+from src.tasks.autoregressive.evaluation.forecast_metrics import (
     compute_horizon_metrics,
     compute_trajectory_metrics,
     inverse_context_standardization,

@@ -45,15 +45,15 @@ def test_current_level_persistence_run_suffix_keeps_selection_separate() -> None
         context_length=30,
         model_id="multiscale_shapelet_transformer",
         selection_id="externalHoldout_test_fc_uplink_fade",
-        run_suffix="server_smoke",
+        run_suffix="debug_run",
     )
 
     result_path = run_dir(run_id)
     checkpoint_path = model_dir(run_id)
 
-    assert run_id.endswith("__server_smoke")
+    assert run_id.endswith("__debug_run")
     assert "externalHoldout_test_fc_uplink_fade/currentLevelPersistence" in str(result_path)
-    assert "server_smoke" not in str(result_path.parent)
+    assert "debug_run" not in str(result_path.parent)
     assert "multiscale_shapelet_transformer" in str(checkpoint_path)
     assert "autoregressive" not in str(result_path)
     assert "autoregressive" not in str(checkpoint_path)

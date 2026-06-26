@@ -19,8 +19,9 @@ raw data review
 ```
 
 Mamba and survival experiments are not implemented yet. The separate
-`current_level_persistence` task has a learnable-shapelet training runner; see
-`docs/current_level_persistence.md` for its dataset and model commands.
+`current_level_persistence` task has a task-scoped dataset builder and
+learnable-shapelet training runner; see `docs/current_level_persistence.md`
+for its dataset and model commands.
 
 ## 1. Environment And Verification
 
@@ -42,6 +43,16 @@ Run the complete test suite before a new experimental campaign:
 
 ```bash
 conda run -n Nowcasting python -m pytest -q
+```
+
+Run focused test groups when changing one area:
+
+```bash
+conda run -n Nowcasting python -m pytest tests/autoregressive -q
+conda run -n Nowcasting python -m pytest tests/current_level_persistence -q
+conda run -n Nowcasting python -m pytest tests/data -q
+conda run -n Nowcasting python -m pytest tests/switching -q
+conda run -n Nowcasting python -m pytest tests/tuning -q
 ```
 
 For commands where live progress is useful, use:
@@ -545,7 +556,63 @@ Chronos zero-shot has no validation row metrics because it does not train or
 load validation data. The test table contains raw-scale test MAE/RMSE plus the
 model-vs-Perfect Switch metrics when the switch comparison has been generated.
 
-## 13. Central Result Indexes
+## 13. Current-Level Persistence
+
+Build the current-level persistence dataset:
+
+```bash
+conda run -n Nowcasting python scripts/experiments/current_level_persistence/build_dataset.py \
+  --config configs/current_level_persistence/dataset_delta_0p5_L30_external_holdout.yaml
+```
+
+Train the three initial learnable-shapelet variants:
+
+```bash
+conda run -n Nowcasting python scripts/experiments/current_level_persistence/train_learnable_shapelets.py \
+  --config configs/current_level_persistence/shapelet_mlp_delta_0p5.yaml
+
+conda run -n Nowcasting python scripts/experiments/current_level_persistence/train_learnable_shapelets.py \
+  --config configs/current_level_persistence/shapelet_transformer_delta_0p5.yaml
+
+conda run -n Nowcasting python scripts/experiments/current_level_persistence/train_learnable_shapelets.py \
+  --config configs/current_level_persistence/shapelet_convolution_delta_0p5.yaml
+```
+
+Run the small validation-only grid search for all three variants:
+
+```bash
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
+  python scripts/experiments/current_level_persistence/run_shapelet_grid_search.py \
+  --config configs/current_level_persistence/shapelet_grid_search_delta_0p5.yaml
+```
+
+The current grid has 16 trials for each of:
+
+- `multiscale_shapelet_mlp`;
+- `multiscale_shapelet_transformer`;
+- `multiscale_shapelet_convolution`.
+
+The trial phase uses only train and validation data. The winner for each model
+is selected with `val_mae_seconds`; only then is the selected model materialized
+as a canonical run and evaluated on the test split.
+
+Each run saves metrics, predictions, diagnostic figures, learned shapelets,
+metadata, and checkpoints under the task-specific `results/runs/` and
+`models/` folders.
+
+After all three runs finish, build the comparison table:
+
+```bash
+conda run -n Nowcasting python scripts/experiments/current_level_persistence/summarize_runs.py
+```
+
+Main output:
+
+```text
+results/comparisons/model_summary/current_level_persistence/externalHoldout_test_fc_uplink_fade/initial_shapelet_model_comparison_delta0p5/tables/initial_shapelet_model_comparison_delta0p5.csv
+```
+
+## 14. Central Result Indexes
 
 Use these files to locate generated artifacts without scanning every folder:
 
@@ -557,7 +624,7 @@ results/index/switch_references.csv
 results/index/comparisons.csv
 ```
 
-## 14. Recommended Complete Campaign
+## 15. Recommended Complete Campaign
 
 For a new raw-data or methodological configuration:
 
@@ -576,7 +643,7 @@ For a new raw-data or methodological configuration:
 13. Inspect forecast metrics, switch metrics, event plots, summary tables, and
     central indexes.
 
-## 15. Configuration Consistency Checklist
+## 16. Configuration Consistency Checklist
 
 Before running downstream stages, verify that these values refer to the same
 prepared dataset:
@@ -589,5 +656,7 @@ prepared dataset:
 - selection folder or selection ID.
 
 Never use the test split for hyperparameter selection, early stopping,
-threshold calibration, or model choice. Grid searches select using validation
-RMSE only; test metrics are final diagnostics for the selected winner.
+threshold calibration, or model choice. Autoregressive grids select using
+validation RMSE; current-level persistence grids select using the configured
+validation duration metric. Test metrics are final diagnostics for selected
+winners only.

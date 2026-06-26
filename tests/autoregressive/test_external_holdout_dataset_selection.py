@@ -7,11 +7,11 @@ import pandas as pd
 
 from scripts.maintenance.clean_generated_datasets import discover_cleanup_candidates
 from src.tasks.autoregressive.data.autoregressive_dataset import (
-    assign_external_holdout_splits,
     build_autoregressive_arrays_from_window_index,
     rank_datasets_for_autoregressive_training,
     select_datasets,
 )
+from src.data.splits import assign_external_holdout_splits
 from src.utils.results_paths import make_selection_id
 
 

@@ -1,1 +1,1 @@
-"""Autoregressive forecasting models and adapters."""
+"""Compatibility namespace for autoregressive forecasting models and adapters."""

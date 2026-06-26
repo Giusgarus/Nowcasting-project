@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from src.analysis.event_preparation import summarize_threshold_balance
+from src.tasks.autoregressive.data.event_preparation import summarize_threshold_balance
 from src.tasks.autoregressive.data.windowed_forecasting import build_autoregressive_window_index
 
 

@@ -25,7 +25,11 @@ from scripts.experiments.autoregressive.run_gru_grid_search import (
 from scripts.experiments.autoregressive.run_patchtst_grid_search import validate_config
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = next(
+    parent
+    for parent in Path(__file__).resolve().parents
+    if (parent / "configs").is_dir()
+)
 
 
 def _serial_trial_worker(job: dict) -> tuple[int, str]:

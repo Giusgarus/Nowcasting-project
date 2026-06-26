@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.evaluation.forecast_metrics import (
+from src.tasks.autoregressive.evaluation.forecast_metrics import (
     mean_absolute_error,
     root_mean_squared_error,
 )

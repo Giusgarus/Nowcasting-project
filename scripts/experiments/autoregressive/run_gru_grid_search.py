@@ -22,7 +22,7 @@ from scripts.experiments.autoregressive.run_autoregressive_gru import (
     resolve_selection_folder,
     save_run_figures,
 )
-from src.evaluation.forecast_metrics import (
+from src.tasks.autoregressive.evaluation.forecast_metrics import (
     compute_horizon_metrics,
     compute_trajectory_metrics,
     inverse_context_standardization,

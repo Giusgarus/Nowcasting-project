@@ -12,7 +12,7 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.tasks.autoregressive.data.autoregressive_dataset import assign_external_holdout_splits
+from src.data.splits import assign_external_holdout_splits
 from src.tasks.current_level_persistence.data.dataset import (
     SPLIT_FILE_NAMES,
     SPLITS,

@@ -69,7 +69,6 @@ Implemented models:
 Main documentation:
 
 - [Current-Level Persistence](docs/current_level_persistence.md)
-- [Current-Level Persistence Server Runs](docs/current_level_persistence_server_runs.md)
 
 ### Deferred Work
 
@@ -130,6 +129,16 @@ Run the test suite:
 conda run -n Nowcasting python -m pytest -q
 ```
 
+Task or area-specific tests can be run from the corresponding folders:
+
+```bash
+conda run -n Nowcasting python -m pytest tests/autoregressive -q
+conda run -n Nowcasting python -m pytest tests/current_level_persistence -q
+conda run -n Nowcasting python -m pytest tests/data -q
+conda run -n Nowcasting python -m pytest tests/switching -q
+conda run -n Nowcasting python -m pytest tests/tuning -q
+```
+
 For long commands where live progress matters:
 
 ```bash
@@ -137,8 +146,9 @@ PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting python SCRIPT_PAT
 ```
 
 Device selection is centralized. PyTorch code uses CUDA when available, then
-Apple MPS when available, otherwise CPU. GRU and PatchTST grid searches can
-schedule independent trials across multiple visible CUDA GPUs.
+Apple MPS when available, otherwise CPU. GRU, PatchTST, and current-level
+shapelet grid searches can schedule independent trials across multiple visible
+CUDA GPUs.
 
 ## Core Workflows
 
@@ -205,22 +215,34 @@ Details are in [docs/autoregressive.md](docs/autoregressive.md).
 Build the dataset:
 
 ```bash
-conda run -n Nowcasting python scripts/experiments/build_current_level_persistence_dataset.py \
+conda run -n Nowcasting python scripts/experiments/current_level_persistence/build_dataset.py \
   --config configs/current_level_persistence/dataset_delta_0p5_L30_external_holdout.yaml
 ```
 
 Train the three learnable-shapelet variants:
 
 ```bash
-conda run -n Nowcasting python scripts/experiments/run_shapelet_current_level_persistence.py \
+conda run -n Nowcasting python scripts/experiments/current_level_persistence/train_learnable_shapelets.py \
   --config configs/current_level_persistence/shapelet_mlp_delta_0p5.yaml
 
-conda run -n Nowcasting python scripts/experiments/run_shapelet_current_level_persistence.py \
+conda run -n Nowcasting python scripts/experiments/current_level_persistence/train_learnable_shapelets.py \
   --config configs/current_level_persistence/shapelet_transformer_delta_0p5.yaml
 
-conda run -n Nowcasting python scripts/experiments/run_shapelet_current_level_persistence.py \
+conda run -n Nowcasting python scripts/experiments/current_level_persistence/train_learnable_shapelets.py \
   --config configs/current_level_persistence/shapelet_convolution_delta_0p5.yaml
 ```
+
+Or run the small validation-only grid search for all three variants:
+
+```bash
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
+  python scripts/experiments/current_level_persistence/run_shapelet_grid_search.py \
+  --config configs/current_level_persistence/shapelet_grid_search_delta_0p5.yaml
+```
+
+The grid currently evaluates 16 trials per model, selects winners using
+validation MAE in seconds, then evaluates the selected winner for each model on
+the test split.
 
 Details are in
 [docs/current_level_persistence.md](docs/current_level_persistence.md).
@@ -240,7 +262,8 @@ configs/
 │   ├── dataset_delta_0p5_L30_external_holdout.yaml
 │   ├── shapelet_mlp_delta_0p5.yaml
 │   ├── shapelet_transformer_delta_0p5.yaml
-│   └── shapelet_convolution_delta_0p5.yaml
+│   ├── shapelet_convolution_delta_0p5.yaml
+│   └── shapelet_grid_search_delta_0p5.yaml
 ├── data.yaml
 ├── data_preparation.yaml
 ├── perfect_switch*.yaml
@@ -326,8 +349,22 @@ src/tasks/autoregressive/
 src/tasks/current_level_persistence/
 ```
 
-Compatibility wrappers may exist at older script paths, but new code should
-use the task-scoped modules and directories.
+New code and documentation should use the task-scoped modules and directories.
+Compatibility namespaces under `src/datasets/`, `src/models/autoregressive/`,
+and `src/evaluation/forecast_metrics.py` exist only to keep older imports
+working.
+
+The test suite is organized by area:
+
+```text
+tests/autoregressive/
+tests/current_level_persistence/
+tests/data/
+tests/evaluation/
+tests/switching/
+tests/tuning/
+tests/utils/
+```
 
 ## Reproducibility Rules
 

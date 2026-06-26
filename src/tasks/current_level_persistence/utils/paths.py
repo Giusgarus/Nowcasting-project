@@ -131,6 +131,24 @@ def model_dir(run_id: str, root: Path = PROJECT_ROOT) -> Path:
     return root / "models" / TASK_NAME / model_id_from_run_id(run_id) / run_id
 
 
+def grid_search_dir(
+    *,
+    selection_id: str,
+    search_id: str,
+    root: Path = PROJECT_ROOT,
+) -> Path:
+    """Return the task-separated grid-search directory."""
+
+    return (
+        root
+        / "results"
+        / "grid_searches"
+        / TASK_NAME
+        / sanitize_id(selection_id)
+        / sanitize_id(search_id)
+    )
+
+
 def run_index_path(root: Path = PROJECT_ROOT) -> Path:
     """Return the separate current-level persistence run index."""
 

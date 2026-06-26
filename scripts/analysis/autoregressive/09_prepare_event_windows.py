@@ -11,7 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.analysis.data_quality import safe_name
-from src.analysis.event_preparation import (
+from src.tasks.autoregressive.data.event_preparation import (
     summarize_event_dataset,
     summarize_imputation,
     summarize_threshold_balance,

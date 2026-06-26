@@ -90,7 +90,7 @@ configs/current_level_persistence/dataset_delta_0p5_L30_external_holdout.yaml
 Build command:
 
 ```bash
-python scripts/experiments/build_current_level_persistence_dataset.py \
+python scripts/experiments/current_level_persistence/build_dataset.py \
   --config configs/current_level_persistence/dataset_delta_0p5_L30_external_holdout.yaml
 ```
 
@@ -156,20 +156,20 @@ log-compressed and normalized per scale for numerical stability.
 
 ## Train Learnable-Shapelet Models
 
-Use the top-level wrapper when running from the repository root:
+Run the task-scoped training entrypoint from the repository root:
 
 ```bash
-python scripts/experiments/run_shapelet_current_level_persistence.py \
+python scripts/experiments/current_level_persistence/train_learnable_shapelets.py \
   --config configs/current_level_persistence/shapelet_mlp_delta_0p5.yaml
 ```
 
 The other implemented variants use:
 
 ```bash
-python scripts/experiments/run_shapelet_current_level_persistence.py \
+python scripts/experiments/current_level_persistence/train_learnable_shapelets.py \
   --config configs/current_level_persistence/shapelet_transformer_delta_0p5.yaml
 
-python scripts/experiments/run_shapelet_current_level_persistence.py \
+python scripts/experiments/current_level_persistence/train_learnable_shapelets.py \
   --config configs/current_level_persistence/shapelet_convolution_delta_0p5.yaml
 ```
 
@@ -186,8 +186,74 @@ Best and last checkpoints are saved under:
 models/current_level_persistence/<model_id>/<run_id>/
 ```
 
-For remote multi-GPU execution commands, see
-[`current_level_persistence_server_runs.md`](current_level_persistence_server_runs.md).
+## Grid Search
+
+Use the grid runner when selecting among small architecture and optimization
+variants:
+
+```bash
+python scripts/experiments/current_level_persistence/run_shapelet_grid_search.py \
+  --config configs/current_level_persistence/shapelet_grid_search_delta_0p5.yaml
+```
+
+The default grid is intentionally small:
+
+```text
+16 trials for multiscale_shapelet_mlp
+16 trials for multiscale_shapelet_transformer
+16 trials for multiscale_shapelet_convolution
+```
+
+The configurable parameters live in:
+
+```text
+configs/current_level_persistence/shapelet_grid_search_delta_0p5.yaml
+```
+
+The grid currently varies learning rate, number of shapelets per length,
+dropout, and one model-specific capacity parameter per architecture. It uses
+the shared device-aware scheduler, so independent trials can run across
+multiple visible CUDA GPUs.
+
+Selection is validation-only:
+
+```text
+selection_metric = val_mae_seconds
+selection_mode   = min
+```
+
+The test split is evaluated only after the winner for each model has been
+selected. By default, the selected winner is retrained on train+validation for
+the best epoch count found during the grid, then saved as the canonical run for
+that model ID.
+
+Grid artifacts are stored under:
+
+```text
+results/grid_searches/current_level_persistence/<selection_id>/<search_id>/
+```
+
+Final selected runs are stored under the normal run and checkpoint folders:
+
+```text
+results/runs/current_level_persistence/<selection_id>/<run_id>/
+models/current_level_persistence/<model_id>/<run_id>/
+```
+
+## Compare Initial Shapelet Models
+
+After training the MLP, Transformer, and convolutional variants, build the
+compact comparison table:
+
+```bash
+python scripts/experiments/current_level_persistence/summarize_runs.py
+```
+
+Main output:
+
+```text
+results/comparisons/model_summary/current_level_persistence/externalHoldout_test_fc_uplink_fade/initial_shapelet_model_comparison_delta0p5/tables/initial_shapelet_model_comparison_delta0p5.csv
+```
 
 ## Future Switch Derivation
 

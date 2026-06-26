@@ -1,1 +1,1 @@
-"""Task-specific dataset construction utilities."""
+"""Compatibility namespace for dataset construction utilities."""

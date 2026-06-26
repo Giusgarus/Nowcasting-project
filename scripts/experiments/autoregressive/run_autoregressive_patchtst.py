@@ -25,7 +25,7 @@ from scripts.experiments.autoregressive.run_patchtst_grid_search import (
     predictions_in_raw_scale,
     save_run_figures,
 )
-from src.evaluation.forecast_metrics import (
+from src.tasks.autoregressive.evaluation.forecast_metrics import (
     compute_horizon_metrics,
     compute_trajectory_metrics,
 )

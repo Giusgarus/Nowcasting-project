@@ -1,0 +1,90 @@
+schema_version: 1
+task_name: current_level_persistence
+model_family: learnable_shapelets
+search_id: shapelet_small_delta0p5_L30_externalHoldout_test_fc_uplink_fade
+selection_id: externalHoldout_test_fc_uplink_fade
+
+dataset:
+  path: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/
+  input_key: X_relative_to_current
+  target_key: y_log1p_remaining_persistence_seconds
+
+target:
+  train_space: log1p_seconds
+  eval_space: seconds
+
+training:
+  loss: huber
+  batch_size: 256
+  max_epochs: 80
+  early_stopping_patience: 12
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  device: auto
+  mixed_precision: true
+  gradient_clip_norm: 1.0
+  num_workers: 0
+  seed: 42
+
+shapelets:
+  shapelet_lengths: [5, 10, 15]
+  n_shapelets_per_length: 32
+
+search:
+  selection_metric: val_mae_seconds
+  selection_mode: min
+  max_trials_per_model: 32
+  save_trial_checkpoints: true
+  save_trial_history: true
+
+parallel:
+  enabled: true
+  cuda_device_ids: auto
+  max_workers: auto
+
+final_training:
+  retrain_on_full_development: true
+  use_best_epoch_from_grid: true
+  early_stopping: false
+
+output:
+  overwrite: true
+  save_best_predictions: true
+  save_best_plots: true
+
+models:
+  - model_id: multiscale_shapelet_mlp
+    fixed:
+      model:
+        num_hidden_layers: 2
+    parameter_grid:
+      training.learning_rate: [0.0003, 0.001]
+      model.hidden_dim: [64, 128]
+      model.dropout: [0.0, 0.1]
+      shapelets.n_shapelets_per_length: [16, 32]
+
+  - model_id: multiscale_shapelet_transformer
+    fixed:
+      model:
+        n_heads: 4
+        num_layers: 1
+        pooling: mean
+    parameter_grid:
+      training.learning_rate: [0.0003, 0.001]
+      model.d_model: [32, 64]
+      model.dropout: [0.0, 0.1]
+      shapelets.n_shapelets_per_length: [16, 32]
+
+  - model_id: multiscale_shapelet_convolution
+    fixed:
+      training:
+        mixed_precision: false
+      model:
+        num_conv_layers: 2
+        kernel_size: 3
+        pooling: mean
+    parameter_grid:
+      training.learning_rate: [0.0003, 0.001]
+      model.conv_channels: [32, 64]
+      model.dropout: [0.0, 0.1]
+      shapelets.n_shapelets_per_length: [16, 32]

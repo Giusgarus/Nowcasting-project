@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from src.evaluation.forecast_metrics import compute_trajectory_metrics
+from src.tasks.autoregressive.evaluation.forecast_metrics import compute_trajectory_metrics
 from src.tasks.autoregressive.models.chronos_adapter import (
     build_chronos_prediction_tables,
     load_chronos_pipeline,

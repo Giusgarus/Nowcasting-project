@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import torch
 
-from src.evaluation.forecast_metrics import (
+from src.tasks.autoregressive.evaluation.forecast_metrics import (
     compute_horizon_metrics,
     compute_trajectory_metrics,
     inverse_context_standardization,

@@ -16,7 +16,7 @@ from scripts.experiments.autoregressive.run_patchtst_grid_search import (
     trial_display_parameters,
     validate_config as validate_grid_config,
 )
-from src.evaluation.forecast_metrics import (
+from src.tasks.autoregressive.evaluation.forecast_metrics import (
     compute_trajectory_metrics,
     inverse_context_standardization,
 )

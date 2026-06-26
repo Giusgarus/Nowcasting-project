@@ -15,7 +15,6 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from src.tasks.autoregressive.data.autoregressive_dataset import (
     SPLIT_FILE_NAMES,
     SPLITS,
-    assign_external_holdout_splits,
     build_autoregressive_arrays_from_window_index,
     filter_window_index,
     rank_datasets_for_autoregressive_training,
@@ -26,6 +25,7 @@ from src.tasks.autoregressive.data.autoregressive_dataset import (
     summarize_splits,
     validate_event_split_integrity,
 )
+from src.data.splits import assign_external_holdout_splits
 from src.utils.config import config_fingerprint, load_yaml_config, save_yaml
 from src.utils.paths import project_path
 from src.utils.results_paths import (
