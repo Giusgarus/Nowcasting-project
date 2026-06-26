@@ -217,7 +217,11 @@ def predict(
             predictions = model(inputs).detach().cpu()
             y_pred.append(predictions.numpy())
             y_true.append(targets.numpy())
-    return np.concatenate(y_true), np.concatenate(y_pred)
+    y_true_array = np.concatenate(y_true)
+    y_pred_array = np.concatenate(y_pred)
+    if not np.isfinite(y_pred_array).all():
+        raise RuntimeError("Model produced non-finite predictions during evaluation.")
+    return y_true_array, y_pred_array
 
 
 def evaluate_split(
@@ -242,6 +246,8 @@ def evaluate_split(
         )
     )
     metrics["log_loss"] = float(loss_fn(y_pred_tensor, y_true_tensor).item())
+    if not np.isfinite(list(metrics.values())).all():
+        raise RuntimeError(f"Evaluation produced non-finite metrics: {metrics}")
     return metrics, y_true, y_pred
 
 
@@ -425,6 +431,7 @@ def main() -> None:
     print(f"Checkpoints: {checkpoint_dir.relative_to(PROJECT_ROOT)}")
     print(f"Batch size: {int(training['batch_size'])}")
     print(f"DataLoader workers: {num_workers}")
+    print(f"Gradient clip norm: {training.get('gradient_clip_norm', 'disabled')}")
     print(f"Parameters: {sum(parameter.numel() for parameter in model.parameters()):,}")
     if args.dry_run:
         print("Dry-run completed. No training was started.")
@@ -448,6 +455,10 @@ def main() -> None:
         weight_decay=float(training["weight_decay"]),
     )
     amp_enabled = bool(training.get("mixed_precision", False)) and device.type == "cuda"
+    gradient_clip_norm = training.get("gradient_clip_norm")
+    gradient_clip_norm = (
+        float(gradient_clip_norm) if gradient_clip_norm is not None else None
+    )
     if hasattr(torch, "amp") and hasattr(torch.amp, "GradScaler"):
         scaler = torch.amp.GradScaler("cuda", enabled=amp_enabled)
     else:
@@ -482,7 +493,28 @@ def main() -> None:
             with autocast_context:
                 predictions = model(inputs)
                 loss = loss_fn(predictions, targets)
+            if not torch.isfinite(loss):
+                raise RuntimeError(
+                    f"Non-finite training loss at epoch {epoch}: {loss.item()}"
+                )
             scaler.scale(loss).backward()
+            if gradient_clip_norm is not None:
+                scaler.unscale_(optimizer)
+                try:
+                    torch.nn.utils.clip_grad_norm_(
+                        model.parameters(),
+                        max_norm=gradient_clip_norm,
+                        error_if_nonfinite=True,
+                    )
+                except TypeError:
+                    grad_norm = torch.nn.utils.clip_grad_norm_(
+                        model.parameters(),
+                        max_norm=gradient_clip_norm,
+                    )
+                    if not torch.isfinite(torch.as_tensor(grad_norm)):
+                        raise RuntimeError(
+                            f"Non-finite gradient norm at epoch {epoch}: {grad_norm}"
+                        )
             scaler.step(optimizer)
             scaler.update()
             batch_size = len(targets)

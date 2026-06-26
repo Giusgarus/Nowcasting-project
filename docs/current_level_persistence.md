@@ -151,7 +151,8 @@ X_relative_to_current
 For the convolutional variant, response maps have different lengths because
 the shapelet lengths differ. The implementation processes each shapelet length
 as a separate scale, pools each scale, then concatenates the pooled scale
-features before the final regression layer.
+features before the final regression layer. The convolutional response maps are
+log-compressed and normalized per scale for numerical stability.
 
 ## Train Learnable-Shapelet Models
 

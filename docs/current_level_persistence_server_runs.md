@@ -138,6 +138,11 @@ bash scripts/experiments/run_shapelet_current_level_persistence_server.sh
 The full runs use `--run-suffix server_initial`. They do not pass `--force`, so
 the runner stops instead of overwriting an existing `server_initial` run.
 
+If an older convolution `server_initial` run exists from before the numerical
+stability fixes, remove it or rerun only the convolution command with `--force`.
+The current convolution config uses a lower learning rate, disables mixed
+precision, and enables gradient clipping.
+
 ## 9. Monitor Full Logs
 
 ```bash
@@ -224,4 +229,3 @@ find models/current_level_persistence -maxdepth 3 -type d -name '*server_initial
 If you intentionally want to replace full `server_initial` outputs, add
 `--force` to the three commands inside
 `scripts/experiments/run_shapelet_current_level_persistence_server.sh`.
-

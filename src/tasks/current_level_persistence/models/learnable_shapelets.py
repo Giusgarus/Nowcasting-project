@@ -258,9 +258,14 @@ class MultiscaleLearnableShapeletConvolution(nn.Module):
             n_shapelets_per_length=config.n_shapelets_per_length,
         )
         self.pooling = config.pooling
+        self.scale_normalizers = nn.ModuleDict()
         self.scale_convolutions = nn.ModuleDict()
         padding = config.kernel_size // 2
         for length in self.shapelets.shapelet_lengths:
+            self.scale_normalizers[str(length)] = nn.GroupNorm(
+                num_groups=1,
+                num_channels=self.shapelets.n_shapelets_per_length,
+            )
             layers: list[nn.Module] = []
             input_channels = self.shapelets.n_shapelets_per_length
             for _ in range(config.num_conv_layers):
@@ -272,14 +277,17 @@ class MultiscaleLearnableShapeletConvolution(nn.Module):
                             kernel_size=config.kernel_size,
                             padding=padding,
                         ),
+                        nn.GroupNorm(num_groups=1, num_channels=config.conv_channels),
                         nn.GELU(),
                         nn.Dropout(config.dropout),
                     ]
                 )
                 input_channels = config.conv_channels
             self.scale_convolutions[str(length)] = nn.Sequential(*layers)
+        pooled_size = config.conv_channels * len(self.shapelets.shapelet_lengths)
+        self.head_norm = nn.LayerNorm(pooled_size)
         self.head = nn.Linear(
-            config.conv_channels * len(self.shapelets.shapelet_lengths),
+            pooled_size,
             1,
         )
 
@@ -288,6 +296,10 @@ class MultiscaleLearnableShapeletConvolution(nn.Module):
 
         pooled_by_scale = []
         for length, maps in self.shapelets.response_maps_by_length(inputs).items():
+            # Distances are non-negative and can have a long right tail; log1p
+            # compression keeps the convolutional head numerically stable.
+            maps = torch.log1p(torch.clamp(maps, min=0.0))
+            maps = self.scale_normalizers[str(length)](maps)
             encoded = self.scale_convolutions[str(length)](maps)
             if self.pooling == "mean":
                 pooled = encoded.mean(dim=-1)
@@ -296,7 +308,7 @@ class MultiscaleLearnableShapeletConvolution(nn.Module):
             else:
                 raise ValueError(f"Unsupported convolution pooling: {self.pooling}")
             pooled_by_scale.append(pooled)
-        return self.head(torch.cat(pooled_by_scale, dim=1)).squeeze(-1)
+        return self.head(self.head_norm(torch.cat(pooled_by_scale, dim=1))).squeeze(-1)
 
 
 def build_learnable_shapelet_model(
