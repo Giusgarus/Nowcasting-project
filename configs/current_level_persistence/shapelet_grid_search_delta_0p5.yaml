@@ -21,7 +21,7 @@ training:
   learning_rate: 0.001
   weight_decay: 0.0001
   device: auto
-  mixed_precision: true
+  mixed_precision: false
   gradient_clip_norm: 1.0
   num_workers: 0
   seed: 42
@@ -77,8 +77,6 @@ models:
 
   - model_id: multiscale_shapelet_convolution
     fixed:
-      training:
-        mixed_precision: false
       model:
         num_conv_layers: 2
         kernel_size: 3

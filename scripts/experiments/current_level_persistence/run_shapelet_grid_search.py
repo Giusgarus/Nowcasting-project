@@ -575,6 +575,7 @@ def trial_display_parameters(config: Mapping[str, Any]) -> dict[str, Any]:
                 "max_epochs",
                 "early_stopping_patience",
                 "gradient_clip_norm",
+                "mixed_precision",
                 "seed",
                 "loss",
             )

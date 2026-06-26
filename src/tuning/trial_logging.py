@@ -26,6 +26,7 @@ SECTION_ORDERS = {
         "max_epochs",
         "early_stopping_patience",
         "gradient_clip_norm",
+        "mixed_precision",
         "seed",
         "teacher_forcing_ratio",
         "loss",

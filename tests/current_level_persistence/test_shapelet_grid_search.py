@@ -61,6 +61,14 @@ def test_shapelet_grid_trial_config_applies_fixed_and_grid_overrides() -> None:
     assert trial_config["shapelets"]["n_shapelets_per_length"] == 16
 
 
+def test_shapelet_grid_disables_mixed_precision_for_all_models() -> None:
+    config = load_yaml_config(CONFIG_PATH)
+
+    for model_spec in config["models"]:
+        for trial in expand_model_trials(config, model_spec):
+            assert trial["config"]["training"]["mixed_precision"] is False
+
+
 def test_shapelet_grid_rejects_test_metric_for_selection() -> None:
     config = load_yaml_config(CONFIG_PATH)
     invalid = copy.deepcopy(config)

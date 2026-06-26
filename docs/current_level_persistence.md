@@ -215,6 +215,11 @@ dropout, and one model-specific capacity parameter per architecture. It uses
 the shared device-aware scheduler, so independent trials can run across
 multiple visible CUDA GPUs.
 
+Mixed precision is disabled for these shapelet models. The shapelet extractor
+uses squared distances, which are fragile in half precision when relative
+signal windows contain large deviations. CUDA is still used, but training runs
+in fp32.
+
 Selection is validation-only:
 
 ```text
