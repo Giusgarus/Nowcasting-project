@@ -185,6 +185,9 @@ Best and last checkpoints are saved under:
 models/current_level_persistence/<model_id>/<run_id>/
 ```
 
+For remote multi-GPU execution commands, see
+[`current_level_persistence_server_runs.md`](current_level_persistence_server_runs.md).
+
 ## Future Switch Derivation
 
 Switch metrics are not implemented yet for this task. The planned conversion is:

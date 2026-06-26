@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import shutil
 import sys
 from contextlib import nullcontext
 from collections.abc import Mapping
@@ -107,6 +108,33 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Optional temporary override for training.max_epochs.",
     )
+    parser.add_argument(
+        "--run-suffix",
+        default=None,
+        help="Optional suffix appended to the run ID with a double-underscore separator.",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite an existing run/checkpoint directory for the resolved run ID.",
+    )
+    parser.add_argument(
+        "--device",
+        default=None,
+        help="Optional override for training.device, e.g. auto, cuda, cuda:0, or cpu.",
+    )
+    parser.add_argument(
+        "--num-workers",
+        type=int,
+        default=None,
+        help="Optional override for DataLoader worker processes.",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=None,
+        help="Optional override for training.batch_size.",
+    )
     return parser.parse_args()
 
 
@@ -157,11 +185,19 @@ def make_loader(
     target_key: str,
     batch_size: int,
     shuffle: bool,
+    num_workers: int = 0,
+    pin_memory: bool = False,
 ) -> DataLoader:
     """Create a deterministic PyTorch dataloader."""
 
     dataset = CurrentLevelPersistenceDataset(arrays, input_key, target_key)
-    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
 
 
 def predict(
@@ -297,6 +333,13 @@ def main() -> None:
     training = dict(config["training"])
     if args.max_epochs is not None:
         training["max_epochs"] = int(args.max_epochs)
+    if args.batch_size is not None:
+        training["batch_size"] = int(args.batch_size)
+    if args.device is not None:
+        training["device"] = str(args.device)
+    if args.num_workers is not None:
+        training["num_workers"] = int(args.num_workers)
+    config["training"] = training
     set_seed(int(training.get("seed", 42)))
 
     dataset_path = project_path(config["dataset"]["path"])
@@ -313,6 +356,7 @@ def main() -> None:
         context_length=context_length,
         model_id=model_id,
         selection_id=selection_id,
+        run_suffix=args.run_suffix,
     )
     result_dir = run_dir(run_id)
     checkpoint_dir = model_dir(run_id)
@@ -329,6 +373,11 @@ def main() -> None:
         "val": pd.read_parquet(dataset_path / "val_metadata.parquet"),
         "test": pd.read_parquet(dataset_path / "test_metadata.parquet"),
     }
+    requested_device = str(training.get("device", "auto"))
+    device_name = select_device() if requested_device == "auto" else requested_device
+    device = torch.device(device_name)
+    num_workers = int(training.get("num_workers", 0))
+    pin_memory = device.type == "cuda"
     loaders = {
         "train": make_loader(
             split_arrays["train"],
@@ -336,6 +385,8 @@ def main() -> None:
             target_key=target_key,
             batch_size=int(training["batch_size"]),
             shuffle=True,
+            num_workers=num_workers,
+            pin_memory=pin_memory,
         ),
         "val": make_loader(
             split_arrays["val"],
@@ -343,6 +394,8 @@ def main() -> None:
             target_key=target_key,
             batch_size=int(training["batch_size"]),
             shuffle=False,
+            num_workers=num_workers,
+            pin_memory=pin_memory,
         ),
         "test": make_loader(
             split_arrays["test"],
@@ -350,12 +403,11 @@ def main() -> None:
             target_key=target_key,
             batch_size=int(training["batch_size"]),
             shuffle=False,
+            num_workers=num_workers,
+            pin_memory=pin_memory,
         ),
     }
 
-    requested_device = str(training.get("device", "auto"))
-    device_name = select_device() if requested_device == "auto" else requested_device
-    device = torch.device(device_name)
     model = build_learnable_shapelet_model(
         model_id,
         build_shapelet_config(config, context_length),
@@ -371,10 +423,23 @@ def main() -> None:
     print(f"Run ID: {run_id}")
     print(f"Results: {result_dir.relative_to(PROJECT_ROOT)}")
     print(f"Checkpoints: {checkpoint_dir.relative_to(PROJECT_ROOT)}")
+    print(f"Batch size: {int(training['batch_size'])}")
+    print(f"DataLoader workers: {num_workers}")
     print(f"Parameters: {sum(parameter.numel() for parameter in model.parameters()):,}")
     if args.dry_run:
         print("Dry-run completed. No training was started.")
         return
+
+    existing_paths = [path for path in (result_dir, checkpoint_dir) if path.exists()]
+    if existing_paths and not args.force:
+        relative_paths = ", ".join(relative_project_path(path) for path in existing_paths)
+        raise FileExistsError(
+            f"Run artifacts already exist: {relative_paths}. "
+            "Use --force to overwrite them, or pass a different --run-suffix."
+        )
+    if args.force:
+        for path in existing_paths:
+            shutil.rmtree(path)
 
     loss_fn = make_loss(str(training.get("loss", "huber")))
     optimizer = torch.optim.AdamW(
@@ -571,6 +636,7 @@ def main() -> None:
         "selection_id": selection_id,
         "delta": delta,
         "context_length": context_length,
+        "run_suffix": args.run_suffix,
         "dataset_path": relative_project_path(dataset_path),
         "config_path": relative_project_path(config_path),
         "config_fingerprint": config_fingerprint(config),

@@ -37,3 +37,23 @@ def test_current_level_persistence_paths_are_task_separated() -> None:
         "currentLevelPersistence_delta0p5_L30_multiscale_shapelet_mlp_"
         "externalHoldout_test_fc_uplink_fade"
     )
+
+
+def test_current_level_persistence_run_suffix_keeps_selection_separate() -> None:
+    run_id = make_run_id(
+        delta=0.5,
+        context_length=30,
+        model_id="multiscale_shapelet_transformer",
+        selection_id="externalHoldout_test_fc_uplink_fade",
+        run_suffix="server_smoke",
+    )
+
+    result_path = run_dir(run_id)
+    checkpoint_path = model_dir(run_id)
+
+    assert run_id.endswith("__server_smoke")
+    assert "externalHoldout_test_fc_uplink_fade/currentLevelPersistence" in str(result_path)
+    assert "server_smoke" not in str(result_path.parent)
+    assert "multiscale_shapelet_transformer" in str(checkpoint_path)
+    assert "autoregressive" not in str(result_path)
+    assert "autoregressive" not in str(checkpoint_path)

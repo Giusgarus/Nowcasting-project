@@ -50,19 +50,29 @@ def make_run_id(
     context_length: int,
     model_id: str,
     selection_id: str,
+    run_suffix: str | None = None,
 ) -> str:
     """Build the stable current-level persistence run ID."""
 
-    return (
+    run_id = (
         f"currentLevelPersistence_delta{number_token(delta)}_"
         f"L{int(context_length)}_{sanitize_id(model_id)}_{selection_id}"
     )
+    if run_suffix:
+        run_id = f"{run_id}__{sanitize_id(run_suffix)}"
+    return run_id
+
+
+def base_run_id(run_id: str) -> str:
+    """Return the run ID without an optional ``__suffix`` component."""
+
+    return str(run_id).split("__", 1)[0]
 
 
 def selection_id_from_run_id(run_id: str) -> str:
     """Extract the current-level persistence selection ID embedded in a run ID."""
 
-    match = re.search(r"(externalHoldout_test_[A-Za-z0-9_]+)$", str(run_id))
+    match = re.search(r"(externalHoldout_test_[A-Za-z0-9_]+)$", base_run_id(run_id))
     if not match:
         raise ValueError(
             f"Cannot infer current-level persistence selection from {run_id!r}."
@@ -75,7 +85,7 @@ def model_id_from_run_id(run_id: str) -> str:
 
     match = re.search(
         r"^currentLevelPersistence_delta[^_]+_L\d+_(.+)_externalHoldout_test_",
-        str(run_id),
+        base_run_id(run_id),
     )
     if not match:
         raise ValueError(f"Cannot infer current-level persistence model from {run_id!r}.")
