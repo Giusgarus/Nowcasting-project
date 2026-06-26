@@ -1088,11 +1088,27 @@ def main() -> None:
         model_dir_name = sanitize_id(model_id)
         trials_path = search_dir / model_dir_name / "tables" / "trials.csv"
         trials = pd.read_csv(trials_path)
-        best_trial = select_best_trial(
-            trials,
-            metric=str(config["search"]["selection_metric"]),
-            mode=str(config["search"]["selection_mode"]),
-        )
+        try:
+            best_trial = select_best_trial(
+                trials,
+                metric=str(config["search"]["selection_metric"]),
+                mode=str(config["search"]["selection_mode"]),
+            )
+        except ValueError as error:
+            save_yaml(
+                search_dir / model_dir_name / "best_trial_error.yaml",
+                {
+                    "model_id": model_id,
+                    "status": "failed",
+                    "reason": str(error),
+                    "selection_metric": str(config["search"]["selection_metric"]),
+                },
+            )
+            print(
+                f"Skipping final best run for {model_id}: {error}",
+                flush=True,
+            )
+            continue
         checkpoint_path = PROJECT_ROOT / str(best_trial["checkpoint_path"])
         trial_checkpoint = _load_trial_checkpoint(checkpoint_path)
         best_config = dict(trial_checkpoint["config"])
@@ -1142,6 +1158,8 @@ def main() -> None:
 
     (search_dir / "tables").mkdir(parents=True, exist_ok=True)
     pd.DataFrame(final_rows).to_csv(search_dir / "tables" / "best_runs.csv", index=False)
+    if not final_rows:
+        raise RuntimeError("No model produced a completed finite validation trial.")
     print("=== Selected best runs ===")
     for row in final_rows:
         print(

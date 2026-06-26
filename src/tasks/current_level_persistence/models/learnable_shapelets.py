@@ -166,6 +166,20 @@ class MultiscaleLearnableShapeletLayer(nn.Module):
         }
 
 
+def compressed_shapelet_features(
+    shapelets: MultiscaleLearnableShapeletLayer,
+    inputs: torch.Tensor,
+) -> torch.Tensor:
+    """Return numerically stable shapelet-distance features.
+
+    Minimum squared distances can become large for relative signal windows.
+    ``log1p`` compression preserves ordering while keeping gradients finite for
+    the downstream heads.
+    """
+
+    return torch.log1p(torch.clamp(shapelets(inputs), min=0.0))
+
+
 class MultiscaleLearnableShapeletMLP(nn.Module):
     """Shapelet feature extractor with an MLP regression head."""
 
@@ -195,7 +209,7 @@ class MultiscaleLearnableShapeletMLP(nn.Module):
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         """Predict log1p remaining persistence seconds."""
 
-        return self.head(self.shapelets(inputs)).squeeze(-1)
+        return self.head(compressed_shapelet_features(self.shapelets, inputs)).squeeze(-1)
 
 
 class MultiscaleLearnableShapeletTransformer(nn.Module):
@@ -211,6 +225,7 @@ class MultiscaleLearnableShapeletTransformer(nn.Module):
             n_shapelets_per_length=config.n_shapelets_per_length,
         )
         self.pooling = config.pooling
+        self.feature_norm = nn.LayerNorm(self.shapelets.output_size)
         self.projection = nn.Linear(1, config.d_model)
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=config.d_model,
@@ -229,7 +244,9 @@ class MultiscaleLearnableShapeletTransformer(nn.Module):
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         """Predict log1p remaining persistence seconds."""
 
-        features = self.shapelets(inputs).unsqueeze(-1)
+        features = self.feature_norm(
+            compressed_shapelet_features(self.shapelets, inputs)
+        ).unsqueeze(-1)
         encoded = self.encoder(self.projection(features))
         if self.pooling == "mean":
             pooled = encoded.mean(dim=1)

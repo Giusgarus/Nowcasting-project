@@ -103,3 +103,34 @@ def test_convolution_head_stays_finite_on_large_relative_inputs() -> None:
         parameter.grad is not None and torch.isfinite(parameter.grad).all()
         for parameter in model.parameters()
     )
+
+
+def test_mlp_and_transformer_heads_stay_finite_on_large_relative_inputs() -> None:
+    config = ShapeletConfig(
+        context_length=30,
+        shapelet_lengths=(5, 10, 15),
+        n_shapelets_per_length=4,
+        hidden_dim=16,
+        num_hidden_layers=1,
+        d_model=8,
+        n_heads=2,
+        dropout=0.0,
+    )
+    inputs = torch.randn(8, 30) * 50.0
+    targets = torch.randn(8)
+
+    for model_id in (
+        "multiscale_shapelet_mlp",
+        "multiscale_shapelet_transformer",
+    ):
+        model = build_learnable_shapelet_model(model_id, config)
+        output = model(inputs)
+        loss = torch.nn.functional.smooth_l1_loss(output, targets)
+        loss.backward()
+
+        assert torch.isfinite(output).all()
+        assert torch.isfinite(loss)
+        assert all(
+            parameter.grad is None or torch.isfinite(parameter.grad).all()
+            for parameter in model.parameters()
+        )
