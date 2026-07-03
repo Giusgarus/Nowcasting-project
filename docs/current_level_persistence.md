@@ -226,12 +226,13 @@ python scripts/experiments/current_level_persistence/run_shapelet_grid_search.py
   --config configs/current_level_persistence/shapelet_grid_search_delta_0p5.yaml
 ```
 
-The default grid is intentionally small:
+The default scalar-context grid is intentionally extensive:
 
 ```text
-16 trials for multiscale_shapelet_mlp
-16 trials for multiscale_shapelet_transformer
-16 trials for multiscale_shapelet_convolution
+216 trials for multiscale_shapelet_mlp
+216 trials for multiscale_shapelet_transformer
+216 trials for multiscale_shapelet_convolution
+648 trials total
 ```
 
 The configurable parameters live in:
@@ -240,8 +241,10 @@ The configurable parameters live in:
 configs/current_level_persistence/shapelet_grid_search_delta_0p5.yaml
 ```
 
-The grid currently varies learning rate, number of shapelets per length,
-dropout, and one model-specific capacity parameter per architecture. It uses
+The grid varies learning rate (`0.0001/0.0003/0.001`), shapelets per length
+(`16/32/64`), dropout (`0.0/0.1`), scalar-encoder width (`16/32`), model depth
+(`1/2`), and model-specific capacity. Capacity values are `64/128/256` for the
+MLP and `32/64/128` for Transformer and convolution. It uses
 the shared device-aware scheduler, so independent trials can run across
 multiple visible CUDA GPUs.
 

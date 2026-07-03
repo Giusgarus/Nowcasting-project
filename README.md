@@ -246,7 +246,7 @@ PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
   --config configs/current_level_persistence/shapelet_grid_search_delta_0p5.yaml
 ```
 
-The grid currently evaluates 16 trials per model, selects winners using
+The grid currently evaluates 216 trials per model (648 total), selects winners using
 validation MAE in seconds, then evaluates the selected winner for each model on
 the test split.
 

@@ -591,11 +591,16 @@ PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
   --config configs/current_level_persistence/shapelet_grid_search_delta_0p5.yaml
 ```
 
-The current grid has 16 trials for each of:
+The current grid has 216 trials for each of:
 
 - `multiscale_shapelet_mlp`;
 - `multiscale_shapelet_transformer`;
 - `multiscale_shapelet_convolution`.
+
+This gives 648 trials total. It varies learning rate, model width, model depth,
+dropout, shapelets per length, and scalar-encoder width. The safety limit is
+explicitly set to 256 trials per model. This campaign is intended for a
+multi-GPU server and may take a long time.
 
 The trial phase uses only train and validation data. The winner for each model
 is selected with `val_mae_seconds`; only then is the selected model materialized

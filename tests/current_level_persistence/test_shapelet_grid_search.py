@@ -27,11 +27,32 @@ def test_shapelet_grid_config_expands_three_small_model_grids() -> None:
     }
 
     assert counts == {
-        "multiscale_shapelet_mlp": 16,
-        "multiscale_shapelet_transformer": 16,
-        "multiscale_shapelet_convolution": 16,
+        "multiscale_shapelet_mlp": 216,
+        "multiscale_shapelet_transformer": 216,
+        "multiscale_shapelet_convolution": 216,
     }
-    assert sum(counts.values()) == 48
+    assert sum(counts.values()) == 648
+
+    model_specs = {spec["model_id"]: spec for spec in config["models"]}
+    assert model_specs["multiscale_shapelet_mlp"]["parameter_grid"][
+        "model.hidden_dim"
+    ] == [64, 128, 256]
+    assert model_specs["multiscale_shapelet_transformer"]["parameter_grid"][
+        "model.d_model"
+    ] == [32, 64, 128]
+    assert model_specs["multiscale_shapelet_convolution"]["parameter_grid"][
+        "model.conv_channels"
+    ] == [32, 64, 128]
+    for model_spec in model_specs.values():
+        assert model_spec["parameter_grid"]["training.learning_rate"] == [
+            0.0001,
+            0.0003,
+            0.001,
+        ]
+        assert model_spec["parameter_grid"][
+            "shapelets.n_shapelets_per_length"
+        ] == [16, 32, 64]
+        assert model_spec["parameter_grid"]["scalar_encoder.hidden_dim"] == [16, 32]
 
 
 def test_shapelet_grid_trial_config_applies_fixed_and_grid_overrides() -> None:
@@ -48,8 +69,10 @@ def test_shapelet_grid_trial_config_applies_fixed_and_grid_overrides() -> None:
         {
             "training.learning_rate": 0.0003,
             "model.conv_channels": 32,
+            "model.num_conv_layers": 2,
             "model.dropout": 0.0,
             "shapelets.n_shapelets_per_length": 16,
+            "scalar_encoder.hidden_dim": 32,
         },
     )
 
