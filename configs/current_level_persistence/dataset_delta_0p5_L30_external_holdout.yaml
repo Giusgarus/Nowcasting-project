@@ -15,6 +15,7 @@ input_columns:
 input_representation:
   raw: true
   relative_to_current: true
+  scalar_context: true
 
 target:
   samples: true

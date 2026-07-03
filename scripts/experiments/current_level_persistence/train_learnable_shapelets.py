@@ -25,6 +25,10 @@ from src.tasks.current_level_persistence.evaluation.metrics import (
     compute_event_duration_metrics,
     seconds_from_log1p,
 )
+from src.tasks.current_level_persistence.data.dataset import (
+    SCALAR_CONTEXT_FEATURE_NAMES,
+    prepare_scalar_context_splits,
+)
 from src.tasks.current_level_persistence.models.learnable_shapelets import (
     SUPPORTED_MODEL_IDS,
     ShapeletConfig,
@@ -61,21 +65,52 @@ DEFAULT_CONFIG_PATH = (
 class CurrentLevelPersistenceDataset(Dataset):
     """Expose one current-level persistence split as tensors."""
 
-    def __init__(self, arrays: Mapping[str, np.ndarray], input_key: str, target_key: str):
+    def __init__(
+        self,
+        arrays: Mapping[str, np.ndarray],
+        input_key: str,
+        target_key: str,
+        scalar_context_key: str | None = None,
+    ):
         self.inputs = torch.as_tensor(arrays[input_key], dtype=torch.float32)
         self.targets = torch.as_tensor(arrays[target_key], dtype=torch.float32)
+        self.scalar_inputs = (
+            torch.as_tensor(arrays[scalar_context_key], dtype=torch.float32)
+            if scalar_context_key is not None and scalar_context_key in arrays
+            else None
+        )
         if self.inputs.ndim != 2:
             raise ValueError(f"{input_key} must have shape (N, context_length).")
         if self.targets.ndim != 1:
             raise ValueError(f"{target_key} must have shape (N,).")
         if len(self.inputs) != len(self.targets):
             raise ValueError("Input and target arrays have different lengths.")
+        if scalar_context_key is not None and self.scalar_inputs is None:
+            raise ValueError(
+                f"Scalar context was requested, but {scalar_context_key!r} is missing."
+            )
+        if self.scalar_inputs is not None:
+            if self.scalar_inputs.ndim != 2:
+                raise ValueError(
+                    f"{scalar_context_key} must have shape (N, scalar_features)."
+                )
+            if len(self.scalar_inputs) != len(self.targets):
+                raise ValueError("Scalar context and target arrays have different lengths.")
 
     def __len__(self) -> int:
         return len(self.targets)
 
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
-        return self.inputs[index], self.targets[index]
+    def __getitem__(
+        self,
+        index: int,
+    ) -> tuple[torch.Tensor, torch.Tensor] | tuple[
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+    ]:
+        if self.scalar_inputs is None:
+            return self.inputs[index], self.targets[index]
+        return self.inputs[index], self.scalar_inputs[index], self.targets[index]
 
 
 def project_path(path: str | Path) -> Path:
@@ -150,6 +185,9 @@ def build_shapelet_config(config: dict, context_length: int) -> ShapeletConfig:
 
     shapelets = config["shapelets"]
     model = config.get("model", {})
+    features = config.get("features", {})
+    scalar_encoder = config.get("scalar_encoder", {})
+    use_scalar_context = bool(features.get("use_scalar_context", False))
     return ShapeletConfig(
         context_length=context_length,
         shapelet_lengths=tuple(int(value) for value in shapelets["shapelet_lengths"]),
@@ -165,7 +203,91 @@ def build_shapelet_config(config: dict, context_length: int) -> ShapeletConfig:
         num_conv_layers=int(model.get("num_conv_layers", 2)),
         kernel_size=int(model.get("kernel_size", 3)),
         dropout=float(model.get("dropout", 0.1)),
+        use_scalar_context=use_scalar_context,
+        scalar_context_dim=(
+            len(SCALAR_CONTEXT_FEATURE_NAMES) if use_scalar_context else 0
+        ),
+        scalar_encoder_hidden_dim=int(scalar_encoder.get("hidden_dim", 32)),
+        scalar_encoder_dropout=float(scalar_encoder.get("dropout", 0.1)),
     )
+
+
+def prepare_split_arrays(
+    split_arrays: Mapping[str, Mapping[str, np.ndarray]],
+    config: Mapping,
+    *,
+    delta: float,
+) -> tuple[dict[str, dict[str, np.ndarray]], dict | None]:
+    """Resolve optional scalar context and train-only standardization."""
+
+    features = config.get("features", {})
+    if not bool(features.get("use_scalar_context", False)):
+        return {split: dict(arrays) for split, arrays in split_arrays.items()}, None
+    dataset = config["dataset"]
+    scalar_key = str(
+        features.get(
+            "scalar_context_key",
+            dataset.get("scalar_context_key", "scalar_context_features"),
+        )
+    )
+    return prepare_scalar_context_splits(
+        split_arrays,
+        scalar_context_key=scalar_key,
+        raw_input_key=str(dataset.get("raw_input_key", "X_raw")),
+        delta=delta,
+        standardize=bool(features.get("scalar_context_standardize", True)),
+    )
+
+
+def scalar_context_metadata(config: Mapping, scaler: Mapping | None) -> dict:
+    """Return reproducibility metadata for the optional scalar-context branch."""
+
+    features = config.get("features", {})
+    enabled = bool(features.get("use_scalar_context", False))
+    dataset = config.get("dataset", {})
+    output = {
+        "shapelet_input": dataset.get("input_key", "X_relative_to_current"),
+        "scalar_context": enabled,
+        "scalar_context_key": features.get(
+            "scalar_context_key",
+            dataset.get("scalar_context_key", "scalar_context_features"),
+        ),
+        "scalar_context_feature_names": list(SCALAR_CONTEXT_FEATURE_NAMES)
+        if enabled
+        else [],
+        "scalar_context_standardize": bool(
+            features.get("scalar_context_standardize", True)
+        )
+        if enabled
+        else False,
+        "scalar_scaler_fitted_on": "train" if enabled else None,
+    }
+    if scaler is None:
+        return {"features": output, "scalar_context_scaler": None}
+    return {
+        "features": output,
+        "scalar_context_scaler": {
+            "mean": list(scaler["mean"]),
+            "std": list(scaler["std"]),
+        },
+    }
+
+
+def unpack_batch(
+    batch: tuple[torch.Tensor, ...],
+    device: torch.device,
+) -> tuple[torch.Tensor, torch.Tensor | None, torch.Tensor]:
+    """Move a shapelet batch to device and expose optional scalar context."""
+
+    if len(batch) == 2:
+        inputs, targets = batch
+        scalar_inputs = None
+    elif len(batch) == 3:
+        inputs, scalar_inputs, targets = batch
+        scalar_inputs = scalar_inputs.to(device)
+    else:
+        raise ValueError(f"Unexpected batch structure with {len(batch)} elements.")
+    return inputs.to(device), scalar_inputs, targets.to(device)
 
 
 def make_loss(name: str) -> nn.Module:
@@ -183,6 +305,7 @@ def make_loader(
     *,
     input_key: str,
     target_key: str,
+    scalar_context_key: str | None = None,
     batch_size: int,
     shuffle: bool,
     num_workers: int = 0,
@@ -190,7 +313,12 @@ def make_loader(
 ) -> DataLoader:
     """Create a deterministic PyTorch dataloader."""
 
-    dataset = CurrentLevelPersistenceDataset(arrays, input_key, target_key)
+    dataset = CurrentLevelPersistenceDataset(
+        arrays,
+        input_key,
+        target_key,
+        scalar_context_key,
+    )
     return DataLoader(
         dataset,
         batch_size=batch_size,
@@ -212,11 +340,11 @@ def predict(
     y_true = []
     y_pred = []
     with torch.no_grad():
-        for inputs, targets in loader:
-            inputs = inputs.to(device)
-            predictions = model(inputs).detach().cpu()
+        for batch in loader:
+            inputs, scalar_inputs, targets = unpack_batch(batch, device)
+            predictions = model(inputs, scalar_inputs).detach().cpu()
             y_pred.append(predictions.numpy())
-            y_true.append(targets.numpy())
+            y_true.append(targets.detach().cpu().numpy())
     y_true_array = np.concatenate(y_true)
     y_pred_array = np.concatenate(y_pred)
     if not np.isfinite(y_pred_array).all():
@@ -296,6 +424,7 @@ def save_checkpoint(
     metrics: Mapping[str, float],
     config: Mapping,
     run_id: str,
+    scalar_context_scaler: Mapping | None = None,
 ) -> None:
     """Save a reproducible PyTorch checkpoint."""
 
@@ -308,6 +437,9 @@ def save_checkpoint(
             "metrics": dict(metrics),
             "config": dict(config),
             "run_id": run_id,
+            "scalar_context_scaler": dict(scalar_context_scaler)
+            if scalar_context_scaler is not None
+            else None,
         },
         path,
     )
@@ -357,11 +489,15 @@ def main() -> None:
     delta = float(dataset_metadata["delta"])
     context_length = int(dataset_metadata["context_length"])
     selection_id = str(config.get("selection_id", dataset_metadata["selection_id"]))
+    use_scalar_context = bool(
+        config.get("features", {}).get("use_scalar_context", False)
+    )
     run_id = make_run_id(
         delta=delta,
         context_length=context_length,
         model_id=model_id,
         selection_id=selection_id,
+        scalar_context=use_scalar_context,
         run_suffix=args.run_suffix,
     )
     result_dir = run_dir(run_id)
@@ -374,6 +510,24 @@ def main() -> None:
         "val": load_npz(dataset_path / "val.npz"),
         "test": load_npz(dataset_path / "test.npz"),
     }
+    split_arrays, scalar_scaler = prepare_split_arrays(
+        split_arrays,
+        config,
+        delta=delta,
+    )
+    scalar_context_key = (
+        str(
+            config.get("features", {}).get(
+                "scalar_context_key",
+                config["dataset"].get(
+                    "scalar_context_key",
+                    "scalar_context_features",
+                ),
+            )
+        )
+        if use_scalar_context
+        else None
+    )
     split_metadata = {
         "train": pd.read_parquet(dataset_path / "train_metadata.parquet"),
         "val": pd.read_parquet(dataset_path / "val_metadata.parquet"),
@@ -389,6 +543,7 @@ def main() -> None:
             split_arrays["train"],
             input_key=input_key,
             target_key=target_key,
+            scalar_context_key=scalar_context_key,
             batch_size=int(training["batch_size"]),
             shuffle=True,
             num_workers=num_workers,
@@ -398,6 +553,7 @@ def main() -> None:
             split_arrays["val"],
             input_key=input_key,
             target_key=target_key,
+            scalar_context_key=scalar_context_key,
             batch_size=int(training["batch_size"]),
             shuffle=False,
             num_workers=num_workers,
@@ -407,6 +563,7 @@ def main() -> None:
             split_arrays["test"],
             input_key=input_key,
             target_key=target_key,
+            scalar_context_key=scalar_context_key,
             batch_size=int(training["batch_size"]),
             shuffle=False,
             num_workers=num_workers,
@@ -424,6 +581,9 @@ def main() -> None:
     print(f"Model ID: {model_id}")
     print(f"Dataset: {dataset_path.relative_to(PROJECT_ROOT)}")
     print(f"Input key: {input_key}")
+    print(f"Scalar context: {use_scalar_context}")
+    if scalar_context_key is not None:
+        print(f"Scalar context key: {scalar_context_key} (standardized on train only)")
     print(f"Target key: {target_key}")
     print(f"Device: {device}")
     print(f"Run ID: {run_id}")
@@ -481,9 +641,8 @@ def main() -> None:
         model.train()
         train_loss_sum = 0.0
         n_train = 0
-        for inputs, targets in loaders["train"]:
-            inputs = inputs.to(device)
-            targets = targets.to(device)
+        for batch in loaders["train"]:
+            inputs, scalar_inputs, targets = unpack_batch(batch, device)
             optimizer.zero_grad(set_to_none=True)
             autocast_context = (
                 torch.autocast(device_type="cuda")
@@ -491,7 +650,7 @@ def main() -> None:
                 else nullcontext()
             )
             with autocast_context:
-                predictions = model(inputs)
+                predictions = model(inputs, scalar_inputs)
                 loss = loss_fn(predictions, targets)
             if not torch.isfinite(loss):
                 raise RuntimeError(
@@ -550,6 +709,7 @@ def main() -> None:
                 metrics=val_metrics,
                 config=config,
                 run_id=run_id,
+                scalar_context_scaler=scalar_scaler,
             )
         else:
             epochs_without_improvement += 1
@@ -574,6 +734,7 @@ def main() -> None:
         metrics={key: value for key, value in history[-1].items() if key != "epoch"},
         config=config,
         run_id=run_id,
+        scalar_context_scaler=scalar_scaler,
     )
     model.load_state_dict(best_state)
 
@@ -677,6 +838,7 @@ def main() -> None:
         "results_path": relative_project_path(result_dir),
         "checkpoint_path": relative_project_path(checkpoint_dir),
         "created_at": created_at,
+        **scalar_context_metadata(config, scalar_scaler),
     }
     save_yaml(result_dir / "metadata.yaml", metadata)
     save_yaml(result_dir / "config_resolved.yaml", config)

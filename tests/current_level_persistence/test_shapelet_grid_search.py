@@ -55,6 +55,8 @@ def test_shapelet_grid_trial_config_applies_fixed_and_grid_overrides() -> None:
 
     assert trial_config["model_id"] == "multiscale_shapelet_convolution"
     assert trial_config["training"]["mixed_precision"] is False
+    assert trial_config["features"]["use_scalar_context"] is True
+    assert trial_config["scalar_encoder"]["hidden_dim"] == 32
     assert trial_config["training"]["learning_rate"] == 0.0003
     assert trial_config["model"]["conv_channels"] == 32
     assert trial_config["model"]["num_conv_layers"] == 2

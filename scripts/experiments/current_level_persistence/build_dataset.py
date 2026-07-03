@@ -14,6 +14,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.data.splits import assign_external_holdout_splits
 from src.tasks.current_level_persistence.data.dataset import (
+    SCALAR_CONTEXT_FEATURE_NAMES,
     SPLIT_FILE_NAMES,
     SPLITS,
     build_current_level_persistence_arrays,
@@ -196,11 +197,14 @@ def main() -> None:
         "target_definition": (
             "remaining samples from t while Signal >= Signal_t - delta"
         ),
-        "input_representation": (
-            "X_relative_to_current = X_raw - Signal_t"
-        ),
+        "input_representation": "X_relative_to_current = X_raw - Signal_t",
         "signal_column": signal_column,
-        "input_representations": ["X_raw", "X_relative_to_current"],
+        "input_representations": [
+            "X_raw",
+            "X_relative_to_current",
+            "scalar_context_features",
+        ],
+        "scalar_context_feature_names": list(SCALAR_CONTEXT_FEATURE_NAMES),
         "targets": [
             "remaining_persistence_samples",
             "remaining_persistence_seconds",

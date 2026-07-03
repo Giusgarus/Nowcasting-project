@@ -57,8 +57,13 @@ Current setup:
 delta = 0.5
 context_length = 30
 target = log1p_remaining_persistence_seconds
-input = X_relative_to_current
+shapelet input = X_relative_to_current
+auxiliary input = scalar_context_features derived from X_raw
 ```
+
+The 12 scalar features preserve absolute level and recent summary information.
+Their standardization is fitted on train only. Scalar-context runs use distinct
+IDs, so the earlier shapelet-only results are not overwritten.
 
 Implemented models:
 
@@ -69,6 +74,7 @@ Implemented models:
 Main documentation:
 
 - [Current-Level Persistence](docs/current_level_persistence.md)
+- [Current-Level Persistence Server Runs](docs/current_level_persistence_server_runs.md)
 
 ### Deferred Work
 

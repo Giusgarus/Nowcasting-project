@@ -66,6 +66,19 @@ X_relative_to_current = X_raw - S_t
 
 The last value of `X_relative_to_current` is exactly zero.
 
+To preserve absolute-level information, shapelet models also receive
+`scalar_context_features` in this fixed order:
+
+```text
+current_signal, recovery_level, window_mean, window_std,
+window_min, window_max, window_range, last_slope,
+recent_slope_3, recent_slope_5, recent_mean_5, recent_std_5
+```
+
+These values are derived from `X_raw`. Their scaler is fitted on train only and
+reused unchanged for validation and test. `X_relative_to_current` remains the
+input to the shapelet encoder.
+
 ## Targets
 
 The dataset stores:
@@ -116,11 +129,13 @@ Checkpoints use:
 models/current_level_persistence/<model_id>/<run_id>/
 ```
 
-The prepared run ID format is:
+Scalar-context run IDs use:
 
 ```text
-currentLevelPersistence_delta0p5_L30_<model_id>_<selection_id>
+currentLevelPersistence_delta0p5_L30_<model_id>_scalarContext_<selection_id>
 ```
+
+This keeps them separate from earlier shapelet-only runs.
 
 ## Prepared Model Families
 
@@ -142,9 +157,9 @@ n_shapelets_per_length: 32
 The common pipeline is:
 
 ```text
-X_relative_to_current
-  -> multiscale learnable shapelet layer
-  -> head
+X_relative_to_current -> multiscale learnable shapelet layer -> shapelet representation
+scalar_context_features -> Linear -> ReLU -> Dropout -> scalar embedding
+shapelet representation + scalar embedding -> regression head
   -> predicted log1p remaining persistence seconds
 ```
 
@@ -153,6 +168,10 @@ the shapelet lengths differ. The implementation processes each shapelet length
 as a separate scale, pools each scale, then concatenates the pooled scale
 features before the final regression layer. The convolutional response maps are
 log-compressed and normalized per scale for numerical stability.
+
+All three configs enable the auxiliary scalar branch by default with a 32-unit
+embedding. Set `features.use_scalar_context: false` only to reproduce the old
+shapelet-only architecture.
 
 ## Train Learnable-Shapelet Models
 
@@ -184,6 +203,17 @@ Best and last checkpoints are saved under:
 
 ```text
 models/current_level_persistence/<model_id>/<run_id>/
+```
+
+The scalar-context grid has a distinct `search_id` containing `scalarContext`,
+so it does not overwrite the previous search.
+
+## Server Launchers
+
+Dataset rebuild, smoke-run, and three-GPU commands are documented in:
+
+```text
+docs/current_level_persistence_server_runs.md
 ```
 
 ## Grid Search

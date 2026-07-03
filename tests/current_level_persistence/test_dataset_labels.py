@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from src.tasks.current_level_persistence.data.dataset import (
+    SCALAR_CONTEXT_FEATURE_NAMES,
     build_current_level_persistence_arrays,
     build_current_level_persistence_index,
     relative_to_current,
@@ -64,6 +65,11 @@ def test_dataset_arrays_include_current_level_targets_and_representations() -> N
     )
     assert arrays["train"]["y_remaining_persistence_samples"][0] == 2
     assert arrays["train"]["y_remaining_persistence_seconds"][0] == 60.0
+    assert arrays["train"]["scalar_context_features"].shape == (4, 12)
+    assert arrays["train"]["scalar_context_feature_names"].tolist() == list(
+        SCALAR_CONTEXT_FEATURE_NAMES
+    )
+    assert set(SCALAR_CONTEXT_FEATURE_NAMES).issubset(metadata["train"].columns)
     assert metadata["train"].loc[0, "global_event_id"] == "toy.csv::event_001"
     assert metadata["train"].loc[0, "global_window_id"].startswith(
         "toy.csv::clp_window_"

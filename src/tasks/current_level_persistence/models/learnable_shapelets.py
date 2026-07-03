@@ -36,12 +36,75 @@ class ShapeletConfig:
     num_conv_layers: int = 2
     kernel_size: int = 3
     dropout: float = 0.1
+    use_scalar_context: bool = False
+    scalar_context_dim: int = 0
+    scalar_encoder_hidden_dim: int = 32
+    scalar_encoder_dropout: float = 0.1
 
     @property
     def mlp_hidden_dim(self) -> int:
         """Return the MLP hidden width, accepting both config key conventions."""
 
         return int(self.hidden_dim if self.hidden_dim is not None else self.hidden_size)
+
+
+class ScalarContextEncoder(nn.Module):
+    """Encode standardized scalar context into a compact auxiliary embedding."""
+
+    def __init__(self, input_dim: int, hidden_dim: int, dropout: float) -> None:
+        super().__init__()
+        if input_dim < 1:
+            raise ValueError("scalar_context_dim must be positive when enabled.")
+        if hidden_dim < 1:
+            raise ValueError("scalar encoder hidden_dim must be positive.")
+        self.input_dim = int(input_dim)
+        self.output_dim = int(hidden_dim)
+        self.encoder = nn.Sequential(
+            nn.Linear(self.input_dim, self.output_dim),
+            nn.ReLU(),
+            nn.Dropout(float(dropout)),
+        )
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        """Return one scalar-context embedding per window."""
+
+        if inputs.ndim != 2 or inputs.shape[1] != self.input_dim:
+            raise ValueError(
+                "x_scalar must have shape "
+                f"(batch, {self.input_dim}); received {tuple(inputs.shape)}."
+            )
+        return self.encoder(inputs)
+
+
+def build_scalar_encoder(config: ShapeletConfig) -> ScalarContextEncoder | None:
+    """Build the optional scalar-context branch."""
+
+    if not config.use_scalar_context:
+        return None
+    return ScalarContextEncoder(
+        input_dim=config.scalar_context_dim,
+        hidden_dim=config.scalar_encoder_hidden_dim,
+        dropout=config.scalar_encoder_dropout,
+    )
+
+
+def append_scalar_context(
+    shapelet_features: torch.Tensor,
+    x_scalar: torch.Tensor | None,
+    scalar_encoder: ScalarContextEncoder | None,
+) -> torch.Tensor:
+    """Concatenate shapelet features with the optional scalar embedding."""
+
+    if scalar_encoder is None:
+        return shapelet_features
+    if x_scalar is None:
+        raise ValueError(
+            "Scalar context is enabled for this model, but x_scalar was not provided."
+        )
+    scalar_embedding = scalar_encoder(x_scalar)
+    if scalar_embedding.shape[0] != shapelet_features.shape[0]:
+        raise ValueError("x_shapelet and x_scalar batch sizes do not match.")
+    return torch.cat([shapelet_features, scalar_embedding], dim=1)
 
 
 class MultiscaleLearnableShapeletLayer(nn.Module):
@@ -192,8 +255,10 @@ class MultiscaleLearnableShapeletMLP(nn.Module):
             shapelet_lengths=config.shapelet_lengths,
             n_shapelets_per_length=config.n_shapelets_per_length,
         )
-        layers: list[nn.Module] = [nn.LayerNorm(self.shapelets.output_size)]
-        input_dim = self.shapelets.output_size
+        self.scalar_encoder = build_scalar_encoder(config)
+        scalar_dim = self.scalar_encoder.output_dim if self.scalar_encoder else 0
+        input_dim = self.shapelets.output_size + scalar_dim
+        layers: list[nn.Module] = [nn.LayerNorm(input_dim)]
         for _ in range(config.num_hidden_layers):
             layers.extend(
                 [
@@ -206,10 +271,16 @@ class MultiscaleLearnableShapeletMLP(nn.Module):
         layers.append(nn.Linear(input_dim, 1))
         self.head = nn.Sequential(*layers)
 
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        x_shapelet: torch.Tensor,
+        x_scalar: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         """Predict log1p remaining persistence seconds."""
 
-        return self.head(compressed_shapelet_features(self.shapelets, inputs)).squeeze(-1)
+        features = compressed_shapelet_features(self.shapelets, x_shapelet)
+        combined = append_scalar_context(features, x_scalar, self.scalar_encoder)
+        return self.head(combined).squeeze(-1)
 
 
 class MultiscaleLearnableShapeletTransformer(nn.Module):
@@ -239,13 +310,19 @@ class MultiscaleLearnableShapeletTransformer(nn.Module):
             encoder_layer,
             num_layers=config.transformer_layers,
         )
-        self.head = nn.Linear(config.d_model, 1)
+        self.scalar_encoder = build_scalar_encoder(config)
+        scalar_dim = self.scalar_encoder.output_dim if self.scalar_encoder else 0
+        self.head = nn.Linear(config.d_model + scalar_dim, 1)
 
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        x_shapelet: torch.Tensor,
+        x_scalar: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         """Predict log1p remaining persistence seconds."""
 
         features = self.feature_norm(
-            compressed_shapelet_features(self.shapelets, inputs)
+            compressed_shapelet_features(self.shapelets, x_shapelet)
         ).unsqueeze(-1)
         encoded = self.encoder(self.projection(features))
         if self.pooling == "mean":
@@ -254,7 +331,8 @@ class MultiscaleLearnableShapeletTransformer(nn.Module):
             pooled = encoded.max(dim=1).values
         else:
             raise ValueError(f"Unsupported transformer pooling: {self.pooling}")
-        return self.head(pooled).squeeze(-1)
+        combined = append_scalar_context(pooled, x_scalar, self.scalar_encoder)
+        return self.head(combined).squeeze(-1)
 
 
 class MultiscaleLearnableShapeletConvolution(nn.Module):
@@ -302,17 +380,23 @@ class MultiscaleLearnableShapeletConvolution(nn.Module):
                 input_channels = config.conv_channels
             self.scale_convolutions[str(length)] = nn.Sequential(*layers)
         pooled_size = config.conv_channels * len(self.shapelets.shapelet_lengths)
-        self.head_norm = nn.LayerNorm(pooled_size)
+        self.scalar_encoder = build_scalar_encoder(config)
+        scalar_dim = self.scalar_encoder.output_dim if self.scalar_encoder else 0
+        self.head_norm = nn.LayerNorm(pooled_size + scalar_dim)
         self.head = nn.Linear(
-            pooled_size,
+            pooled_size + scalar_dim,
             1,
         )
 
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        x_shapelet: torch.Tensor,
+        x_scalar: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         """Predict log1p remaining persistence seconds."""
 
         pooled_by_scale = []
-        for length, maps in self.shapelets.response_maps_by_length(inputs).items():
+        for length, maps in self.shapelets.response_maps_by_length(x_shapelet).items():
             # Distances are non-negative and can have a long right tail; log1p
             # compression keeps the convolutional head numerically stable.
             maps = torch.log1p(torch.clamp(maps, min=0.0))
@@ -325,7 +409,13 @@ class MultiscaleLearnableShapeletConvolution(nn.Module):
             else:
                 raise ValueError(f"Unsupported convolution pooling: {self.pooling}")
             pooled_by_scale.append(pooled)
-        return self.head(self.head_norm(torch.cat(pooled_by_scale, dim=1))).squeeze(-1)
+        shapelet_features = torch.cat(pooled_by_scale, dim=1)
+        combined = append_scalar_context(
+            shapelet_features,
+            x_scalar,
+            self.scalar_encoder,
+        )
+        return self.head(self.head_norm(combined)).squeeze(-1)
 
 
 def build_learnable_shapelet_model(

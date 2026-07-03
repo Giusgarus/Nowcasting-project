@@ -50,13 +50,15 @@ def make_run_id(
     context_length: int,
     model_id: str,
     selection_id: str,
+    scalar_context: bool = False,
     run_suffix: str | None = None,
 ) -> str:
     """Build the stable current-level persistence run ID."""
 
+    feature_suffix = "_scalarContext" if scalar_context else ""
     run_id = (
         f"currentLevelPersistence_delta{number_token(delta)}_"
-        f"L{int(context_length)}_{sanitize_id(model_id)}_{selection_id}"
+        f"L{int(context_length)}_{sanitize_id(model_id)}{feature_suffix}_{selection_id}"
     )
     if run_suffix:
         run_id = f"{run_id}__{sanitize_id(run_suffix)}"
@@ -89,7 +91,10 @@ def model_id_from_run_id(run_id: str) -> str:
     )
     if not match:
         raise ValueError(f"Cannot infer current-level persistence model from {run_id!r}.")
-    return sanitize_id(match.group(1))
+    model_id = match.group(1)
+    if model_id.endswith("_scalarContext"):
+        model_id = model_id.removesuffix("_scalarContext")
+    return sanitize_id(model_id)
 
 
 def processed_dataset_dir(

@@ -11,6 +11,20 @@ import pandas as pd
 
 SPLITS = ("train", "validation", "test")
 SPLIT_FILE_NAMES = {"train": "train", "validation": "val", "test": "test"}
+SCALAR_CONTEXT_FEATURE_NAMES = (
+    "current_signal",
+    "recovery_level",
+    "window_mean",
+    "window_std",
+    "window_min",
+    "window_max",
+    "window_range",
+    "last_slope",
+    "recent_slope_3",
+    "recent_slope_5",
+    "recent_mean_5",
+    "recent_std_5",
+)
 
 
 def remaining_persistence_samples(
@@ -53,6 +67,167 @@ def relative_to_current(window: np.ndarray) -> np.ndarray:
     relative = values - values[-1]
     relative[-1] = np.float32(0.0)
     return relative.astype(np.float32)
+
+
+def compute_scalar_context_features(
+    x_raw: np.ndarray,
+    *,
+    delta: float | np.ndarray,
+) -> np.ndarray:
+    """Compute ordered absolute-level and summary features for raw windows.
+
+    Short contexts use the earliest available value for slope spans longer than
+    the window. Standard deviations use ``ddof=0``.
+    """
+
+    values = np.asarray(x_raw, dtype=np.float32)
+    if values.ndim == 1:
+        values = values[None, :]
+    if values.ndim != 2 or values.shape[1] == 0:
+        raise ValueError("X_raw must have shape (N, context_length) with L >= 1.")
+    if not np.isfinite(values).all():
+        raise ValueError("X_raw contains non-finite values.")
+
+    delta_values = np.asarray(delta, dtype=np.float32)
+    if delta_values.ndim == 0:
+        delta_values = np.full(len(values), delta_values, dtype=np.float32)
+    else:
+        delta_values = delta_values.reshape(-1)
+    if len(delta_values) != len(values):
+        raise ValueError("delta must be scalar or contain one value per window.")
+
+    current = values[:, -1]
+    window_min = values.min(axis=1)
+    window_max = values.max(axis=1)
+
+    def slope(span: int) -> np.ndarray:
+        reference_index = -min(span, values.shape[1])
+        return current - values[:, reference_index]
+
+    recent = values[:, -min(5, values.shape[1]) :]
+    features = np.column_stack(
+        [
+            current,
+            current - delta_values,
+            values.mean(axis=1),
+            values.std(axis=1, ddof=0),
+            window_min,
+            window_max,
+            window_max - window_min,
+            slope(2) if values.shape[1] >= 2 else np.zeros(len(values)),
+            slope(3),
+            slope(5),
+            recent.mean(axis=1),
+            recent.std(axis=1, ddof=0),
+        ]
+    )
+    return features.astype(np.float32)
+
+
+def ensure_scalar_context_features(
+    arrays: Mapping[str, np.ndarray],
+    *,
+    scalar_context_key: str = "scalar_context_features",
+    raw_input_key: str = "X_raw",
+    delta: float | None = None,
+) -> dict[str, np.ndarray]:
+    """Return split arrays with canonical scalar context features available.
+
+    Existing feature matrices are validated and reordered when their stored
+    names contain the canonical feature set. Older datasets fall back to
+    computing features from ``X_raw``.
+    """
+
+    output = dict(arrays)
+    expected_names = list(SCALAR_CONTEXT_FEATURE_NAMES)
+    if scalar_context_key in output:
+        features = np.asarray(output[scalar_context_key], dtype=np.float32)
+        if features.ndim != 2:
+            raise ValueError(f"{scalar_context_key} must have shape (N, features).")
+        stored_names = output.get("scalar_context_feature_names")
+        if stored_names is None:
+            if features.shape[1] != len(expected_names):
+                raise ValueError(
+                    f"{scalar_context_key} has {features.shape[1]} columns; "
+                    f"expected {len(expected_names)}."
+                )
+        else:
+            names = [str(name) for name in np.asarray(stored_names).tolist()]
+            if set(names) != set(expected_names) or len(names) != len(expected_names):
+                raise ValueError(
+                    "scalar_context_feature_names does not match the required features."
+                )
+            features = features[:, [names.index(name) for name in expected_names]]
+        output[scalar_context_key] = features
+    else:
+        if raw_input_key not in output:
+            raise ValueError(
+                f"Scalar context was requested, but neither {scalar_context_key!r} "
+                f"nor fallback raw input {raw_input_key!r} is available. Rebuild "
+                "the current-level persistence dataset."
+            )
+        delta_values: float | np.ndarray
+        if "delta" in output:
+            delta_values = output["delta"]
+        elif delta is not None:
+            delta_values = float(delta)
+        else:
+            raise ValueError(
+                "Cannot derive recovery_level for scalar context: delta is missing."
+            )
+        output[scalar_context_key] = compute_scalar_context_features(
+            output[raw_input_key],
+            delta=delta_values,
+        )
+    if len(output[scalar_context_key]) != len(output[raw_input_key]):
+        raise ValueError("Scalar context and raw input arrays have different lengths.")
+    if not np.isfinite(output[scalar_context_key]).all():
+        raise ValueError("Scalar context features contain non-finite values.")
+    output["scalar_context_feature_names"] = np.asarray(expected_names, dtype=str)
+    return output
+
+
+def prepare_scalar_context_splits(
+    split_arrays: Mapping[str, Mapping[str, np.ndarray]],
+    *,
+    scalar_context_key: str = "scalar_context_features",
+    raw_input_key: str = "X_raw",
+    delta: float | None = None,
+    standardize: bool = True,
+) -> tuple[dict[str, dict[str, np.ndarray]], dict[str, Any]]:
+    """Prepare scalar context using statistics fitted on the train split only."""
+
+    prepared = {
+        split: ensure_scalar_context_features(
+            arrays,
+            scalar_context_key=scalar_context_key,
+            raw_input_key=raw_input_key,
+            delta=delta,
+        )
+        for split, arrays in split_arrays.items()
+    }
+    if "train" not in prepared or len(prepared["train"][scalar_context_key]) == 0:
+        raise ValueError("A non-empty train split is required for scalar standardization.")
+    train_features = prepared["train"][scalar_context_key]
+    mean = train_features.mean(axis=0, dtype=np.float64).astype(np.float32)
+    observed_std = train_features.std(axis=0, ddof=0, dtype=np.float64).astype(
+        np.float32
+    )
+    scale = np.where(observed_std > 0.0, observed_std, 1.0).astype(np.float32)
+    if standardize:
+        for arrays in prepared.values():
+            arrays[scalar_context_key] = (
+                (arrays[scalar_context_key] - mean) / scale
+            ).astype(np.float32)
+    scaler = {
+        "feature_names": list(SCALAR_CONTEXT_FEATURE_NAMES),
+        "mean": mean.tolist(),
+        "std": scale.tolist(),
+        "observed_std": observed_std.tolist(),
+        "fitted_on": "train",
+        "standardized": bool(standardize),
+    }
+    return prepared, scaler
 
 
 def build_current_level_persistence_index(
@@ -203,9 +378,18 @@ def build_current_level_persistence_arrays(
         if len(x_raw)
         else np.empty((0, context_length), dtype=np.float32)
     )
+    scalar_context = compute_scalar_context_features(
+        x_raw,
+        delta=window_index["delta"].to_numpy(dtype=np.float32),
+    )
+    metadata_with_features = window_index.copy()
+    for feature_index, feature_name in enumerate(SCALAR_CONTEXT_FEATURE_NAMES):
+        metadata_with_features[feature_name] = scalar_context[:, feature_index]
+
     all_arrays = {
         "X_raw": x_raw,
         "X_relative_to_current": x_relative,
+        "scalar_context_features": scalar_context,
         "y_remaining_persistence_samples": window_index[
             "remaining_persistence_samples"
         ].to_numpy(dtype=np.int64),
@@ -233,7 +417,11 @@ def build_current_level_persistence_arrays(
     for split in SPLITS:
         mask = window_index["split"].eq(split).to_numpy()
         split_arrays[split] = {key: value[mask] for key, value in all_arrays.items()}
-        split_metadata[split] = window_index.loc[mask].reset_index(drop=True)
+        split_arrays[split]["scalar_context_feature_names"] = np.asarray(
+            SCALAR_CONTEXT_FEATURE_NAMES,
+            dtype=str,
+        )
+        split_metadata[split] = metadata_with_features.loc[mask].reset_index(drop=True)
     return split_arrays, split_metadata
 
 

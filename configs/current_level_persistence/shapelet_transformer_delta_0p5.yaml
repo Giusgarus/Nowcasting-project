@@ -6,7 +6,18 @@ selection_id: externalHoldout_test_fc_uplink_fade
 dataset:
   path: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/
   input_key: X_relative_to_current
+  raw_input_key: X_raw
+  scalar_context_key: scalar_context_features
   target_key: y_log1p_remaining_persistence_seconds
+
+features:
+  use_scalar_context: true
+  scalar_context_key: scalar_context_features
+  scalar_context_standardize: true
+
+scalar_encoder:
+  hidden_dim: 32
+  dropout: 0.1
 
 target:
   train_space: log1p_seconds

@@ -33,8 +33,10 @@ def test_shapelet_top_level_configs_parse_and_build_models() -> None:
         assert config["task_name"] == "current_level_persistence"
         assert config["model_family"] == "learnable_shapelets"
         assert config["dataset"]["input_key"] == "X_relative_to_current"
+        assert config["dataset"]["raw_input_key"] == "X_raw"
+        assert config["features"]["use_scalar_context"] is True
         assert config["dataset"]["target_key"] == "y_log1p_remaining_persistence_seconds"
-        assert model(torch.zeros(2, 30)).shape == (2,)
+        assert model(torch.zeros(2, 30), torch.zeros(2, 12)).shape == (2,)
 
 
 def test_tiny_synthetic_training_step_runs() -> None:
@@ -50,6 +52,9 @@ def test_tiny_synthetic_training_step_runs() -> None:
         "X_relative_to_current": np.random.default_rng(42).normal(size=(8, 30)).astype(
             np.float32
         ),
+        "scalar_context_features": np.random.default_rng(44)
+        .normal(size=(8, 12))
+        .astype(np.float32),
         "y_log1p_remaining_persistence_seconds": np.random.default_rng(43)
         .normal(size=8)
         .astype(np.float32),
@@ -58,10 +63,13 @@ def test_tiny_synthetic_training_step_runs() -> None:
         arrays,
         "X_relative_to_current",
         "y_log1p_remaining_persistence_seconds",
+        "scalar_context_features",
     )
-    inputs, targets = next(iter(torch.utils.data.DataLoader(dataset, batch_size=4)))
+    inputs, scalar_inputs, targets = next(
+        iter(torch.utils.data.DataLoader(dataset, batch_size=4))
+    )
 
-    loss = loss_fn(model(inputs), targets)
+    loss = loss_fn(model(inputs, scalar_inputs), targets)
     loss.backward()
     optimizer.step()
 

@@ -31,7 +31,10 @@ from scripts.experiments.current_level_persistence.train_learnable_shapelets imp
     make_loader,
     make_loss,
     prediction_frame,
+    prepare_split_arrays,
     project_path,
+    scalar_context_metadata,
+    unpack_batch,
 )
 from src.tasks.current_level_persistence.models.learnable_shapelets import (
     SUPPORTED_MODEL_IDS,
@@ -161,6 +164,8 @@ def model_base_config(config: Mapping[str, Any], model_spec: Mapping[str, Any]) 
         "model_id": model_id,
         "selection_id": config["selection_id"],
         "dataset": copy.deepcopy(config["dataset"]),
+        "features": copy.deepcopy(config.get("features", {})),
+        "scalar_encoder": copy.deepcopy(config.get("scalar_encoder", {})),
         "target": copy.deepcopy(config.get("target", {})),
         "training": copy.deepcopy(config["training"]),
         "shapelets": copy.deepcopy(config["shapelets"]),
@@ -252,6 +257,14 @@ def validate_config(config: Mapping[str, Any]) -> None:
             "search.save_trial_checkpoints must be true because final best-model "
             "materialization needs the selected validation checkpoint."
         )
+    features = config.get("features", {})
+    if bool(features.get("use_scalar_context", False)):
+        dataset = config["dataset"]
+        for key in ("raw_input_key", "scalar_context_key"):
+            if key not in dataset:
+                raise ValueError(
+                    f"dataset.{key} is required when scalar context is enabled."
+                )
 
 
 def _metric_without_split(metric: str) -> str:
@@ -291,12 +304,11 @@ def _train_epoch(
     model.train()
     train_loss_sum = 0.0
     n_train = 0
-    for inputs, targets in loader:
-        inputs = inputs.to(device)
-        targets = targets.to(device)
+    for batch in loader:
+        inputs, scalar_inputs, targets = unpack_batch(batch, device)
         optimizer.zero_grad(set_to_none=True)
         with _autocast_context(amp_enabled=amp_enabled):
-            predictions = model(inputs)
+            predictions = model(inputs, scalar_inputs)
             loss = loss_fn(predictions, targets)
         if not torch.isfinite(loss):
             raise RuntimeError(f"Non-finite training loss: {loss.item()}")
@@ -362,12 +374,23 @@ def build_split_loaders(
     kwargs = _loader_kwargs(training, device)
     input_key = str(config["dataset"]["input_key"])
     target_key = str(config["dataset"]["target_key"])
+    scalar_context_key = (
+        str(
+            config.get("features", {}).get(
+                "scalar_context_key",
+                config["dataset"].get("scalar_context_key"),
+            )
+        )
+        if bool(config.get("features", {}).get("use_scalar_context", False))
+        else None
+    )
     splits = ("train", "val", "test") if include_test else ("train", "val")
     return {
         split: make_loader(
             split_arrays[split],
             input_key=input_key,
             target_key=target_key,
+            scalar_context_key=scalar_context_key,
             shuffle=split == "train",
             **kwargs,
         )
@@ -386,10 +409,30 @@ def build_full_development_loader(
     training = config["training"]
     input_key = str(config["dataset"]["input_key"])
     target_key = str(config["dataset"]["target_key"])
+    scalar_context_key = (
+        str(
+            config.get("features", {}).get(
+                "scalar_context_key",
+                config["dataset"].get("scalar_context_key"),
+            )
+        )
+        if bool(config.get("features", {}).get("use_scalar_context", False))
+        else None
+    )
     dataset = ConcatDataset(
         [
-            CurrentLevelPersistenceDataset(split_arrays["train"], input_key, target_key),
-            CurrentLevelPersistenceDataset(split_arrays["val"], input_key, target_key),
+            CurrentLevelPersistenceDataset(
+                split_arrays["train"],
+                input_key,
+                target_key,
+                scalar_context_key,
+            ),
+            CurrentLevelPersistenceDataset(
+                split_arrays["val"],
+                input_key,
+                target_key,
+                scalar_context_key,
+            ),
         ]
     )
     generator = torch.Generator()
@@ -606,7 +649,14 @@ def run_trial_job(job: dict[str, Any]) -> dict[str, Any]:
         flush=True,
     )
     try:
-        split_arrays, split_metadata, _ = load_dataset_bundle(Path(job["dataset_path"]))
+        split_arrays, split_metadata, dataset_metadata = load_dataset_bundle(
+            Path(job["dataset_path"])
+        )
+        split_arrays, scalar_scaler = prepare_split_arrays(
+            split_arrays,
+            config,
+            delta=float(dataset_metadata["delta"]),
+        )
         result = train_trial_model(
             config=config,
             split_arrays=split_arrays,
@@ -627,6 +677,7 @@ def run_trial_job(job: dict[str, Any]) -> dict[str, Any]:
                     "best_metrics": result["best_metrics"],
                     "history": result["history"],
                     "config": result["model_config"],
+                    "scalar_context_scaler": scalar_scaler,
                 },
                 checkpoint_path,
             )
@@ -705,6 +756,7 @@ def save_canonical_best_run(
     final_training: Mapping[str, Any],
     selection_metric: str,
     device: torch.device,
+    scalar_context_scaler: Mapping | None,
 ) -> dict[str, Any]:
     """Save the selected model and its canonical test outputs."""
 
@@ -717,6 +769,9 @@ def save_canonical_best_run(
         context_length=context_length,
         model_id=model_id,
         selection_id=selection_id,
+        scalar_context=bool(
+            config.get("features", {}).get("use_scalar_context", False)
+        ),
     )
     result_dir = run_dir(run_id)
     checkpoint_dir = model_dir(run_id)
@@ -798,6 +853,9 @@ def save_canonical_best_run(
     }
     metrics_summary = {
         "run_id": run_id,
+        "scalar_context_scaler": dict(scalar_context_scaler)
+        if scalar_context_scaler is not None
+        else None,
         "model_id": model_id,
         "best_trial_id": best_trial["trial_id"],
         "best_epoch": int(best_trial["best_epoch"]),
@@ -874,6 +932,7 @@ def save_canonical_best_run(
         "results_path": relative_project_path(result_dir),
         "checkpoint_path": relative_project_path(checkpoint_dir),
         "created_at": created_at,
+        **scalar_context_metadata(config, scalar_context_scaler),
     }
     save_yaml(result_dir / "metadata.yaml", metadata)
     save_yaml(result_dir / "config_resolved.yaml", config)
@@ -945,6 +1004,9 @@ def build_jobs(
             context_length=context_length,
             model_id=model_id,
             selection_id=str(config["selection_id"]),
+            scalar_context=bool(
+                config.get("features", {}).get("use_scalar_context", False)
+            ),
         )
         for trial_index, trial in enumerate(
             expand_model_trials(config, model_spec),
@@ -1004,6 +1066,11 @@ def main() -> None:
             f"Dataset folder not found: {dataset_path}. Build it first."
         )
     split_arrays, split_metadata, dataset_metadata = load_dataset_bundle(dataset_path)
+    split_arrays, scalar_scaler = prepare_split_arrays(
+        split_arrays,
+        config,
+        delta=float(dataset_metadata["delta"]),
+    )
     context_length = int(dataset_metadata["context_length"])
     selection_id = str(config.get("selection_id", dataset_metadata["selection_id"]))
     search_id = str(config["search_id"])
@@ -1073,6 +1140,7 @@ def main() -> None:
             "selection_metric": config["search"]["selection_metric"],
             "selection_mode": config["search"]["selection_mode"],
             "test_policy": "test split evaluated only after validation selection",
+            **scalar_context_metadata(config, scalar_scaler),
             "created_at": datetime.now(timezone.utc).isoformat(),
         },
     )
@@ -1137,6 +1205,7 @@ def main() -> None:
             final_training=config.get("final_training", {}),
             selection_metric=str(config["search"]["selection_metric"]),
             device=final_device,
+            scalar_context_scaler=scalar_scaler,
         )
         final_rows.append(final_row)
         upsert_index_row(

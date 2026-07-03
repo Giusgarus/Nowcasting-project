@@ -565,6 +565,11 @@ conda run -n Nowcasting python scripts/experiments/current_level_persistence/bui
   --config configs/current_level_persistence/dataset_delta_0p5_L30_external_holdout.yaml
 ```
 
+Rebuild with `--force` when existing NPZ files predate
+`scalar_context_features`. The runner can reconstruct these features from
+`X_raw`, but a rebuild also persists feature values and names in NPZ/parquet
+artifacts.
+
 Train the three initial learnable-shapelet variants:
 
 ```bash
@@ -599,6 +604,11 @@ as a canonical run and evaluated on the test split.
 Each run saves metrics, predictions, diagnostic figures, learned shapelets,
 metadata, and checkpoints under the task-specific `results/runs/` and
 `models/` folders.
+
+The three configs enable scalar context. Run IDs contain `scalarContext`, and
+the train-fitted scalar means/stds are stored in metadata and checkpoints.
+Three-GPU server commands are in
+`docs/current_level_persistence_server_runs.md`.
 
 After all three runs finish, build the comparison table:
 
