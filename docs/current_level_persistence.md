@@ -25,13 +25,22 @@ The recovery level is:
 recovery_level = S_t - delta
 ```
 
-The label counts consecutive samples starting at `t` for which:
+The label searches the complete cleaned signal after `t` for the first
+observation for which:
 
 ```text
 Signal >= recovery_level
 ```
 
-until the first future sample below `recovery_level`.
+The duration is the actual timestamp difference between `t` and that first
+recovery observation. The event-centered window limits which decision
+timestamps are modelled, but it does not truncate the future target search.
+
+The 30-point context must remain inside one continuous `segment_id`. If no
+recovery is observed before that acquisition segment ends, the target is
+right-censored and excluded from supervised duration regression. A later value
+after a data gap is not treated as proof that the signal remained above the
+level during the unobserved interval.
 
 ## Difference From Autoregressive Forecasting
 
@@ -87,7 +96,17 @@ The dataset stores:
 remaining_persistence_samples
 remaining_persistence_seconds
 log1p_remaining_persistence_seconds
+target_observed
+recovery_time
+censoring_lower_bound_seconds
 ```
+
+`remaining_persistence_seconds` is the primary target.
+`remaining_persistence_samples` is derived as
+`ceil(remaining_persistence_seconds / sampling_time_seconds)` for diagnostics.
+Censored candidates are written separately to
+`censored_window_metadata.parquet`; they are not included in train,
+validation, or test NPZ arrays.
 
 Models train on `log1p_remaining_persistence_seconds` by default and evaluation
 reports metrics in raw seconds and minutes.
@@ -110,6 +129,16 @@ python scripts/experiments/current_level_persistence/build_dataset.py \
 If the dataset folder already contains a complete build, the script skips
 without overwriting. Pass `--force` only when intentionally rebuilding the same
 dataset.
+
+The builder reads the shared `event_window_quality.parquet` table. Events
+marked `unusable` are excluded, while warning events are included only when
+`event_window_quality.allow_warning_events_for_window_index` is enabled. The
+stored `quality_flag` and `quality_reason` therefore come from common data
+preparation rather than being assigned by this task.
+
+Targets are resolved from `data/interim/clean_signal/all_signal_clean.parquet`,
+not from the clipped event window. `censoring_summary.csv` reports observed and
+censored candidate counts per split.
 
 Datasets are stored under:
 
@@ -293,13 +322,44 @@ Main output:
 results/comparisons/model_summary/current_level_persistence/externalHoldout_test_fc_uplink_fade/initial_shapelet_model_comparison_delta0p5/tables/initial_shapelet_model_comparison_delta0p5.csv
 ```
 
-## Future Switch Derivation
+## Switch Derivation
 
-Switch metrics are not implemented yet for this task. The planned conversion is:
+Switch decisions are derived at each current-level prediction timestamp:
 
 ```text
-predicted_switch = 1 if predicted_remaining_persistence_seconds >= switch_time_seconds else 0
+model_switch_raw(t) = 1
+  if Signal_t > 10
+  and predicted_remaining_persistence_seconds(t) >= 300 seconds
 ```
+
+The duration threshold is configured in
+`configs/current_level_persistence/switch_comparison.yaml`; it is an explicit
+operational rule and is not calibrated on the test set.
+
+After thresholding, the task reuses the same shared post-processing as the
+autoregressive branch, independently within each event:
+
+```text
+raw decision
+  -> ensure_min_island_length(..., switch_time=10)
+  -> hold while the observed Signal remains above 10
+  -> model_switch_min_time
+```
+
+Compute the task-scoped Perfect Switch and model comparisons with:
+
+```bash
+conda run -n Nowcasting python \
+  scripts/analysis/current_level_persistence/12_compute_perfect_switch.py
+
+conda run -n Nowcasting python \
+  scripts/analysis/current_level_persistence/13_compare_switch_methods.py
+```
+
+Each model is stored in a separate comparison folder under
+`results/comparisons/switch_eval/current_level_persistence/`. Cross-model
+tables are stored under
+`results/comparisons/model_summary/current_level_persistence/`.
 
 The conversion and operational switch metrics will be added after duration
 models have been validated.

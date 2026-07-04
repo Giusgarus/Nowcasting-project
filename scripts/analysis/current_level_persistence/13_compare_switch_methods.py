@@ -1,0 +1,358 @@
+"""Compare current-level duration-derived switches against Perfect Switch."""
+
+from __future__ import annotations
+
+import argparse
+import shutil
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.switching.comparison import compute_model_vs_perfect_metrics
+from src.switching.metrics import build_switch_behavior_metrics_tables
+from src.switching.plots import plot_switch_methods_for_event
+from src.tasks.current_level_persistence.evaluation.switch_from_duration import (
+    build_duration_switch_timeseries,
+)
+from src.tasks.current_level_persistence.utils.paths import (
+    TASK_NAME,
+    run_dir,
+    switch_comparison_dir,
+    switch_summary_dir,
+)
+from src.utils.config import config_fingerprint, load_yaml_config, save_yaml
+from src.utils.results_paths import (
+    COMPARISON_INDEX_COLUMNS,
+    ensure_results_subdirs,
+    get_perfect_switch_dir,
+    get_results_index_dir,
+    make_comparison_id,
+    relative_project_path,
+    upsert_index_row,
+)
+
+DEFAULT_CONFIG_PATH = (
+    PROJECT_ROOT / "configs/current_level_persistence/switch_comparison.yaml"
+)
+
+
+def project_path(value: str | Path) -> Path:
+    path = Path(value)
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    config_path = project_path(args.config)
+    config = load_yaml_config(config_path)
+    if config.get("task_name") != TASK_NAME:
+        raise ValueError(f"Config task_name must be {TASK_NAME}.")
+
+    selection_id = str(config["data"]["selection_id"])
+    dataset_path = project_path(config["data"]["dataset_path"])
+    dataset_metadata = load_yaml_config(dataset_path / "dataset_metadata.yaml")
+    dataset_build_fingerprint = config_fingerprint(dataset_metadata)
+    test_metadata_path = dataset_path / "test_metadata.parquet"
+    test_metadata = pd.read_parquet(test_metadata_path)
+    perfect_root = get_perfect_switch_dir(selection_id, task_name=TASK_NAME)
+    perfect_timeseries_path = perfect_root / "tables/perfect_switch_timeseries.parquet"
+    perfect_timeseries = pd.read_parquet(perfect_timeseries_path)
+    perfect_metadata = load_yaml_config(perfect_root / "metadata.yaml")
+    reference_id = str(perfect_metadata["reference_id"])
+
+    conversion = config["conversion"]
+    duration_threshold = float(conversion["duration_threshold_seconds"])
+    signal_threshold = float(conversion["signal_threshold"])
+    signal_condition = str(conversion["signal_condition"])
+    require_signal_gate = bool(
+        conversion.get("require_current_signal_above_threshold", True)
+    )
+    switch_time = int(conversion["switch_time_samples"])
+    apply_min_island = bool(conversion["apply_min_island_length"])
+    overwrite = bool(config["output"].get("overwrite", False))
+
+    print("=== Current-Level Persistence Switch Comparison ===")
+    print(f"Selection: {selection_id}")
+    print(f"Duration decision threshold: {duration_threshold:g} seconds")
+    print(f"Signal threshold: {signal_threshold:g}")
+    print(f"Require current signal above threshold: {require_signal_gate}")
+    print(f"Post-processing switch time: {switch_time} samples")
+    print("Uses saved test predictions only; no model is trained or loaded.")
+
+    summary_rows = []
+    behavior_rows = []
+    perfect_behavior_row = None
+    for method in config["methods"]:
+        run_id = str(method["run_id"])
+        comparison_id = make_comparison_id(run_id)
+        method_run_dir = run_dir(run_id)
+        run_metadata = load_yaml_config(method_run_dir / "metadata.yaml")
+        if run_metadata.get("dataset_build_fingerprint") != dataset_build_fingerprint:
+            raise RuntimeError(
+                f"Run {run_id} was not trained on the current dataset build. "
+                "Rerun the grid search before computing switch comparisons."
+            )
+        predictions_path = method_run_dir / "predictions/test_predictions.parquet"
+        predictions = pd.read_parquet(predictions_path)
+        valid_window_ids = set(test_metadata["global_window_id"].astype(str))
+        prediction_window_ids = set(predictions["global_window_id"].astype(str))
+        missing_prediction_ids = valid_window_ids - prediction_window_ids
+        if missing_prediction_ids:
+            examples = sorted(missing_prediction_ids)[:5]
+            raise ValueError(
+                "Saved predictions do not cover the quality-filtered test set. "
+                f"Examples: {examples}"
+            )
+        prediction_is_valid = predictions["global_window_id"].astype(str).isin(
+            valid_window_ids
+        )
+        num_quality_excluded_predictions = int((~prediction_is_valid).sum())
+        predictions = predictions.loc[prediction_is_valid].copy()
+        comparison = build_duration_switch_timeseries(
+            predictions,
+            test_metadata,
+            perfect_timeseries,
+            method_name=str(method["name"]),
+            duration_threshold_seconds=duration_threshold,
+            signal_threshold=signal_threshold,
+            signal_condition=signal_condition,
+            switch_time=switch_time,
+            apply_min_island_length=apply_min_island,
+            require_current_signal_above_threshold=require_signal_gate,
+        )
+
+        output_dir = switch_comparison_dir(
+            selection_id=selection_id,
+            comparison_id=comparison_id,
+        )
+        output_paths = ensure_results_subdirs(
+            output_dir,
+            ("metrics", "predictions", "figures", "tables"),
+        )
+        comparison_path = (
+            output_paths["predictions"] / "model_vs_perfect_switch.parquet"
+        )
+        if comparison_path.exists() and not overwrite:
+            raise FileExistsError(f"Comparison already exists: {comparison_path}")
+
+        summary = compute_model_vs_perfect_metrics(comparison, by_event=False)
+        event_metrics = compute_model_vs_perfect_metrics(comparison, by_event=True)
+        global_behavior, event_behavior = build_switch_behavior_metrics_tables(
+            comparison,
+            method_id=run_id,
+            method_metadata={
+                "method_name": str(method["name"]),
+                "model_family": "learnable_shapelets",
+                "architecture": str(method["model_id"]),
+                "variant": "scalar_context",
+                "mode": "trained",
+            },
+            selection_id=selection_id,
+            test_type="external_holdout",
+            threshold=signal_threshold,
+            condition=signal_condition,
+            switch_time=switch_time,
+            perfect_timeseries=perfect_timeseries,
+        )
+        comparison.to_parquet(comparison_path, index=False)
+        summary.to_csv(
+            output_paths["metrics"] / "switch_metrics_summary.csv",
+            index=False,
+        )
+        event_metrics.to_csv(
+            output_paths["metrics"] / "switch_metrics_by_event.csv",
+            index=False,
+        )
+        global_behavior.to_csv(
+            output_paths["metrics"] / "global_switch_metrics.csv",
+            index=False,
+        )
+        event_behavior.to_csv(
+            output_paths["metrics"] / "event_switch_metrics.csv",
+            index=False,
+        )
+
+        figures_dir = output_paths["figures"] / "event_switch_plots"
+        if overwrite and figures_dir.exists():
+            shutil.rmtree(figures_dir)
+        saved_figures = []
+        event_order = (
+            perfect_timeseries.groupby("event_id", sort=False)["event_timestamp"]
+            .first()
+            .sort_values()
+            .index[: int(config["plots"]["max_events"])]
+        )
+        for event_id in event_order:
+            perfect_event = perfect_timeseries.loc[
+                perfect_timeseries["event_id"].eq(event_id)
+            ].sort_values("Time", kind="stable")
+            model_event = comparison.loc[
+                comparison["event_id"].eq(event_id),
+                ["Time", "model_switch_min_time"],
+            ]
+            model_lookup = model_event.set_index("Time")["model_switch_min_time"]
+            figure_path = figures_dir / f"{event_id}_switch_comparison.png"
+            plot_switch_methods_for_event(
+                perfect_event,
+                {
+                    "Perfect Switch": perfect_event["perfect_switch"].to_numpy(
+                        dtype=float
+                    ),
+                    str(method["name"]): perfect_event["Time"]
+                    .map(model_lookup)
+                    .to_numpy(dtype=float),
+                },
+                figure_path,
+                threshold=signal_threshold,
+                event_title=(
+                    f"{event_id} | Perfect vs {method['name']} | "
+                    f"duration threshold={duration_threshold:g}s"
+                ),
+            )
+            saved_figures.append(relative_project_path(figure_path))
+
+        created_at = datetime.now(timezone.utc).isoformat()
+        metadata = {
+            "comparison_id": comparison_id,
+            "comparison_type": "switch_eval",
+            "task_name": TASK_NAME,
+            "method_id": run_id,
+            "method": method,
+            "reference_id": reference_id,
+            "selection_id": selection_id,
+            "split": "test",
+            "duration_threshold_seconds": duration_threshold,
+            "signal_threshold": signal_threshold,
+            "signal_condition": signal_condition,
+            "require_current_signal_above_threshold": require_signal_gate,
+            "switch_time_samples": switch_time,
+            "apply_min_island_length": apply_min_island,
+            "model_switch_rule": (
+                "model_switch_raw(t)=1 when current Signal is above the signal "
+                "threshold and predicted remaining persistence is at least "
+                "duration_threshold_seconds; then apply the shared "
+                "min-island and stateful signal-above-threshold hold per event."
+            ),
+            "input_files": {
+                "perfect_switch_timeseries": relative_project_path(
+                    perfect_timeseries_path
+                ),
+                "test_metadata": relative_project_path(test_metadata_path),
+                "predictions": relative_project_path(predictions_path),
+            },
+            "output_files": {
+                "comparison_timeseries": relative_project_path(comparison_path),
+                "figures": saved_figures,
+            },
+            "num_events": int(comparison["event_id"].nunique()),
+            "num_decisions": int(len(comparison)),
+            "num_quality_excluded_predictions": num_quality_excluded_predictions,
+            "config_path": relative_project_path(config_path),
+            "config_fingerprint": config_fingerprint(config),
+            "created_at": created_at,
+        }
+        save_yaml(output_dir / "metadata.yaml", metadata)
+        upsert_index_row(
+            get_results_index_dir() / "comparisons.csv",
+            {
+                "comparison_id": comparison_id,
+                "method_id": run_id,
+                "reference_id": reference_id,
+                "comparison_type": "switch_eval",
+                "selection_id": selection_id,
+                "results_path": relative_project_path(output_dir),
+                "metrics_path": relative_project_path(output_paths["metrics"]),
+                "figures_path": relative_project_path(output_paths["figures"]),
+                "status": "complete",
+                "created_at": created_at,
+            },
+            id_column="comparison_id",
+            columns=COMPARISON_INDEX_COLUMNS,
+        )
+
+        summary.insert(0, "run_id", run_id)
+        summary.insert(1, "model_id", str(method["model_id"]))
+        summary_rows.append(summary)
+        model_behavior = global_behavior.loc[
+            global_behavior["method_id"].eq(run_id)
+        ]
+        behavior_rows.append(model_behavior)
+        if perfect_behavior_row is None:
+            perfect_behavior_row = global_behavior.loc[
+                global_behavior["method_id"].eq("perfect_switch")
+            ]
+        print(
+            f"{method['name']}: F1={summary['f1'].iloc[0]:.4f}, "
+            f"precision={summary['precision'].iloc[0]:.4f}, "
+            f"recall={summary['recall'].iloc[0]:.4f}, "
+            f"quality-excluded predictions={num_quality_excluded_predictions:,}"
+        )
+
+    summary_id = str(config["output"]["summary_id"])
+    summary_dir = switch_summary_dir(
+        selection_id=selection_id,
+        summary_id=summary_id,
+    )
+    summary_paths = ensure_results_subdirs(summary_dir, ("tables",))
+    comparison_summary = pd.concat(summary_rows, ignore_index=True)
+    behavior_frames = [*behavior_rows]
+    if perfect_behavior_row is not None:
+        behavior_frames.append(perfect_behavior_row)
+    behavior_summary = pd.concat(behavior_frames, ignore_index=True)
+    comparison_summary.to_csv(
+        summary_paths["tables"] / "switch_metrics_comparison.csv",
+        index=False,
+    )
+    behavior_summary.to_csv(
+        summary_paths["tables"] / "global_switch_behavior_comparison.csv",
+        index=False,
+    )
+    created_at = datetime.now(timezone.utc).isoformat()
+    save_yaml(
+        summary_dir / "metadata.yaml",
+        {
+            "comparison_id": summary_id,
+            "comparison_type": "model_summary",
+            "task_name": TASK_NAME,
+            "selection_id": selection_id,
+            "reference_id": reference_id,
+            "duration_threshold_seconds": duration_threshold,
+            "require_current_signal_above_threshold": require_signal_gate,
+            "method_ids": [str(method["run_id"]) for method in config["methods"]],
+            "created_at": created_at,
+        },
+    )
+    upsert_index_row(
+        get_results_index_dir() / "comparisons.csv",
+        {
+            "comparison_id": summary_id,
+            "method_id": "multiple",
+            "reference_id": reference_id,
+            "comparison_type": "model_summary",
+            "selection_id": selection_id,
+            "results_path": relative_project_path(summary_dir),
+            "metrics_path": relative_project_path(summary_paths["tables"]),
+            "figures_path": "",
+            "status": "complete",
+            "created_at": created_at,
+        },
+        id_column="comparison_id",
+        columns=COMPARISON_INDEX_COLUMNS,
+    )
+    print(f"Summary: {relative_project_path(summary_dir)}")
+
+
+if __name__ == "__main__":
+    main()

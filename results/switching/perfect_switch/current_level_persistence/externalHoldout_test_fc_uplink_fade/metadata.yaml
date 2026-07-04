@@ -1,0 +1,20 @@
+reference_id: perfect_switch_current_level_persistence_externalHoldout_test_fc_uplink_fade
+reference_type: perfect_switch
+task_name: current_level_persistence
+selection_id: externalHoldout_test_fc_uplink_fade
+split: test
+threshold: 10.0
+condition: greater_than
+switch_time: 10
+apply_min_island_length: true
+num_events: 24
+num_decision_windows: 7693
+config_path: configs/current_level_persistence/perfect_switch.yaml
+config_fingerprint: 03f78d82ac26aee4523754046561d58b942964e3ff5b3f75d937b31de5e238a9
+input_files:
+  event_windows: data/interim/event_windows/threshold_10p0/all_event_windows.parquet
+  test_metadata: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/test_metadata.parquet
+output_files:
+  timeseries: results/switching/perfect_switch/current_level_persistence/externalHoldout_test_fc_uplink_fade/tables/perfect_switch_timeseries.parquet
+  decision_targets: results/switching/perfect_switch/current_level_persistence/externalHoldout_test_fc_uplink_fade/tables/perfect_switch_decision_targets.parquet
+created_at: '2026-07-04T11:12:42.476322+00:00'

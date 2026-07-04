@@ -486,6 +486,7 @@ def main() -> None:
             f"Dataset folder not found: {dataset_path}. Build it first."
         )
     dataset_metadata = load_yaml_config(dataset_path / "dataset_metadata.yaml")
+    dataset_build_fingerprint = config_fingerprint(dataset_metadata)
     delta = float(dataset_metadata["delta"])
     context_length = int(dataset_metadata["context_length"])
     selection_id = str(config.get("selection_id", dataset_metadata["selection_id"]))
@@ -831,6 +832,9 @@ def main() -> None:
         "context_length": context_length,
         "run_suffix": args.run_suffix,
         "dataset_path": relative_project_path(dataset_path),
+        "dataset_build_fingerprint": dataset_build_fingerprint,
+        "target_search_scope": dataset_metadata.get("target_search_scope"),
+        "censoring_policy": dataset_metadata.get("censoring_policy"),
         "config_path": relative_project_path(config_path),
         "config_fingerprint": config_fingerprint(config),
         "best_epoch": best_epoch,

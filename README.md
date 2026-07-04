@@ -61,6 +61,11 @@ shapelet input = X_relative_to_current
 auxiliary input = scalar_context_features derived from X_raw
 ```
 
+Duration targets search the full cleaned signal beyond event-window edges and
+use actual elapsed timestamps. Contexts never cross acquisition gaps; samples
+whose recovery is not observed before a continuous segment ends are marked as
+right-censored and excluded from duration regression.
+
 The 12 scalar features preserve absolute level and recent summary information.
 Their standardization is fitted on train only. Scalar-context runs use distinct
 IDs, so the earlier shapelet-only results are not overwritten.
@@ -75,6 +80,10 @@ Main documentation:
 
 - [Current-Level Persistence](docs/current_level_persistence.md)
 - [Current-Level Persistence Server Runs](docs/current_level_persistence_server_runs.md)
+
+Current-level duration predictions are converted into switch decisions with a
+configured 300-second persistence threshold and the shared autoregressive
+post-processing pipeline.
 
 ### Deferred Work
 
@@ -224,6 +233,10 @@ Build the dataset:
 conda run -n Nowcasting python scripts/experiments/current_level_persistence/build_dataset.py \
   --config configs/current_level_persistence/dataset_delta_0p5_L30_external_holdout.yaml
 ```
+
+Current-level persistence reuses the shared event-quality assessment. It does
+not create windows from events marked `unusable`; warning-event inclusion is
+explicitly configured.
 
 Train the three learnable-shapelet variants:
 

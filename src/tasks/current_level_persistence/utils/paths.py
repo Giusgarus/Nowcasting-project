@@ -158,3 +158,41 @@ def run_index_path(root: Path = PROJECT_ROOT) -> Path:
     """Return the separate current-level persistence run index."""
 
     return root / "results" / "index" / f"{TASK_NAME}_runs.csv"
+
+
+def switch_comparison_dir(
+    *,
+    selection_id: str,
+    comparison_id: str,
+    root: Path = PROJECT_ROOT,
+) -> Path:
+    """Return one task-scoped model-vs-Perfect comparison directory."""
+
+    return (
+        root
+        / "results"
+        / "comparisons"
+        / "switch_eval"
+        / TASK_NAME
+        / sanitize_id(selection_id)
+        / sanitize_id(comparison_id)
+    )
+
+
+def switch_summary_dir(
+    *,
+    selection_id: str,
+    summary_id: str,
+    root: Path = PROJECT_ROOT,
+) -> Path:
+    """Return the cross-model switch-summary directory for this task."""
+
+    return (
+        root
+        / "results"
+        / "comparisons"
+        / "model_summary"
+        / TASK_NAME
+        / sanitize_id(selection_id)
+        / sanitize_id(summary_id)
+    )

@@ -565,6 +565,16 @@ conda run -n Nowcasting python scripts/experiments/current_level_persistence/bui
   --config configs/current_level_persistence/dataset_delta_0p5_L30_external_holdout.yaml
 ```
 
+This builder applies the shared event-quality table: it excludes `unusable`
+events and follows the configuration for warning events. Rebuild and retrain
+the affected models whenever this quality policy changes.
+
+The target search uses the complete cleaned signal, so event-window boundaries
+do not truncate persistence durations. Context windows stay within continuous
+acquisition segments. Candidates without an observed recovery before a true
+segment boundary are saved to `censored_window_metadata.parquet` and excluded
+from supervised regression; review `censoring_summary.csv` after each build.
+
 Rebuild with `--force` when existing NPZ files predate
 `scalar_context_features`. The runner can reconstruct these features from
 `X_raw`, but a rebuild also persists feature values and names in NPZ/parquet
@@ -626,6 +636,22 @@ Main output:
 ```text
 results/comparisons/model_summary/current_level_persistence/externalHoldout_test_fc_uplink_fade/initial_shapelet_model_comparison_delta0p5/tables/initial_shapelet_model_comparison_delta0p5.csv
 ```
+
+Build the current-level Perfect Switch and evaluate duration-derived switch
+decisions:
+
+```bash
+conda run -n Nowcasting python \
+  scripts/analysis/current_level_persistence/12_compute_perfect_switch.py
+
+conda run -n Nowcasting python \
+  scripts/analysis/current_level_persistence/13_compare_switch_methods.py
+```
+
+The configured decision is positive when the current signal is above 10 and
+predicted remaining persistence is at least 300 seconds. It then uses the same
+10-sample minimum-island and stateful signal-above-threshold hold used by
+autoregressive switch evaluation.
 
 ## 14. Central Result Indexes
 

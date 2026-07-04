@@ -906,6 +906,7 @@ def save_canonical_best_run(
         "final_retrained_on_full_development": final_retraining_enabled,
         "config": config,
         "run_id": run_id,
+        "dataset_build_fingerprint": config_fingerprint(dataset_metadata),
     }
     torch.save(checkpoint, checkpoint_dir / "best_model.pt")
 
@@ -918,6 +919,9 @@ def save_canonical_best_run(
         "delta": delta,
         "context_length": context_length,
         "dataset_path": relative_project_path(dataset_path),
+        "dataset_build_fingerprint": config_fingerprint(dataset_metadata),
+        "target_search_scope": dataset_metadata.get("target_search_scope"),
+        "censoring_policy": dataset_metadata.get("censoring_policy"),
         "grid_search_id": search_id,
         "best_trial_id": best_trial["trial_id"],
         "selection_metric": selection_metric,
@@ -1132,6 +1136,9 @@ def main() -> None:
             "model_family": "learnable_shapelets",
             "selection_id": selection_id,
             "dataset_path": relative_project_path(dataset_path),
+            "dataset_build_fingerprint": config_fingerprint(dataset_metadata),
+            "target_search_scope": dataset_metadata.get("target_search_scope"),
+            "censoring_policy": dataset_metadata.get("censoring_policy"),
             "config_path": relative_project_path(config_path),
             "config_fingerprint": config_fingerprint(config),
             "trial_counts": model_trial_counts,

@@ -6,7 +6,13 @@ external_test_dataset: fc-uplink-fade.csv
 
 source:
   event_windows_path: data/interim/event_windows/threshold_10p0/all_event_windows.parquet
+  event_quality_path: data/interim/event_windows/threshold_10p0/event_window_quality.parquet
+  full_signal_path: data/interim/clean_signal/all_signal_clean.parquet
   signal_column: Signal_prepared
+  full_signal_column: Signal
+
+event_window_quality:
+  allow_warning_events_for_window_index: true
 
 input_columns:
   time: Time

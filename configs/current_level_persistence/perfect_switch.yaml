@@ -1,0 +1,16 @@
+schema_version: 1
+task_name: current_level_persistence
+
+data:
+  dataset_path: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade
+  event_windows_path: data/interim/event_windows/threshold_10p0/all_event_windows.parquet
+  signal_column: Signal_prepared
+
+switch:
+  threshold: 10.0
+  condition: greater_than
+  switch_time: 10
+  apply_min_island_length: true
+
+output:
+  overwrite: true

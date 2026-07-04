@@ -4,6 +4,8 @@ from src.tasks.current_level_persistence.utils.paths import (
     model_dir,
     processed_dataset_dir,
     run_dir,
+    switch_comparison_dir,
+    switch_summary_dir,
 )
 
 
@@ -37,6 +39,22 @@ def test_current_level_persistence_paths_are_task_separated() -> None:
         "currentLevelPersistence_delta0p5_L30_multiscale_shapelet_mlp_"
         "externalHoldout_test_fc_uplink_fade"
     )
+
+
+def test_current_level_switch_paths_are_task_scoped() -> None:
+    selection_id = "externalHoldout_test_fc_uplink_fade"
+    comparison = switch_comparison_dir(
+        selection_id=selection_id,
+        comparison_id="switch_eval_demo",
+    )
+    summary = switch_summary_dir(
+        selection_id=selection_id,
+        summary_id="shapelet_switch_summary",
+    )
+
+    assert "comparisons/switch_eval/current_level_persistence" in str(comparison)
+    assert "comparisons/model_summary/current_level_persistence" in str(summary)
+    assert "autoregressive" not in str(comparison)
 
 
 def test_current_level_persistence_run_suffix_keeps_selection_separate() -> None:

@@ -1,0 +1,32 @@
+schema_version: 1
+task_name: current_level_persistence
+
+data:
+  selection_id: externalHoldout_test_fc_uplink_fade
+  dataset_path: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade
+
+methods:
+  - name: Shapelet MLP Scalar Context
+    model_id: multiscale_shapelet_mlp
+    run_id: currentLevelPersistence_delta0p5_L30_multiscale_shapelet_mlp_scalarContext_externalHoldout_test_fc_uplink_fade
+  - name: Shapelet Transformer Scalar Context
+    model_id: multiscale_shapelet_transformer
+    run_id: currentLevelPersistence_delta0p5_L30_multiscale_shapelet_transformer_scalarContext_externalHoldout_test_fc_uplink_fade
+  - name: Shapelet Convolution Scalar Context
+    model_id: multiscale_shapelet_convolution
+    run_id: currentLevelPersistence_delta0p5_L30_multiscale_shapelet_convolution_scalarContext_externalHoldout_test_fc_uplink_fade
+
+conversion:
+  duration_threshold_seconds: 300.0
+  signal_threshold: 10.0
+  signal_condition: greater_than
+  require_current_signal_above_threshold: true
+  switch_time_samples: 10
+  apply_min_island_length: true
+
+plots:
+  max_events: 25
+
+output:
+  summary_id: shapelet_scalarContext_switch_summary_delta0p5
+  overwrite: true

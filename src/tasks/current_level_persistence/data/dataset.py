@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,137 @@ SCALAR_CONTEXT_FEATURE_NAMES = (
     "recent_mean_5",
     "recent_std_5",
 )
+
+
+@dataclass(frozen=True)
+class PersistenceTarget:
+    """Observed duration or a lower bound when recovery is not observed."""
+
+    observed: bool
+    duration_seconds: float | None
+    duration_samples: int | None
+    recovery_time: pd.Timestamp | None
+    censoring_lower_bound_seconds: float
+
+
+class _SegmentRecoveryIndex:
+    """Find the first future value below a query level in logarithmic time."""
+
+    def __init__(self, frame: pd.DataFrame, *, signal_column: str) -> None:
+        ordered = frame.sort_values("Time", kind="stable")
+        if ordered["Time"].duplicated().any():
+            raise ValueError("Full clean signal contains duplicate segment timestamps.")
+        self.times = (
+            pd.to_datetime(ordered["Time"], errors="raise")
+            .to_numpy(dtype="datetime64[ns]")
+            .astype(np.int64)
+        )
+        self.signals = ordered[signal_column].to_numpy(dtype=np.float32)
+        if not np.isfinite(self.signals).all():
+            raise ValueError("Full clean signal contains non-finite values.")
+        self.n_observations = len(self.signals)
+        self.tree_size = 1 << max(0, self.n_observations - 1).bit_length()
+        self.minimum_tree = np.full(
+            self.tree_size * 2,
+            np.inf,
+            dtype=np.float32,
+        )
+        self.minimum_tree[
+            self.tree_size : self.tree_size + self.n_observations
+        ] = self.signals
+        level_start = self.tree_size
+        while level_start > 1:
+            parent_start = level_start // 2
+            self.minimum_tree[parent_start:level_start] = np.minimum(
+                self.minimum_tree[level_start : 2 * level_start : 2],
+                self.minimum_tree[level_start + 1 : 2 * level_start : 2],
+            )
+            level_start = parent_start
+
+    def first_below_after(
+        self,
+        timestamp: pd.Timestamp,
+        threshold: float,
+    ) -> int | None:
+        """Return the first index after ``timestamp`` whose signal is lower."""
+
+        start = int(np.searchsorted(self.times, pd.Timestamp(timestamp).value, side="right"))
+        result = self._search_first_below(
+            node=1,
+            left=0,
+            right=self.tree_size,
+            start=start,
+            threshold=float(threshold),
+        )
+        return None if result < 0 or result >= self.n_observations else result
+
+    def _search_first_below(
+        self,
+        *,
+        node: int,
+        left: int,
+        right: int,
+        start: int,
+        threshold: float,
+    ) -> int:
+        if right <= start or self.minimum_tree[node] >= threshold:
+            return -1
+        if right - left == 1:
+            return left
+        middle = (left + right) // 2
+        result = self._search_first_below(
+            node=node * 2,
+            left=left,
+            right=middle,
+            start=start,
+            threshold=threshold,
+        )
+        if result >= 0:
+            return result
+        return self._search_first_below(
+            node=node * 2 + 1,
+            left=middle,
+            right=right,
+            start=start,
+            threshold=threshold,
+        )
+
+    def persistence_target(
+        self,
+        *,
+        timestamp: pd.Timestamp,
+        current_signal: float,
+        delta: float,
+        sampling_time_seconds: int,
+    ) -> PersistenceTarget:
+        """Return an observed recovery duration or a right-censoring bound."""
+
+        recovery_index = self.first_below_after(timestamp, current_signal - delta)
+        current_time = pd.Timestamp(timestamp)
+        if recovery_index is not None:
+            recovery_time = pd.Timestamp(self.times[recovery_index])
+            duration_seconds = float((recovery_time - current_time).total_seconds())
+            if duration_seconds <= 0:
+                raise ValueError("Recovery must occur after the decision timestamp.")
+            return PersistenceTarget(
+                observed=True,
+                duration_seconds=duration_seconds,
+                duration_samples=int(
+                    np.ceil(duration_seconds / float(sampling_time_seconds))
+                ),
+                recovery_time=recovery_time,
+                censoring_lower_bound_seconds=duration_seconds,
+            )
+
+        segment_end = pd.Timestamp(self.times[-1])
+        lower_bound = max(0.0, float((segment_end - current_time).total_seconds()))
+        return PersistenceTarget(
+            observed=False,
+            duration_seconds=None,
+            duration_samples=None,
+            recovery_time=None,
+            censoring_lower_bound_seconds=lower_bound,
+        )
 
 
 def remaining_persistence_samples(
@@ -232,13 +364,17 @@ def prepare_scalar_context_splits(
 
 def build_current_level_persistence_index(
     event_windows: pd.DataFrame,
+    event_quality: pd.DataFrame,
+    full_signal: pd.DataFrame,
     *,
     context_length: int,
     delta: float,
     sampling_time_seconds: int,
     signal_column: str,
+    full_signal_column: str,
+    allow_warning_events: bool,
 ) -> pd.DataFrame:
-    """Build traceable supervised windows and persistence-duration labels."""
+    """Build windows whose targets search the full continuous signal segment."""
 
     if context_length < 1:
         raise ValueError("context_length must be positive.")
@@ -256,6 +392,77 @@ def build_current_level_persistence_index(
     missing = sorted(required - set(event_windows.columns))
     if missing:
         raise ValueError(f"Event windows are missing required columns: {missing}")
+    required_quality = {
+        "dataset_id",
+        "dataset_name",
+        "event_id",
+        "quality_flag",
+        "quality_reason",
+    }
+    missing_quality = sorted(required_quality - set(event_quality.columns))
+    if missing_quality:
+        raise ValueError(
+            f"Event quality is missing required columns: {missing_quality}"
+        )
+    quality_keys = ["dataset_id", "dataset_name", "event_id"]
+    if event_quality.duplicated(quality_keys).any():
+        raise ValueError("Event quality must contain one row per event.")
+
+    quality_lookup = event_quality.set_index(quality_keys)[
+        ["quality_flag", "quality_reason"]
+    ]
+    event_keys = event_windows[quality_keys].drop_duplicates()
+    missing_event_quality = event_keys.merge(
+        event_quality[quality_keys],
+        on=quality_keys,
+        how="left",
+        indicator=True,
+    ).loc[lambda frame: frame["_merge"].eq("left_only"), quality_keys]
+    if not missing_event_quality.empty:
+        examples = missing_event_quality.head(5).to_dict(orient="records")
+        raise ValueError(
+            "Event quality does not cover all event windows. "
+            f"Examples: {examples}"
+        )
+    allowed_quality = {"usable", "warning"} if allow_warning_events else {"usable"}
+    required_full_signal = {
+        "dataset_id",
+        "segment_id",
+        "Time",
+        full_signal_column,
+    }
+    missing_full_signal = sorted(required_full_signal - set(full_signal.columns))
+    if missing_full_signal:
+        raise ValueError(
+            f"Full clean signal is missing required columns: {missing_full_signal}"
+        )
+
+    allowed_event_ids = set(
+        event_quality.loc[
+            event_quality["quality_flag"].isin(allowed_quality),
+            "event_id",
+        ].astype(str)
+    )
+    needed_segment_keys = set(
+        event_windows.loc[
+            event_windows["event_id"].astype(str).isin(allowed_event_ids),
+            ["dataset_id", "segment_id"],
+        ].itertuples(index=False, name=None)
+    )
+    recovery_indices = {
+        key: _SegmentRecoveryIndex(frame, signal_column=full_signal_column)
+        for key, frame in full_signal.groupby(
+            ["dataset_id", "segment_id"],
+            sort=False,
+        )
+        if key in needed_segment_keys
+    }
+    missing_segments = sorted(needed_segment_keys - set(recovery_indices))
+    if missing_segments:
+        raise ValueError(
+            "Full clean signal does not contain all required segments. "
+            f"Examples: {missing_segments[:5]}"
+        )
 
     rows: list[dict[str, Any]] = []
     window_number = 0
@@ -265,18 +472,27 @@ def build_current_level_persistence_index(
         ordered = group.sort_values("event_point_idx", kind="stable").reset_index(
             drop=True
         )
+        quality = quality_lookup.loc[(dataset_id, dataset_name, event_id)]
+        quality_flag = str(quality["quality_flag"])
+        quality_reason = str(quality["quality_reason"])
+        num_candidate_windows = max(0, len(ordered) - context_length + 1)
+        if quality_flag not in allowed_quality:
+            # Preserve IDs of all previously valid windows when quality rules tighten.
+            window_number += num_candidate_windows
+            continue
+        recovery_index = recovery_indices[(dataset_id, segment_id)]
         signals = ordered[signal_column].to_numpy(dtype=np.float32)
         for position in range(context_length - 1, len(ordered)):
             window_number += 1
             current_signal = float(signals[position])
-            persistence_samples = remaining_persistence_samples(
-                signals,
-                position,
-                delta=delta,
-            )
-            persistence_seconds = float(persistence_samples * sampling_time_seconds)
-            input_rows = ordered.iloc[position - context_length + 1 : position + 1]
             timestamp = pd.Timestamp(ordered["Time"].iloc[position])
+            target = recovery_index.persistence_target(
+                timestamp=timestamp,
+                current_signal=current_signal,
+                delta=delta,
+                sampling_time_seconds=sampling_time_seconds,
+            )
+            input_rows = ordered.iloc[position - context_length + 1 : position + 1]
             window_id = f"clp_window_{window_number:09d}"
             rows.append(
                 {
@@ -296,15 +512,24 @@ def build_current_level_persistence_index(
                     "current_point_idx": int(ordered["event_point_idx"].iloc[position]),
                     "current_signal": current_signal,
                     "recovery_level": current_signal - float(delta),
-                    "remaining_persistence_samples": int(persistence_samples),
-                    "remaining_persistence_seconds": persistence_seconds,
-                    "log1p_remaining_persistence_seconds": float(
-                        np.log1p(persistence_seconds)
+                    "target_observed": bool(target.observed),
+                    "recovery_time": target.recovery_time,
+                    "remaining_persistence_samples": target.duration_samples,
+                    "remaining_persistence_seconds": target.duration_seconds,
+                    "log1p_remaining_persistence_seconds": (
+                        float(np.log1p(target.duration_seconds))
+                        if target.duration_seconds is not None
+                        else np.nan
                     ),
+                    "censoring_lower_bound_seconds": float(
+                        target.censoring_lower_bound_seconds
+                    ),
+                    "target_source": "full_clean_signal_same_segment",
                     "delta": float(delta),
                     "context_length": int(context_length),
                     "sampling_time_seconds": int(sampling_time_seconds),
-                    "quality_flag": "usable",
+                    "quality_flag": quality_flag,
+                    "quality_reason": quality_reason,
                 }
             )
     return pd.DataFrame(rows)
@@ -332,6 +557,7 @@ def build_current_level_persistence_arrays(
         "remaining_persistence_samples",
         "remaining_persistence_seconds",
         "log1p_remaining_persistence_seconds",
+        "target_observed",
         "delta",
         "sampling_time_seconds",
     }
@@ -344,6 +570,15 @@ def build_current_level_persistence_arrays(
         raise ValueError("global_window_id values must be unique.")
     if window_index.groupby("global_event_id")["split"].nunique().max() > 1:
         raise ValueError("A global_event_id appears in more than one split.")
+    if not window_index["target_observed"].astype(bool).all():
+        raise ValueError("Censored targets must be excluded from supervised arrays.")
+    target_columns = [
+        "remaining_persistence_samples",
+        "remaining_persistence_seconds",
+        "log1p_remaining_persistence_seconds",
+    ]
+    if not np.isfinite(window_index[target_columns].to_numpy(dtype=float)).all():
+        raise ValueError("Observed persistence targets must be finite.")
 
     event_windows = event_windows.copy()
     event_windows["global_event_id"] = (

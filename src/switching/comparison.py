@@ -261,7 +261,7 @@ def select_horizon_threshold_count_decisions(
     )
 
 
-def _complete_explicit_switch_versions(
+def complete_explicit_switch_versions(
     selected: pd.DataFrame,
     *,
     threshold: float,
@@ -269,7 +269,7 @@ def _complete_explicit_switch_versions(
     switch_time: int,
     apply_min_island_length: bool,
 ) -> pd.DataFrame:
-    """Add explicit old-repository switch versions while preserving aliases."""
+    """Apply the shared switch post-processing and expose every switch version."""
 
     output = selected.copy()
     outage_mask, _ = compute_switch_from_signal_values(
@@ -424,7 +424,7 @@ def build_model_switch_timeseries(
         selected.loc[indices, "model_switch"] = processed
 
     selected["model_switch_min_time"] = selected["model_switch"]
-    selected = _complete_explicit_switch_versions(
+    selected = complete_explicit_switch_versions(
         selected,
         threshold=threshold,
         condition=condition,
