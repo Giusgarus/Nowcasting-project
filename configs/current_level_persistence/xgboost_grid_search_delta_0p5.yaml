@@ -1,0 +1,70 @@
+schema_version: 1
+task_name: current_level_persistence
+model_family: xgboost
+search_id: xgboost_scalarContext_delta0p5_L30_externalHoldout_test_fc_uplink_fade
+selection_id: externalHoldout_test_fc_uplink_fade
+
+dataset:
+  path: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade
+  input_key: X_relative_to_current
+  raw_input_key: X_raw
+  scalar_context_key: scalar_context_features
+  target_key: y_log1p_remaining_persistence_seconds
+
+features:
+  use_scalar_context: true
+  scalar_context_key: scalar_context_features
+  scalar_context_standardize: true
+
+target:
+  train_space: log1p_seconds
+  eval_space: seconds
+
+search:
+  selection_metric: val_mae_seconds
+  selection_mode: min
+  max_trials: 1152
+
+training:
+  seed: 42
+
+xgboost:
+  objective: reg:squarederror
+  tree_method: hist
+  device: cuda
+  n_jobs: 4
+  verbosity: 0
+
+parameter_grid:
+  n_estimators:
+    start: 300
+    stop: 1200
+    step: 300
+  max_depth:
+    start: 2
+    stop: 6
+    step: 2
+  learning_rate:
+    start: 0.03
+    stop: 0.15
+    step: 0.04
+  subsample:
+    start: 0.8
+    stop: 1.0
+    step: 0.2
+  colsample_bytree:
+    start: 0.8
+    stop: 1.0
+    step: 0.2
+  min_child_weight:
+    start: 1
+    stop: 3
+    step: 2
+  reg_lambda:
+    start: 0.0
+    stop: 2.0
+    step: 1.0
+
+output:
+  overwrite: true
+  save_best_predictions: true

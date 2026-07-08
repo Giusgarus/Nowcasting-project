@@ -13,7 +13,7 @@ features:
   scalar_context_key: scalar_context_features
   scalar_context_standardize: true
 scalar_encoder:
-  hidden_dim: 32
+  hidden_dim: 16
   dropout: 0.1
 target:
   train_space: log1p_seconds
@@ -35,7 +35,7 @@ shapelets:
   - 5
   - 10
   - 15
-  n_shapelets_per_length: 16
+  n_shapelets_per_length: 32
 model:
   n_heads: 4
   pooling: mean

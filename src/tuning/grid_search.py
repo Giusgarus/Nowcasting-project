@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from decimal import Decimal
 from collections.abc import Mapping, Sequence
 from itertools import product
 from typing import Any
@@ -10,22 +11,68 @@ import numpy as np
 import pandas as pd
 
 
+def _expand_range_spec(name: str, spec: Mapping[str, Any]) -> list[Any]:
+    """Expand an inclusive ``start``/``stop``/``step`` range specification."""
+
+    required = {"start", "stop", "step"}
+    missing = sorted(required - set(spec))
+    if missing:
+        raise ValueError(f"Grid range parameter '{name}' is missing keys: {missing}")
+    start = Decimal(str(spec["start"]))
+    stop = Decimal(str(spec["stop"]))
+    step = Decimal(str(spec["step"]))
+    if step <= 0:
+        raise ValueError(f"Grid range parameter '{name}' must use a positive step.")
+    if start > stop:
+        raise ValueError(f"Grid range parameter '{name}' must have start <= stop.")
+
+    values = []
+    current = start
+    while current <= stop:
+        values.append(current)
+        current += step
+    if not values:
+        raise ValueError(f"Grid range parameter '{name}' expanded to no values.")
+
+    integer_like = all(
+        isinstance(spec[key], (int, np.integer)) and not isinstance(spec[key], bool)
+        for key in required
+    )
+    if integer_like:
+        return [int(value) for value in values]
+    return [float(value) for value in values]
+
+
+def expand_parameter_values(name: str, choices: Any) -> list[Any]:
+    """Expand either an explicit sequence or an inclusive range spec."""
+
+    if isinstance(choices, Mapping):
+        return _expand_range_spec(name, choices)
+    if isinstance(choices, (str, bytes)) or not isinstance(choices, Sequence):
+        raise ValueError(
+            f"Grid parameter '{name}' must contain a sequence or range spec."
+        )
+    if not choices:
+        raise ValueError(f"Grid parameter '{name}' cannot be empty.")
+    return list(choices)
+
+
 def expand_parameter_grid(
-    parameter_grid: Mapping[str, Sequence[Any]],
+    parameter_grid: Mapping[str, Sequence[Any] | Mapping[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Return the Cartesian product of a non-empty parameter grid."""
+    """Return the Cartesian product of a non-empty parameter grid.
+
+    Values may be explicit sequences or inclusive range specs such as:
+
+    ``{"start": 0.1, "stop": 0.5, "step": 0.2}``
+    """
 
     if not parameter_grid:
         raise ValueError("parameter_grid cannot be empty.")
     names = list(parameter_grid)
     values = []
     for name in names:
-        choices = parameter_grid[name]
-        if isinstance(choices, (str, bytes)) or not isinstance(choices, Sequence):
-            raise ValueError(f"Grid parameter '{name}' must contain a sequence.")
-        if not choices:
-            raise ValueError(f"Grid parameter '{name}' cannot be empty.")
-        values.append(list(choices))
+        values.append(expand_parameter_values(name, parameter_grid[name]))
     return [
         dict(zip(names, combination, strict=True))
         for combination in product(*values)

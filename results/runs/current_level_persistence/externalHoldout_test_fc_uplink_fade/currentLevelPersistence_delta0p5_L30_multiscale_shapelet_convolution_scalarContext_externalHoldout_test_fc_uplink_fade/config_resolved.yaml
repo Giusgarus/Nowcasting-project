@@ -35,12 +35,12 @@ shapelets:
   - 5
   - 10
   - 15
-  n_shapelets_per_length: 64
+  n_shapelets_per_length: 16
 model:
   kernel_size: 3
   pooling: mean
-  conv_channels: 32
-  num_conv_layers: 1
+  conv_channels: 64
+  num_conv_layers: 2
   dropout: 0.0
 evaluation:
   primary_selection_metric: val_mae_seconds

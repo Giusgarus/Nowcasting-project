@@ -1,0 +1,63 @@
+schema_version: 1
+task_name: autoregressive
+model_family: xgboost
+search_id: xgboost_search_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+
+data:
+  dataset_root: data/processed/autoregressive/threshold_10p0/datasets_L30_h10
+  selection_folder: externalHoldout_test_fc_uplink_fade
+  context_length: 30
+  prediction_length: 10
+
+search:
+  variants:
+    - raw
+    - context_standard
+  selection_metric: validation_rmse_raw
+  selection_mode: min
+  max_trials_per_variant: 1152
+
+training:
+  seed: 42
+
+xgboost:
+  objective: reg:squarederror
+  tree_method: hist
+  device: cuda
+  n_jobs: 4
+  verbosity: 0
+
+parameter_grid:
+  n_estimators:
+    start: 300
+    stop: 1200
+    step: 300
+  max_depth:
+    start: 2
+    stop: 6
+    step: 2
+  learning_rate:
+    start: 0.03
+    stop: 0.15
+    step: 0.04
+  subsample:
+    start: 0.8
+    stop: 1.0
+    step: 0.2
+  colsample_bytree:
+    start: 0.8
+    stop: 1.0
+    step: 0.2
+  min_child_weight:
+    start: 1
+    stop: 3
+    step: 2
+  reg_lambda:
+    start: 0.0
+    stop: 2.0
+    step: 1.0
+
+output:
+  overwrite: true
+  save_best_predictions: true
+  save_best_plots: false

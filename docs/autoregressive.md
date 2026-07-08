@@ -271,6 +271,32 @@ PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
 The PatchTST grid also selects by raw-scale validation RMSE and evaluates test
 only after the validation winner is fixed.
 
+### XGBoost
+
+XGBoost is implemented as a tabular autoregressive baseline. The input context
+is flattened from `(N, context_length, 1)` to `(N, context_length)`.
+Because the task target is a 10-step trajectory, the runner trains 10
+independent regressors per trial, one for each horizon step.
+
+Grid-search config:
+
+```text
+configs/autoregressive/xgboost_grid_search.yaml
+```
+
+Command:
+
+```bash
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
+  python scripts/experiments/autoregressive/run_xgboost_grid_search.py \
+  --config configs/autoregressive/xgboost_grid_search.yaml
+```
+
+The grid is expressed with inclusive `start`/`stop`/`step` ranges rather than
+manual value lists. It evaluates `raw` and `context_standard` variants,
+selects by raw-scale validation RMSE, then retrains the selected parameters on
+train+validation and evaluates the external test split once.
+
 ### Chronos Zero-Shot
 
 Default config:
@@ -430,4 +456,3 @@ results/index/comparisons.csv
 - Grid searches select using validation metrics only.
 - The external test dataset is used only after model selection is finished.
 - Switch thresholds and conversion settings must not be tuned on test data.
-

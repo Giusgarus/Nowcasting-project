@@ -178,6 +178,7 @@ dependencies:
   - utf8proc=2.6.1
   - wcwidth=0.8.1
   - wheel=0.46.3
+  - xgboost
   - xorg-libxau=1.0.12
   - xorg-libxdmcp=1.1.5
   - xz=5.8.2

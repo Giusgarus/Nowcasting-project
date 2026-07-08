@@ -29,7 +29,7 @@ The label searches the complete cleaned signal after `t` for the first
 observation for which:
 
 ```text
-Signal >= recovery_level
+Signal < recovery_level
 ```
 
 The duration is the actual timestamp difference between `t` and that first
@@ -322,6 +322,39 @@ Main output:
 results/comparisons/model_summary/current_level_persistence/externalHoldout_test_fc_uplink_fade/initial_shapelet_model_comparison_delta0p5/tables/initial_shapelet_model_comparison_delta0p5.csv
 ```
 
+## XGBoost Duration Baseline
+
+XGBoost is implemented as a tabular duration baseline for
+`current_level_persistence`. It uses `X_relative_to_current` flattened as
+tabular features and, by default, appends the train-standardized
+`scalar_context_features`.
+
+It predicts:
+
+```text
+log1p_remaining_persistence_seconds
+```
+
+and all reported duration metrics are converted back to seconds/minutes.
+
+Grid-search config:
+
+```text
+configs/current_level_persistence/xgboost_grid_search_delta_0p5.yaml
+```
+
+Command:
+
+```bash
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
+  python scripts/experiments/current_level_persistence/run_xgboost_grid_search.py \
+  --config configs/current_level_persistence/xgboost_grid_search_delta_0p5.yaml
+```
+
+The grid uses inclusive `start`/`stop`/`step` ranges, selects by
+`val_mae_seconds`, retrains the selected parameters on train+validation, and
+evaluates the external test split only after selection.
+
 ## Switch Derivation
 
 Switch decisions are derived at each current-level prediction timestamp:
@@ -360,6 +393,3 @@ Each model is stored in a separate comparison folder under
 `results/comparisons/switch_eval/current_level_persistence/`. Cross-model
 tables are stored under
 `results/comparisons/model_summary/current_level_persistence/`.
-
-The conversion and operational switch metrics will be added after duration
-models have been validated.

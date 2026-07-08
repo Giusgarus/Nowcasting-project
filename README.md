@@ -30,6 +30,7 @@ Implemented models:
 - GRU sequence-to-vector;
 - GRU encoder-decoder;
 - PatchTST-style Transformer;
+- XGBoost tabular baseline, with one regressor per forecast horizon;
 - Chronos zero-shot.
 
 Implemented evaluation:
@@ -75,6 +76,7 @@ Implemented models:
 - multiscale learnable-shapelet MLP;
 - multiscale learnable-shapelet Transformer;
 - multiscale learnable-shapelet convolutional head.
+- XGBoost tabular duration baseline.
 
 Main documentation:
 
@@ -213,6 +215,10 @@ PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
   python scripts/experiments/autoregressive/run_patchtst_grid_search.py
 
 PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
+  python scripts/experiments/autoregressive/run_xgboost_grid_search.py \
+  --config configs/autoregressive/xgboost_grid_search.yaml
+
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
   python scripts/experiments/autoregressive/run_autoregressive_chronos_zero_shot.py
 ```
 
@@ -263,6 +269,15 @@ The grid currently evaluates 216 trials per model (648 total), selects winners u
 validation MAE in seconds, then evaluates the selected winner for each model on
 the test split.
 
+The current-level XGBoost grid uses scalar-context tabular features and selects
+one duration regressor with validation MAE in seconds:
+
+```bash
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
+  python scripts/experiments/current_level_persistence/run_xgboost_grid_search.py \
+  --config configs/current_level_persistence/xgboost_grid_search_delta_0p5.yaml
+```
+
 Details are in
 [docs/current_level_persistence.md](docs/current_level_persistence.md).
 
@@ -276,13 +291,15 @@ configs/
 │   ├── autoregressive_patchtst.yaml
 │   ├── autoregressive_chronos*.yaml
 │   ├── gru_grid_search.yaml
-│   └── patchtst_grid_search.yaml
+│   ├── patchtst_grid_search.yaml
+│   └── xgboost_grid_search.yaml
 ├── current_level_persistence/
 │   ├── dataset_delta_0p5_L30_external_holdout.yaml
 │   ├── shapelet_mlp_delta_0p5.yaml
 │   ├── shapelet_transformer_delta_0p5.yaml
 │   ├── shapelet_convolution_delta_0p5.yaml
-│   └── shapelet_grid_search_delta_0p5.yaml
+│   ├── shapelet_grid_search_delta_0p5.yaml
+│   └── xgboost_grid_search_delta_0p5.yaml
 ├── data.yaml
 ├── data_preparation.yaml
 ├── perfect_switch*.yaml

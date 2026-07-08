@@ -9,4 +9,4 @@ method_ids:
 - currentLevelPersistence_delta0p5_L30_multiscale_shapelet_mlp_scalarContext_externalHoldout_test_fc_uplink_fade
 - currentLevelPersistence_delta0p5_L30_multiscale_shapelet_transformer_scalarContext_externalHoldout_test_fc_uplink_fade
 - currentLevelPersistence_delta0p5_L30_multiscale_shapelet_convolution_scalarContext_externalHoldout_test_fc_uplink_fade
-created_at: '2026-07-04T10:44:16.800037+00:00'
+created_at: '2026-07-07T13:27:14.622050+00:00'

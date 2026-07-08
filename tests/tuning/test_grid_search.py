@@ -48,6 +48,30 @@ def test_expand_parameter_grid_builds_cartesian_product() -> None:
     assert make_trial_id(trials[0], 1) == make_trial_id(trials[0], 1)
 
 
+def test_expand_parameter_grid_accepts_inclusive_range_specs() -> None:
+    trials = expand_parameter_grid(
+        {
+            "depth": {"start": 2, "stop": 6, "step": 2},
+            "rate": {"start": 0.03, "stop": 0.15, "step": 0.04},
+        }
+    )
+
+    assert trials == [
+        {"depth": 2, "rate": 0.03},
+        {"depth": 2, "rate": 0.07},
+        {"depth": 2, "rate": 0.11},
+        {"depth": 2, "rate": 0.15},
+        {"depth": 4, "rate": 0.03},
+        {"depth": 4, "rate": 0.07},
+        {"depth": 4, "rate": 0.11},
+        {"depth": 4, "rate": 0.15},
+        {"depth": 6, "rate": 0.03},
+        {"depth": 6, "rate": 0.07},
+        {"depth": 6, "rate": 0.11},
+        {"depth": 6, "rate": 0.15},
+    ]
+
+
 def test_select_best_trial_uses_completed_validation_metric_only() -> None:
     trials = pd.DataFrame(
         [

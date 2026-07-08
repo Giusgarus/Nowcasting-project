@@ -432,7 +432,46 @@ q50, and q90 are also saved.
 The first run downloads the pretrained model from Hugging Face. No trained
 checkpoint is written locally by this project.
 
-## 10. Model And Grid-Search Outputs
+## 10. XGBoost Autoregressive Baseline
+
+Configuration:
+
+```text
+configs/autoregressive/xgboost_grid_search.yaml
+```
+
+Run:
+
+```bash
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
+  python scripts/experiments/autoregressive/run_xgboost_grid_search.py \
+  --config configs/autoregressive/xgboost_grid_search.yaml
+```
+
+This baseline flattens the univariate context window and trains one XGBoost
+regressor for each forecast horizon. With `prediction_length: 10`, each trial
+therefore fits 10 independent regressors.
+
+The grid is configured with inclusive range specs:
+
+```yaml
+parameter_grid:
+  max_depth:
+    start: 2
+    stop: 6
+    step: 2
+```
+
+The current config evaluates 1,152 trials per variant for `raw` and
+`context_standard`. Selection uses raw-scale validation RMSE. The selected
+parameters are retrained on train+validation and evaluated once on the
+external test split.
+
+XGBoost can use the GPU only when the installed XGBoost build supports CUDA.
+The default config uses `device: cpu` for portability; set `xgboost.device:
+cuda` on the server only after verifying that the server package supports it.
+
+## 11. Model And Grid-Search Outputs
 
 Single runs and grid-search winners publish canonical artifacts under:
 
@@ -483,7 +522,7 @@ switch comparisons can be regenerated on another machine after a push. Figures,
 checkpoints, validation histories, and most intermediate Parquet outputs remain
 ignored.
 
-## 11. Switch Comparisons
+## 12. Switch Comparisons
 
 Configuration:
 
@@ -535,7 +574,7 @@ Each comparison folder contains metrics, aligned model-versus-reference
 predictions, metadata, and event plots showing that model against Perfect
 Switch. Methods are never merged into one switch-evaluation folder.
 
-## 12. Cross-Model Result Tables
+## 13. Cross-Model Result Tables
 
 After model runs and switch comparisons exist, build the compact summary
 tables:
@@ -556,7 +595,7 @@ Chronos zero-shot has no validation row metrics because it does not train or
 load validation data. The test table contains raw-scale test MAE/RMSE plus the
 model-vs-Perfect Switch metrics when the switch comparison has been generated.
 
-## 13. Current-Level Persistence
+## 14. Current-Level Persistence
 
 Build the current-level persistence dataset:
 
@@ -625,6 +664,19 @@ the train-fitted scalar means/stds are stored in metadata and checkpoints.
 Three-GPU server commands are in
 `docs/current_level_persistence_server_runs.md`.
 
+Run the XGBoost duration baseline:
+
+```bash
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
+  python scripts/experiments/current_level_persistence/run_xgboost_grid_search.py \
+  --config configs/current_level_persistence/xgboost_grid_search_delta_0p5.yaml
+```
+
+This baseline uses flattened `X_relative_to_current` plus the configured
+scalar-context features, predicts `log1p_remaining_persistence_seconds`, and
+reports metrics in seconds/minutes. The grid uses range specs instead of fixed
+manual lists and currently evaluates 1,152 validation trials.
+
 After all three runs finish, build the comparison table:
 
 ```bash
@@ -653,7 +705,7 @@ predicted remaining persistence is at least 300 seconds. It then uses the same
 10-sample minimum-island and stateful signal-above-threshold hold used by
 autoregressive switch evaluation.
 
-## 14. Central Result Indexes
+## 15. Central Result Indexes
 
 Use these files to locate generated artifacts without scanning every folder:
 
@@ -665,7 +717,7 @@ results/index/switch_references.csv
 results/index/comparisons.csv
 ```
 
-## 15. Recommended Complete Campaign
+## 16. Recommended Complete Campaign
 
 For a new raw-data or methodological configuration:
 
@@ -677,14 +729,14 @@ For a new raw-data or methodological configuration:
 6. Run `12_compute_perfect_switch.py`.
 7. Run single model experiments for quick validation.
 8. Review grid size, GPU availability, and overwrite settings.
-9. Run GRU and/or PatchTST grid searches and Chronos zero-shot evaluation.
+9. Run GRU, PatchTST, XGBoost, and/or Chronos zero-shot evaluation.
 10. Add completed canonical runs to `configs/switch_comparison.yaml`.
 11. Run `13_compare_switch_methods.py`.
 12. Run `14_compare_model_results.py`.
 13. Inspect forecast metrics, switch metrics, event plots, summary tables, and
     central indexes.
 
-## 16. Configuration Consistency Checklist
+## 17. Configuration Consistency Checklist
 
 Before running downstream stages, verify that these values refer to the same
 prepared dataset:
