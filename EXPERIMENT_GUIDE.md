@@ -685,7 +685,7 @@ scalar-context features, predicts `log1p_remaining_persistence_seconds`, and
 reports metrics in seconds/minutes. The grid uses range specs instead of fixed
 manual lists and currently evaluates 1,152 validation trials.
 
-After all three runs finish, build the comparison table:
+After all current-level runs finish, build the comparison table:
 
 ```bash
 conda run -n Nowcasting python scripts/experiments/current_level_persistence/summarize_runs.py
@@ -694,7 +694,7 @@ conda run -n Nowcasting python scripts/experiments/current_level_persistence/sum
 Main output:
 
 ```text
-results/comparisons/model_summary/current_level_persistence/externalHoldout_test_fc_uplink_fade/initial_shapelet_model_comparison_delta0p5/tables/initial_shapelet_model_comparison_delta0p5.csv
+results/comparisons/model_summary/current_level_persistence/externalHoldout_test_fc_uplink_fade/current_level_model_comparison_delta0p5/tables/current_level_model_comparison_delta0p5.csv
 ```
 
 Build the current-level Perfect Switch and evaluate duration-derived switch

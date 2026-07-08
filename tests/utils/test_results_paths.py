@@ -97,6 +97,9 @@ def test_artifact_id_selection_and_comparison_group_helpers() -> None:
     assert comparison_group_from_id(
         "gru_architecture_variant_externalHoldout_test_fc_uplink_fade_L30_h10_thr10"
     ) == "model_selection"
+    assert comparison_group_from_id(
+        "xgboost_search_externalHoldout_test_fc_uplink_fade_L30_h10_thr10"
+    ) == "model_selection"
 
 
 def test_processed_dataset_resolver_supports_new_and_legacy_paths(

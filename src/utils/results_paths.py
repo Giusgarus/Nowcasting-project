@@ -106,7 +106,9 @@ def comparison_group_from_id(comparison_id: str) -> str:
         return "switch_eval"
     if value.startswith("model_result_summary_"):
         return "model_summary"
-    if value.startswith(("gru_architecture_variant_", "patchtst_search_")):
+    if value.startswith(
+        ("gru_architecture_variant_", "patchtst_search_", "xgboost_search_")
+    ):
         return "model_selection"
     return "other"
 

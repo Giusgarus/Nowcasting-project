@@ -1,0 +1,14 @@
+variant: raw
+trial_id: trial_015_4edd68ec41
+status: complete
+n_estimators: 300
+max_depth: 2
+learning_rate: 0.03
+subsample: 1.0
+colsample_bytree: 0.8
+min_child_weight: 1
+reg_lambda: 2.0
+validation_mae_raw: 2.069572349823583
+validation_rmse_raw: 6.38094387585224
+duration_seconds: 2.7126230895519257
+error: ''

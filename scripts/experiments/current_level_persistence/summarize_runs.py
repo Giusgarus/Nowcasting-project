@@ -1,4 +1,4 @@
-"""Summarize completed current-level persistence learnable-shapelet runs."""
+"""Summarize completed current-level persistence model runs."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.tasks.current_level_persistence.utils.paths import run_dir, run_index_path  # noqa: E402
@@ -22,9 +22,9 @@ OUTPUT_DIR = (
     PROJECT_ROOT
     / "results/comparisons/model_summary/current_level_persistence/"
     / "externalHoldout_test_fc_uplink_fade/"
-    / "initial_shapelet_model_comparison_delta0p5/tables"
+    / "current_level_model_comparison_delta0p5/tables"
 )
-OUTPUT_PATH = OUTPUT_DIR / "initial_shapelet_model_comparison_delta0p5.csv"
+OUTPUT_PATH = OUTPUT_DIR / "current_level_model_comparison_delta0p5.csv"
 COMPARISON_COLUMNS = [
     "model_id",
     "run_id",

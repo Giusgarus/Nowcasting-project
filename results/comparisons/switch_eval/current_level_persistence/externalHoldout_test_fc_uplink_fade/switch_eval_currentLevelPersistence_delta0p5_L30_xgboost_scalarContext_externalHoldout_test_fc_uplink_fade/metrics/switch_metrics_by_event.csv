@@ -1,0 +1,25 @@
+method,event_id,split,num_points,num_perfect_positive,num_model_positive_raw,num_model_positive,points_changed_by_min_island,sample_interval_seconds,active_duration_seconds,precision,recall,f1,intersection_over_union,balanced_accuracy,false_positive_rate,false_negative_rate,true_positives,true_negatives,false_positives,false_negatives,decision_rule
+XGBoost Scalar Context,dataset_007_event_00001,test,332,36,4,36,32,32.0,1152.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,36,296,0,0,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00002,test,332,0,0,0,0,31.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.0,0,332,0,0,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00003,test,329,71,19,71,52,31.0,2201.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,71,258,0,0,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00004,test,324,39,1,11,10,30.0,330.0,1.0,0.28205128205128205,0.44000000000000006,0.28205128205128205,0.641025641025641,0.0,0.717948717948718,11,285,0,28,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00005,test,307,0,0,0,0,31.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.0,0,307,0,0,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00006,test,297,12,1,12,11,30.0,360.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,12,285,0,0,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00007,test,257,145,28,130,102,30.0,3900.0,1.0,0.896551724137931,0.9454545454545454,0.896551724137931,0.9482758620689655,0.0,0.10344827586206896,130,112,0,15,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00009,test,331,28,6,28,22,30.0,840.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,28,303,0,0,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00010,test,332,0,0,0,0,30.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.0,0,332,0,0,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00011,test,328,0,0,0,0,32.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.0,0,328,0,0,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00012,test,332,0,0,0,0,32.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.0,0,332,0,0,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00013,test,332,13,0,0,0,28.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,1.0,0,319,0,13,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00014,test,277,0,0,0,0,30.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.0,0,277,0,0,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00015,test,267,23,3,22,19,30.0,660.0,1.0,0.9565217391304348,0.9777777777777777,0.9565217391304348,0.9782608695652174,0.0,0.043478260869565216,22,244,0,1,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00016,test,332,41,6,41,35,29.0,1189.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,41,291,0,0,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00017,test,332,0,0,0,0,32.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.0,0,332,0,0,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00018,test,331,0,0,0,0,29.5,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.0,0,331,0,0,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00019,test,331,12,0,0,0,30.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,1.0,0,319,0,12,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00020,test,332,27,2,27,25,32.0,864.0,1.0,1.0,1.0,1.0,1.0,0.0,0.0,27,305,0,0,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00021,test,332,0,0,0,0,33.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.0,0,332,0,0,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00022,test,332,0,0,0,0,33.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.0,0,332,0,0,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00023,test,332,0,0,0,0,33.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.0,0,332,0,0,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00024,test,331,0,0,0,0,29.5,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.0,0,331,0,0,predicted_duration_threshold
+XGBoost Scalar Context,dataset_007_event_00025,test,331,0,0,0,0,30.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.0,0,331,0,0,predicted_duration_threshold

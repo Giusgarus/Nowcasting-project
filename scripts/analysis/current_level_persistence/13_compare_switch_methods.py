@@ -149,15 +149,19 @@ def main() -> None:
 
         summary = compute_model_vs_perfect_metrics(comparison, by_event=False)
         event_metrics = compute_model_vs_perfect_metrics(comparison, by_event=True)
+        method_family = str(method.get("model_family", "learnable_shapelets"))
+        method_architecture = str(method.get("architecture", method["model_id"]))
+        method_variant = str(method.get("variant", "scalar_context"))
+        method_mode = str(method.get("mode", "trained"))
         global_behavior, event_behavior = build_switch_behavior_metrics_tables(
             comparison,
             method_id=run_id,
             method_metadata={
                 "method_name": str(method["name"]),
-                "model_family": "learnable_shapelets",
-                "architecture": str(method["model_id"]),
-                "variant": "scalar_context",
-                "mode": "trained",
+                "model_family": method_family,
+                "architecture": method_architecture,
+                "variant": method_variant,
+                "mode": method_mode,
             },
             selection_id=selection_id,
             test_type="external_holdout",

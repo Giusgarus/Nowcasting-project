@@ -35,3 +35,17 @@ def test_autoregressive_xgboost_grid_uses_range_specs_and_safety_limit() -> None
     assert config["search"]["max_trials_per_variant"] == 1152
     assert config["search"]["variants"] == ["raw", "context_standard"]
     validate_config(config, num_candidates=len(candidates))
+
+
+def test_autoregressive_switch_comparison_includes_xgboost_methods() -> None:
+    config = load_yaml_config(PROJECT_ROOT / "configs/switch_comparison.yaml")
+    xgboost_methods = [
+        (method["architecture"], method["variant"])
+        for method in config["methods"]
+        if method["model_family"] == "xgboost"
+    ]
+
+    assert sorted(xgboost_methods) == [
+        ("xgboost", "context_standard"),
+        ("xgboost", "raw"),
+    ]

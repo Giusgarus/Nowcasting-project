@@ -1,0 +1,29 @@
+run_id: xgboost_contextStandard_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+task_name: autoregressive
+model_family: xgboost
+architecture: xgboost
+variant: context_standard
+selection_id: externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+dataset_path: data/processed/autoregressive/threshold_10p0/datasets_L30_h10/externalHoldout_test_fc_uplink_fade
+grid_search_id: xgboost_search_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+best_trial_id: trial_114_5e53c45704
+selection_metric: validation_rmse_raw
+final_training:
+  retrain_on_full_development: true
+  train_split: train+val
+  excluded_split: test
+parameters:
+  objective: reg:squarederror
+  tree_method: hist
+  device: cuda
+  n_jobs: 4
+  verbosity: 0
+  n_estimators: 300
+  max_depth: 4
+  learning_rate: 0.03
+  subsample: 1.0
+  colsample_bytree: 0.8
+  min_child_weight: 3
+  reg_lambda: 2.0
+num_horizon_models: 10
+created_at: '2026-07-08T15:22:33.274101+00:00'

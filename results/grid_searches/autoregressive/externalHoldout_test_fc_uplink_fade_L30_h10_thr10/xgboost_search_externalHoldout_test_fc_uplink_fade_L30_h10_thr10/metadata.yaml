@@ -1,0 +1,13 @@
+search_id: xgboost_search_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+task_name: autoregressive
+model_family: xgboost
+selection_id: externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+dataset_path: data/processed/autoregressive/threshold_10p0/datasets_L30_h10/externalHoldout_test_fc_uplink_fade
+config_path: configs/autoregressive/xgboost_grid_search.yaml
+config_fingerprint: 5970ba632bd96298fd2ee6c32d305fd7b768ee287ad1872ba3d14879b0459bae
+trials_per_variant: 1152
+total_trials: 2304
+selection_metric: validation_rmse_raw
+selection_mode: min
+test_policy: test split evaluated only after validation selection
+created_at: '2026-07-08T08:43:39.182898+00:00'

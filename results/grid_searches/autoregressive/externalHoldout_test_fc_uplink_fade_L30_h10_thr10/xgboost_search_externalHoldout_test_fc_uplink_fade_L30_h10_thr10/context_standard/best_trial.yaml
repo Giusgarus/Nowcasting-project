@@ -1,0 +1,14 @@
+variant: context_standard
+trial_id: trial_114_5e53c45704
+status: complete
+n_estimators: 300
+max_depth: 4
+learning_rate: 0.03
+subsample: 1.0
+colsample_bytree: 0.8
+min_child_weight: 3
+reg_lambda: 2.0
+validation_mae_raw: 1.2965822405183187
+validation_rmse_raw: 3.9120094391423277
+duration_seconds: 4.300781261175871
+error: ''

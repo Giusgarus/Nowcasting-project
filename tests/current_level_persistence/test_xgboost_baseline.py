@@ -56,3 +56,19 @@ def test_current_level_xgboost_grid_uses_range_specs_and_safety_limit() -> None:
     assert config["search"]["max_trials"] == 1152
     assert config["features"]["use_scalar_context"] is True
     validate_config(config, num_candidates=len(candidates))
+
+
+def test_current_level_switch_comparison_includes_xgboost_method() -> None:
+    config = load_yaml_config(
+        PROJECT_ROOT / "configs/current_level_persistence/switch_comparison.yaml"
+    )
+    xgboost_methods = [
+        method for method in config["methods"]
+        if method.get("model_family") == "xgboost"
+    ]
+
+    assert len(xgboost_methods) == 1
+    assert xgboost_methods[0]["model_id"] == "xgboost"
+    assert xgboost_methods[0]["run_id"].startswith(
+        "currentLevelPersistence_delta0p5_L30_xgboost_scalarContext_"
+    )

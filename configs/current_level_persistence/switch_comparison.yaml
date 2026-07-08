@@ -7,14 +7,21 @@ data:
 
 methods:
   - name: Shapelet MLP Scalar Context
+    model_family: learnable_shapelets
     model_id: multiscale_shapelet_mlp
     run_id: currentLevelPersistence_delta0p5_L30_multiscale_shapelet_mlp_scalarContext_externalHoldout_test_fc_uplink_fade
   - name: Shapelet Transformer Scalar Context
+    model_family: learnable_shapelets
     model_id: multiscale_shapelet_transformer
     run_id: currentLevelPersistence_delta0p5_L30_multiscale_shapelet_transformer_scalarContext_externalHoldout_test_fc_uplink_fade
   - name: Shapelet Convolution Scalar Context
+    model_family: learnable_shapelets
     model_id: multiscale_shapelet_convolution
     run_id: currentLevelPersistence_delta0p5_L30_multiscale_shapelet_convolution_scalarContext_externalHoldout_test_fc_uplink_fade
+  - name: XGBoost Scalar Context
+    model_family: xgboost
+    model_id: xgboost
+    run_id: currentLevelPersistence_delta0p5_L30_xgboost_scalarContext_externalHoldout_test_fc_uplink_fade
 
 conversion:
   duration_threshold_seconds: 300.0
@@ -28,5 +35,5 @@ plots:
   max_events: 25
 
 output:
-  summary_id: shapelet_scalarContext_switch_summary_delta0p5
+  summary_id: currentLevelPersistence_switch_summary_delta0p5
   overwrite: true

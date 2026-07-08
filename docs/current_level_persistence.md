@@ -307,10 +307,10 @@ results/runs/current_level_persistence/<selection_id>/<run_id>/
 models/current_level_persistence/<model_id>/<run_id>/
 ```
 
-## Compare Initial Shapelet Models
+## Compare Current-Level Models
 
-After training the MLP, Transformer, and convolutional variants, build the
-compact comparison table:
+After training the shapelet variants and any tabular baselines such as
+XGBoost, build the compact comparison table:
 
 ```bash
 python scripts/experiments/current_level_persistence/summarize_runs.py
@@ -319,7 +319,7 @@ python scripts/experiments/current_level_persistence/summarize_runs.py
 Main output:
 
 ```text
-results/comparisons/model_summary/current_level_persistence/externalHoldout_test_fc_uplink_fade/initial_shapelet_model_comparison_delta0p5/tables/initial_shapelet_model_comparison_delta0p5.csv
+results/comparisons/model_summary/current_level_persistence/externalHoldout_test_fc_uplink_fade/current_level_model_comparison_delta0p5/tables/current_level_model_comparison_delta0p5.csv
 ```
 
 ## XGBoost Duration Baseline

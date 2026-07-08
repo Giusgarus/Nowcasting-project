@@ -26,6 +26,14 @@ methods:
     model_family: patchtst
     architecture: patchtst
     variant: context_standard
+  - name: XGBoost Raw
+    model_family: xgboost
+    architecture: xgboost
+    variant: raw
+  - name: XGBoost Context Standard
+    model_family: xgboost
+    architecture: xgboost
+    variant: context_standard
   - name: Chronos Zero-Shot Raw
     model_family: chronos
     architecture: chronos_zero_shot

@@ -1,0 +1,2 @@
+architecture,variant,best_trial_id,validation_mae_raw,validation_rmse_raw,test_mae,test_rmse,final_retrained_on_full_development,n_estimators,max_depth,learning_rate,subsample,colsample_bytree,min_child_weight,reg_lambda,num_train_windows,num_val_windows,num_test_windows
+xgboost,context_standard,trial_114_5e53c45704,1.2965822405183187,3.9120094391423277,1.4665440050091512,3.3646858395388755,True,300,4,0.03,1.0,0.8,3,2.0,19412,4783,7709
