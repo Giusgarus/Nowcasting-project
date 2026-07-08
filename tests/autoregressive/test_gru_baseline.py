@@ -4,6 +4,9 @@ import numpy as np
 import pytest
 import torch
 
+from scripts.experiments.autoregressive.run_autoregressive_gru import (
+    ensure_dataset_folder_complete,
+)
 from src.tasks.autoregressive.evaluation.forecast_metrics import (
     compute_horizon_metrics,
     compute_trajectory_metrics,
@@ -77,6 +80,13 @@ def test_context_standard_inverse_transform() -> None:
     raw = inverse_context_standardization(predictions, means, stds)
 
     np.testing.assert_allclose(raw, [[10.0, 12.0], [17.0, 26.0]])
+
+
+def test_dataset_folder_validation_reports_missing_metadata(tmp_path) -> None:
+    (tmp_path / "train.npz").write_bytes(b"placeholder")
+
+    with pytest.raises(FileNotFoundError, match="incomplete"):
+        ensure_dataset_folder_complete(tmp_path)
 
 
 @pytest.mark.parametrize("model_factory", [_s2v, _seq2seq])

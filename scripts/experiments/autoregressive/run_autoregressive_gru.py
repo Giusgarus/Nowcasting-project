@@ -42,6 +42,35 @@ from src.utils.results_paths import (
 )
 
 CONFIG_PATH = PROJECT_ROOT / "configs/autoregressive/autoregressive_gru.yaml"
+REQUIRED_DATASET_FILES = (
+    "dataset_metadata.yaml",
+    "train.npz",
+    "val.npz",
+    "test.npz",
+    "train_metadata.parquet",
+    "val_metadata.parquet",
+    "test_metadata.parquet",
+)
+
+
+def ensure_dataset_folder_complete(dataset_folder: Path) -> None:
+    """Raise an actionable error when a final dataset folder is incomplete."""
+
+    missing = [
+        filename for filename in REQUIRED_DATASET_FILES
+        if not (dataset_folder / filename).is_file()
+    ]
+    if missing:
+        raise FileNotFoundError(
+            "Autoregressive dataset selection folder is incomplete: "
+            f"{dataset_folder}\n"
+            f"Missing files: {', '.join(missing)}\n"
+            "Regenerate the matching dataset before launching model runs. "
+            "For L30/h10 use:\n"
+            "  PYTHONPATH=. python scripts/analysis/autoregressive/"
+            "10_build_autoregressive_datasets.py --config "
+            "configs/autoregressive/autoregressive_dataset.yaml"
+        )
 
 
 def resolve_selection_folder(dataset_root: Path, configured: str) -> Path:
@@ -51,7 +80,10 @@ def resolve_selection_folder(dataset_root: Path, configured: str) -> Path:
         selected = dataset_root / configured
         if not selected.is_dir():
             raise FileNotFoundError(f"Dataset selection folder not found: {selected}")
+        ensure_dataset_folder_complete(selected)
         return selected
+    if not dataset_root.is_dir():
+        raise FileNotFoundError(f"Dataset root not found: {dataset_root}")
     folders = sorted(path for path in dataset_root.iterdir() if path.is_dir())
     if len(folders) != 1:
         available = ", ".join(path.name for path in folders) or "none"
@@ -59,6 +91,7 @@ def resolve_selection_folder(dataset_root: Path, configured: str) -> Path:
             "data.selection_folder='auto' requires exactly one folder; "
             f"available: {available}"
         )
+    ensure_dataset_folder_complete(folders[0])
     return folders[0]
 
 
