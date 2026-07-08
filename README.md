@@ -205,6 +205,9 @@ conda run -n Nowcasting python scripts/analysis/autoregressive/11_sanity_check_a
 conda run -n Nowcasting python scripts/analysis/autoregressive/12_compute_perfect_switch.py
 ```
 
+Use `--force` with `10_build_autoregressive_datasets.py` only when you want to
+replace an existing or partial dataset build.
+
 Then run model experiments or grid searches:
 
 ```bash

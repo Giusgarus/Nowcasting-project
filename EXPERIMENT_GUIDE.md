@@ -191,6 +191,14 @@ conda run -n Nowcasting python scripts/analysis/autoregressive/10_build_autoregr
   --config configs/autoregressive/autoregressive_dataset_L120_h10.yaml
 ```
 
+If a previous or partial build already exists, rebuild intentionally with:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/autoregressive/10_build_autoregressive_datasets.py \
+  --config configs/autoregressive/autoregressive_dataset.yaml \
+  --force
+```
+
 The `L120_h10` dataset config expects the matching
 `window_index_L120_h10.parquet` to exist under
 `data/processed/autoregressive/threshold_10p0/`. It reuses the already

@@ -100,6 +100,14 @@ Command:
 conda run -n Nowcasting python scripts/analysis/autoregressive/10_build_autoregressive_datasets.py
 ```
 
+To intentionally rebuild an existing or partial dataset folder, add `--force`:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/autoregressive/10_build_autoregressive_datasets.py \
+  --config configs/autoregressive/autoregressive_dataset.yaml \
+  --force
+```
+
 The default dataset protocol is external holdout:
 
 ```yaml

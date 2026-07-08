@@ -3,6 +3,7 @@
 # %%
 # Path setup and imports
 import argparse
+import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -52,10 +53,16 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_CONFIG_PATH,
         help="Path to an autoregressive dataset YAML config.",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Remove and rebuild existing outputs for the selected dataset.",
+    )
     return parser.parse_args()
 
 
-CONFIG_PATH = parse_args().config
+ARGS = parse_args()
+CONFIG_PATH = ARGS.config
 if not CONFIG_PATH.is_absolute():
     CONFIG_PATH = PROJECT_ROOT / CONFIG_PATH
 
@@ -166,7 +173,8 @@ selection_id = make_selection_id(
 
 output_dir = output_root / selection_folder
 summary_dir = get_data_preparation_dir(selection_id)
-if not output_config["overwrite"]:
+overwrite_outputs = bool(output_config["overwrite"]) or bool(ARGS.force)
+if not overwrite_outputs:
     existing = [
         path
         for folder in (output_dir, summary_dir)
@@ -175,8 +183,13 @@ if not output_config["overwrite"]:
     ]
     if existing:
         raise FileExistsError(
-            f"Outputs already exist for this selection: {existing[0].parent}"
+            f"Outputs already exist for this selection: {existing[0].parent}. "
+            "Re-run with --force to rebuild them intentionally."
         )
+else:
+    for folder in (output_dir, summary_dir):
+        if folder.exists():
+            shutil.rmtree(folder)
 output_dir.mkdir(parents=True, exist_ok=True)
 summary_dir.mkdir(parents=True, exist_ok=True)
 
