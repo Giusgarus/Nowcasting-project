@@ -1,0 +1,4 @@
+split,num_observed_targets,num_censored_targets,num_candidate_windows,pct_censored
+train,19604,418,20022,2.0877035261212664
+validation,4802,131,4933,2.6555848368132984
+test,7693,256,7949,3.220530884387973

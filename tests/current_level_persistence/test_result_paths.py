@@ -2,6 +2,7 @@ from src.tasks.current_level_persistence.utils.paths import (
     make_run_id,
     make_selection_id,
     model_dir,
+    model_selection_dir,
     processed_dataset_dir,
     run_dir,
     switch_comparison_dir,
@@ -55,6 +56,18 @@ def test_current_level_switch_paths_are_task_scoped() -> None:
     assert "comparisons/switch_eval/current_level_persistence" in str(comparison)
     assert "comparisons/model_summary/current_level_persistence" in str(summary)
     assert "autoregressive" not in str(comparison)
+
+
+def test_current_level_model_selection_path_is_task_scoped() -> None:
+    path = model_selection_dir(
+        selection_id="externalHoldout_test_fc_uplink_fade",
+        search_id="shapelet_large_scalarContext_delta0p5_L30",
+    )
+
+    assert "comparisons/model_selection/current_level_persistence" in str(path)
+    assert "externalHoldout_test_fc_uplink_fade" in str(path)
+    assert "shapelet_large_scalarContext_delta0p5_L30" in str(path)
+    assert "autoregressive" not in str(path)
 
 
 def test_current_level_persistence_run_suffix_keeps_selection_separate() -> None:

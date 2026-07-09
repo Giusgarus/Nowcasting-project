@@ -52,6 +52,7 @@ from src.tasks.current_level_persistence.utils.paths import (
     grid_search_dir,
     make_run_id,
     model_dir,
+    model_selection_dir,
     run_dir,
     run_index_path,
 )
@@ -1233,8 +1234,32 @@ def main() -> None:
             columns=GRID_SEARCH_INDEX_COLUMNS,
         )
 
+    best_runs = pd.DataFrame(final_rows)
     (search_dir / "tables").mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(final_rows).to_csv(search_dir / "tables" / "best_runs.csv", index=False)
+    best_runs.to_csv(search_dir / "tables" / "best_runs.csv", index=False)
+    selection_dir = model_selection_dir(
+        selection_id=selection_id,
+        search_id=search_id,
+    )
+    (selection_dir / "tables").mkdir(parents=True, exist_ok=True)
+    best_runs.to_csv(selection_dir / "tables" / "best_runs.csv", index=False)
+    save_yaml(
+        selection_dir / "metadata.yaml",
+        {
+            "search_id": search_id,
+            "task_name": "current_level_persistence",
+            "model_family": "learnable_shapelets",
+            "selection_id": selection_id,
+            "selection_metric": str(config["search"]["selection_metric"]),
+            "selection_mode": str(config["search"]["selection_mode"]),
+            "source_grid_search_path": relative_project_path(search_dir),
+            "summary_table": relative_project_path(
+                selection_dir / "tables" / "best_runs.csv"
+            ),
+            "status": "complete",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
     if not final_rows:
         raise RuntimeError("No model produced a completed finite validation trial.")
     print("=== Selected best runs ===")

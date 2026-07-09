@@ -196,3 +196,22 @@ def switch_summary_dir(
         / sanitize_id(selection_id)
         / sanitize_id(summary_id)
     )
+
+
+def model_selection_dir(
+    *,
+    selection_id: str,
+    search_id: str,
+    root: Path = PROJECT_ROOT,
+) -> Path:
+    """Return the lightweight model-selection summary directory for this task."""
+
+    return (
+        root
+        / "results"
+        / "comparisons"
+        / "model_selection"
+        / TASK_NAME
+        / sanitize_id(selection_id)
+        / sanitize_id(search_id)
+    )

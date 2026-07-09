@@ -237,12 +237,23 @@ models/current_level_persistence/<model_id>/<run_id>/
 The scalar-context grid has a distinct `search_id` containing `scalarContext`,
 so it does not overwrite the previous search.
 
-## Server Launchers
+## Optional Parallel Launcher
 
-Dataset rebuild, smoke-run, and three-GPU commands are documented in:
+The normal entrypoint is `train_learnable_shapelets.py`. For convenience, the
+repository also includes a shell launcher that runs the three configured
+single-model shapelet variants concurrently, assigning one visible CUDA device
+to each process:
 
-```text
-docs/current_level_persistence_server_runs.md
+```bash
+PYTHONUNBUFFERED=1 bash \
+  scripts/experiments/current_level_persistence/run_shapelet_scalar_context_parallel.sh
+```
+
+Override GPU IDs when needed:
+
+```bash
+GPU_IDS="0 1 2" PYTHONUNBUFFERED=1 bash \
+  scripts/experiments/current_level_persistence/run_shapelet_scalar_context_parallel.sh
 ```
 
 ## Grid Search
@@ -298,6 +309,12 @@ Grid artifacts are stored under:
 
 ```text
 results/grid_searches/current_level_persistence/<selection_id>/<search_id>/
+```
+
+The compact model-selection table for each search is mirrored under:
+
+```text
+results/comparisons/model_selection/current_level_persistence/<selection_id>/<search_id>/
 ```
 
 Final selected runs are stored under the normal run and checkpoint folders:

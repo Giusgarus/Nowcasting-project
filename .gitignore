@@ -232,3 +232,12 @@ data/processed/autoregressive/**
 !data/processed/autoregressive/**/
 !data/processed/autoregressive/**/dataset_metadata.yaml
 !data/processed/autoregressive/**/test_metadata.parquet
+
+!data/processed/current_level_persistence/
+data/processed/current_level_persistence/**
+!data/processed/current_level_persistence/**/
+!data/processed/current_level_persistence/**/dataset_metadata.yaml
+!data/processed/current_level_persistence/**/test_metadata.parquet
+!data/processed/current_level_persistence/**/split_summary.csv
+!data/processed/current_level_persistence/**/censoring_summary.csv
+!data/processed/current_level_persistence/**/external_holdout_split_plan.csv

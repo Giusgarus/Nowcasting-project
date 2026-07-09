@@ -666,11 +666,33 @@ as a canonical run and evaluated on the test split.
 Each run saves metrics, predictions, diagnostic figures, learned shapelets,
 metadata, and checkpoints under the task-specific `results/runs/` and
 `models/` folders.
+The compact model-selection summary is mirrored under:
+
+```text
+results/comparisons/model_selection/current_level_persistence/<selection_id>/<search_id>/
+```
 
 The three configs enable scalar context. Run IDs contain `scalarContext`, and
 the train-fitted scalar means/stds are stored in metadata and checkpoints.
-Three-GPU server commands are in
-`docs/current_level_persistence_server_runs.md`.
+
+Optional convenience launcher for running the three single-model shapelet
+configs concurrently, assigning one visible CUDA device to each process:
+
+```bash
+PYTHONUNBUFFERED=1 bash \
+  scripts/experiments/current_level_persistence/run_shapelet_scalar_context_parallel.sh
+```
+
+Override the visible device IDs when needed:
+
+```bash
+GPU_IDS="0 1 2" PYTHONUNBUFFERED=1 bash \
+  scripts/experiments/current_level_persistence/run_shapelet_scalar_context_parallel.sh
+```
+
+Use this launcher inside `tmux` or another session manager for long runs. It is
+only a shell convenience wrapper around `train_learnable_shapelets.py`; the
+grid-search runner above already has its own device-aware scheduler.
 
 Run the XGBoost duration baseline:
 
@@ -684,6 +706,8 @@ This baseline uses flattened `X_relative_to_current` plus the configured
 scalar-context features, predicts `log1p_remaining_persistence_seconds`, and
 reports metrics in seconds/minutes. The grid uses range specs instead of fixed
 manual lists and currently evaluates 1,152 validation trials.
+Its compact model-selection summary uses the same
+`results/comparisons/model_selection/current_level_persistence/` hierarchy.
 
 After all current-level runs finish, build the comparison table:
 

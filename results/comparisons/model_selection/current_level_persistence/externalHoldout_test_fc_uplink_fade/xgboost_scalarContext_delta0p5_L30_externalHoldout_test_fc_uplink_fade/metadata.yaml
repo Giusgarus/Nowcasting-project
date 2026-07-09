@@ -1,0 +1,70 @@
+search_id: xgboost_scalarContext_delta0p5_L30_externalHoldout_test_fc_uplink_fade
+task_name: current_level_persistence
+model_family: xgboost
+selection_id: externalHoldout_test_fc_uplink_fade
+dataset_path: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade
+dataset_build_fingerprint: 13b707080d9ed10d637a07e49419f87b1b8f79e2b3ab25406711330799d84754
+target_search_scope: full_clean_signal_same_segment
+censoring_policy: exclude from supervised regression when recovery is not observed
+  before the continuous segment ends
+scalar_context_scaler:
+  feature_names:
+  - current_signal
+  - recovery_level
+  - window_mean
+  - window_std
+  - window_min
+  - window_max
+  - window_range
+  - last_slope
+  - recent_slope_3
+  - recent_slope_5
+  - recent_mean_5
+  - recent_std_5
+  mean:
+  - 3.848147392272949
+  - 3.348147392272949
+  - 3.7989935874938965
+  - 1.3506685495376587
+  - 1.9875234365463257
+  - 6.7687153816223145
+  - 4.781192302703857
+  - 0.0035506398417055607
+  - 0.005667726509273052
+  - 0.01069679670035839
+  - 3.8425076007843018
+  - 0.576108992099762
+  std:
+  - 4.2185959815979
+  - 4.2185959815979
+  - 3.451145648956299
+  - 1.9917583465576172
+  - 2.0634021759033203
+  - 7.01092004776001
+  - 6.178316593170166
+  - 1.3847324848175049
+  - 1.5823938846588135
+  - 2.3682050704956055
+  - 4.074522018432617
+  - 0.9427729845046997
+  observed_std:
+  - 4.2185959815979
+  - 4.2185959815979
+  - 3.451145648956299
+  - 1.9917583465576172
+  - 2.0634021759033203
+  - 7.01092004776001
+  - 6.178316593170166
+  - 1.3847324848175049
+  - 1.5823938846588135
+  - 2.3682050704956055
+  - 4.074522018432617
+  - 0.9427729845046997
+  fitted_on: train
+  standardized: true
+config_path: configs/current_level_persistence/xgboost_grid_search_delta_0p5.yaml
+config_fingerprint: 3cbbce91cfbaab08168fd9566fa218803bd188ff4637f6c4dd435cb61a29c6e6
+total_trials: 1152
+selection_metric: val_mae_seconds
+selection_mode: min
+created_at: '2026-07-08T08:44:41.582210+00:00'

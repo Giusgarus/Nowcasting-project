@@ -37,6 +37,7 @@ from src.tasks.current_level_persistence.utils.paths import (
     grid_search_dir,
     make_run_id,
     model_dir,
+    model_selection_dir,
     run_dir,
     run_index_path,
 )
@@ -534,7 +535,31 @@ def main() -> None:
         search_id=search_id,
         scalar_context_scaler=scalar_context_scaler,
     )
-    pd.DataFrame([best_row]).to_csv(paths["tables"] / "best_runs.csv", index=False)
+    best_runs = pd.DataFrame([best_row])
+    best_runs.to_csv(paths["tables"] / "best_runs.csv", index=False)
+    selection_dir = model_selection_dir(
+        selection_id=str(config["selection_id"]),
+        search_id=search_id,
+    )
+    (selection_dir / "tables").mkdir(parents=True, exist_ok=True)
+    best_runs.to_csv(selection_dir / "tables" / "best_runs.csv", index=False)
+    save_yaml(
+        selection_dir / "metadata.yaml",
+        {
+            "search_id": search_id,
+            "task_name": "current_level_persistence",
+            "model_family": "xgboost",
+            "selection_id": str(config["selection_id"]),
+            "selection_metric": config["search"]["selection_metric"],
+            "selection_mode": config["search"]["selection_mode"],
+            "source_grid_search_path": relative_project_path(search_dir),
+            "summary_table": relative_project_path(
+                selection_dir / "tables" / "best_runs.csv"
+            ),
+            "status": "complete",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
     upsert_index_row(
         get_results_index_dir() / "grid_searches.csv",
         {

@@ -1,0 +1,139 @@
+task_name: current_level_persistence
+config_path: configs/current_level_persistence/dataset_delta_0p5_L30_external_holdout.yaml
+config_fingerprint: e81a44f91517c795d5260e01fd439dfbb4699a847feb26f60e23880596995274
+selection_id: externalHoldout_test_fc_uplink_fade
+selection_folder: externalHoldout_test_fc_uplink_fade
+context_length: 30
+delta: 0.5
+sampling_time_seconds: 30
+target_definition: elapsed seconds from t to the first observed future Signal below
+  Signal_t - delta in the full clean continuous segment
+target_search_scope: full_clean_signal_same_segment
+censoring_policy: exclude from supervised regression when recovery is not observed
+  before the continuous segment ends
+input_representation: X_relative_to_current = X_raw - Signal_t
+signal_column: Signal_prepared
+input_representations:
+- X_raw
+- X_relative_to_current
+- scalar_context_features
+scalar_context_feature_names:
+- current_signal
+- recovery_level
+- window_mean
+- window_std
+- window_min
+- window_max
+- window_range
+- last_slope
+- recent_slope_3
+- recent_slope_5
+- recent_mean_5
+- recent_std_5
+targets:
+- remaining_persistence_samples
+- remaining_persistence_seconds
+- log1p_remaining_persistence_seconds
+external_test_dataset: fc-uplink-fade.csv
+development_datasets:
+- uplink_beacon_data_fucino_GX4.csv
+- fc-downlink-fade.csv
+- dati_meteo_beacon.csv
+- UPLINK-FADE_Fucino_GX4_AprJun2021.csv
+- UPLINK-FADE_Fucino_GX5_AprJun2021.csv
+- DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
+- DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv
+source_datasets:
+- uplink_beacon_data_fucino_GX4.csv
+- fc-uplink-fade.csv
+- fc-downlink-fade.csv
+- dati_meteo_beacon.csv
+- UPLINK-FADE_Fucino_GX4_AprJun2021.csv
+- UPLINK-FADE_Fucino_GX5_AprJun2021.csv
+- DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
+- DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv
+event_window_quality:
+  allow_warning_events_for_window_index: true
+  num_usable_events: 100
+  num_warning_events: 0
+  num_unusable_events_excluded: 2
+split:
+  mode: external_holdout_by_dataset
+  external_test_dataset: fc-uplink-fade.csv
+  development_event_split:
+    train_fraction: 0.85
+    validation_fraction: 0.15
+    small_dataset_policy: all_train_if_less_than_3_events
+    min_events_for_validation_split: 3
+splits:
+  train:
+    n_samples: 19604
+    n_events: 61
+    datasets:
+    - DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
+    - DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv
+    - UPLINK-FADE_Fucino_GX4_AprJun2021.csv
+    - UPLINK-FADE_Fucino_GX5_AprJun2021.csv
+    - dati_meteo_beacon.csv
+    - fc-downlink-fade.csv
+    - uplink_beacon_data_fucino_GX4.csv
+  val:
+    n_samples: 4802
+    n_events: 15
+    datasets:
+    - DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
+    - UPLINK-FADE_Fucino_GX4_AprJun2021.csv
+    - UPLINK-FADE_Fucino_GX5_AprJun2021.csv
+    - dati_meteo_beacon.csv
+    - fc-downlink-fade.csv
+    - uplink_beacon_data_fucino_GX4.csv
+  test:
+    n_samples: 7693
+    n_events: 24
+    datasets:
+    - fc-uplink-fade.csv
+target_statistics_seconds:
+  train:
+    mean: 11042.185268312589
+    median: 334.0
+    min: 25.0
+    max: 5250276.0
+    p10: 31.0
+    p90: 13933.7
+  val:
+    mean: 6309.800916284881
+    median: 299.0
+    min: 8.0
+    max: 455287.0
+    p10: 31.0
+    p90: 10857.700000000019
+  test:
+    mean: 2524.719225269726
+    median: 154.0
+    min: 17.0
+    max: 294976.0
+    p10: 29.0
+    p90: 6051.000000000004
+source_files:
+  event_windows: data/interim/event_windows/threshold_10p0/all_event_windows.parquet
+  event_quality: data/interim/event_windows/threshold_10p0/event_window_quality.parquet
+  full_signal: data/interim/clean_signal/all_signal_clean.parquet
+output_files:
+  train_npz: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/train.npz
+  train_metadata: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/train_metadata.parquet
+  val_npz: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/val.npz
+  val_metadata: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/val_metadata.parquet
+  test_npz: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/test.npz
+  test_metadata: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/test_metadata.parquet
+  external_holdout_split_plan: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/external_holdout_split_plan.csv
+  split_summary: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/split_summary.csv
+  censored_window_metadata: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/censored_window_metadata.parquet
+  censoring_summary: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/censoring_summary.csv
+  dataset_metadata: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/dataset_metadata.yaml
+num_train_windows: 19604
+num_val_windows: 4802
+num_test_windows: 7693
+num_censored_windows: 805
+num_events_total: 100
+num_datasets_total: 8
+created_at: '2026-07-07T08:13:29.776057+00:00'

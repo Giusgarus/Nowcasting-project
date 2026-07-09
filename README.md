@@ -75,13 +75,12 @@ Implemented models:
 
 - multiscale learnable-shapelet MLP;
 - multiscale learnable-shapelet Transformer;
-- multiscale learnable-shapelet convolutional head.
+- multiscale learnable-shapelet convolutional head;
 - XGBoost tabular duration baseline.
 
 Main documentation:
 
 - [Current-Level Persistence](docs/current_level_persistence.md)
-- [Current-Level Persistence Server Runs](docs/current_level_persistence_server_runs.md)
 
 Current-level duration predictions are converted into switch decisions with a
 configured 300-second persistence threshold and the shared autoregressive
