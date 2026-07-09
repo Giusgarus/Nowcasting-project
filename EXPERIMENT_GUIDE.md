@@ -22,6 +22,8 @@ Mamba and survival experiments are not implemented yet. The separate
 `current_level_persistence` task has a task-scoped dataset builder and
 learnable-shapelet training runner; see `docs/current_level_persistence.md`
 for its dataset and model commands.
+The first-stage `long_fade_detection` binary task is documented in
+`docs/long_fade_detection.md`.
 
 ## 1. Environment And Verification
 
@@ -50,6 +52,7 @@ Run focused test groups when changing one area:
 ```bash
 conda run -n Nowcasting python -m pytest tests/autoregressive -q
 conda run -n Nowcasting python -m pytest tests/current_level_persistence -q
+conda run -n Nowcasting python -m pytest tests/long_fade_detection -q
 conda run -n Nowcasting python -m pytest tests/data -q
 conda run -n Nowcasting python -m pytest tests/switching -q
 conda run -n Nowcasting python -m pytest tests/tuning -q
@@ -737,7 +740,100 @@ predicted remaining persistence is at least 300 seconds. It then uses the same
 10-sample minimum-island and stateful signal-above-threshold hold used by
 autoregressive switch evaluation.
 
-## 15. Central Result Indexes
+## 15. Long-Fade Detection
+
+`long_fade_detection` is a binary grouped-event task. At each timestamp inside
+a grouped fade event, it predicts whether that whole grouped event lasts at
+least the configured minimum duration.
+
+Default setup:
+
+```text
+threshold_db = 10.0
+min_fade_duration_seconds = 300
+sampling_time_seconds = 30
+context_length = 30
+external test dataset = fc-uplink-fade.csv
+```
+
+Events are grouped from threshold crossings using the 3-hour convention.
+Temporary below-threshold samples between the first and last grouped crossing
+remain inside the event. Every timestamp inside the same grouped event receives
+the same `y_long_fade` label.
+
+Build the dataset:
+
+```bash
+conda run -n Nowcasting python scripts/experiments/long_fade_detection/build_dataset.py \
+  --config configs/long_fade_detection/xgboost_lag_scalar_threshold10_duration300.yaml
+```
+
+The dataset is saved under:
+
+```text
+data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade/
+```
+
+Run the extended first-stage grid:
+
+```bash
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
+  python scripts/experiments/long_fade_detection/run_grid_search.py \
+  --config configs/long_fade_detection/grid_search_threshold10_duration300.yaml
+```
+
+The current extended grid has:
+
+- `xgboost_lag_scalar_classifier`: 2,880 trials;
+- `tcn_classifier`: 3,456 trials;
+- `multiscale_shapelet_convolution_classifier`: 2,592 trials.
+
+This is 8,928 validation trials total. The grid selects one winner per model
+family using validation AUPRC, retrains each selected configuration on
+train+validation, then evaluates the external test split once.
+
+Parallel scheduling uses all visible CUDA GPUs when available. If CUDA is not
+available, it falls back to the selected MPS/CPU device with one worker.
+
+For server execution, run these inside `tmux`:
+
+```bash
+bash scripts/experiments/long_fade_detection/run_server_smoke.sh
+bash scripts/experiments/long_fade_detection/run_server.sh
+```
+
+Implemented first-stage models:
+
+- `xgboost_lag_scalar_classifier`: flattened threshold-relative lags plus
+  train-standardized scalar context;
+- `tcn_classifier`: temporal convolution over `X_relative_to_threshold` plus
+  scalar context;
+- `multiscale_shapelet_convolution_classifier`: learnable shapelet response
+  maps plus scalar context.
+
+Main outputs:
+
+```text
+results/runs/long_fade_detection/<run_id>/
+models/long_fade_detection/<run_id>/
+```
+
+Build the initial comparison summary after runs finish:
+
+```bash
+conda run -n Nowcasting python scripts/experiments/long_fade_detection/summarize_runs.py
+```
+
+Summary outputs:
+
+```text
+results/tables/long_fade_detection/initial_model_comparison_thr10p0_dur300.csv
+results/reports/long_fade_detection/initial_model_comparison_thr10p0_dur300.md
+```
+
+Details are in [docs/long_fade_detection.md](docs/long_fade_detection.md).
+
+## 16. Central Result Indexes
 
 Use these files to locate generated artifacts without scanning every folder:
 
@@ -749,7 +845,7 @@ results/index/switch_references.csv
 results/index/comparisons.csv
 ```
 
-## 16. Recommended Complete Campaign
+## 17. Recommended Complete Campaign
 
 For a new raw-data or methodological configuration:
 
@@ -767,8 +863,10 @@ For a new raw-data or methodological configuration:
 12. Run `14_compare_model_results.py`.
 13. Inspect forecast metrics, switch metrics, event plots, summary tables, and
     central indexes.
+14. For `long_fade_detection`, build its dataset separately, then run the
+    three first-stage classifiers and the summary script.
 
-## 17. Configuration Consistency Checklist
+## 18. Configuration Consistency Checklist
 
 Before running downstream stages, verify that these values refer to the same
 prepared dataset:
@@ -783,5 +881,6 @@ prepared dataset:
 Never use the test split for hyperparameter selection, early stopping,
 threshold calibration, or model choice. Autoregressive grids select using
 validation RMSE; current-level persistence grids select using the configured
-validation duration metric. Test metrics are final diagnostics for selected
-winners only.
+validation duration metric. Long-fade detection neural runs use validation
+AUPRC for early stopping and model selection. Test metrics are final
+diagnostics for selected winners only.

@@ -86,6 +86,23 @@ Current-level duration predictions are converted into switch decisions with a
 configured 300-second persistence threshold and the shared autoregressive
 post-processing pipeline.
 
+### 3. Long-Fade Detection
+
+`long_fade_detection` is the first binary follow-up to the current-level
+duration-regression task. It predicts whether a grouped fade event will last at
+least a configurable duration, initially 300 seconds, using only information
+available up to each timestamp inside the grouped event.
+
+Implemented first-stage models:
+
+- XGBoost lag+scalar classifier;
+- TCN classifier;
+- multiscale shapelet-convolution classifier.
+
+Main documentation:
+
+- [Long-Fade Detection](docs/long_fade_detection.md)
+
 ### Deferred Work
 
 The following branches are intentionally not finalized yet:
@@ -150,6 +167,7 @@ Task or area-specific tests can be run from the corresponding folders:
 ```bash
 conda run -n Nowcasting python -m pytest tests/autoregressive -q
 conda run -n Nowcasting python -m pytest tests/current_level_persistence -q
+conda run -n Nowcasting python -m pytest tests/long_fade_detection -q
 conda run -n Nowcasting python -m pytest tests/data -q
 conda run -n Nowcasting python -m pytest tests/switching -q
 conda run -n Nowcasting python -m pytest tests/tuning -q
@@ -283,6 +301,31 @@ PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
 Details are in
 [docs/current_level_persistence.md](docs/current_level_persistence.md).
 
+### Long-Fade Detection Pipeline
+
+Build the first-stage binary long-fade dataset:
+
+```bash
+conda run -n Nowcasting python scripts/experiments/long_fade_detection/build_dataset.py \
+  --config configs/long_fade_detection/xgboost_lag_scalar_threshold10_duration300.yaml
+```
+
+Run the extended first-stage grid:
+
+```bash
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
+  python scripts/experiments/long_fade_detection/run_grid_search.py \
+  --config configs/long_fade_detection/grid_search_threshold10_duration300.yaml
+```
+
+Summarize completed long-fade runs:
+
+```bash
+conda run -n Nowcasting python scripts/experiments/long_fade_detection/summarize_runs.py
+```
+
+Details are in [docs/long_fade_detection.md](docs/long_fade_detection.md).
+
 ## Configuration Layout
 
 ```text
@@ -302,6 +345,11 @@ configs/
 │   ├── shapelet_convolution_delta_0p5.yaml
 │   ├── shapelet_grid_search_delta_0p5.yaml
 │   └── xgboost_grid_search_delta_0p5.yaml
+├── long_fade_detection/
+│   ├── xgboost_lag_scalar_threshold10_duration300.yaml
+│   ├── tcn_threshold10_duration300.yaml
+│   ├── shapelet_conv_threshold10_duration300.yaml
+│   └── grid_search_threshold10_duration300.yaml
 ├── data.yaml
 ├── data_preparation.yaml
 ├── perfect_switch*.yaml
@@ -318,6 +366,7 @@ Datasets:
 ```text
 data/processed/autoregressive/
 data/processed/current_level_persistence/
+data/processed/long_fade_detection/
 ```
 
 Model checkpoints:
@@ -385,6 +434,7 @@ Canonical task code lives under:
 ```text
 src/tasks/autoregressive/
 src/tasks/current_level_persistence/
+src/tasks/long_fade_detection/
 ```
 
 New code and documentation should use the task-scoped modules and directories.
@@ -397,6 +447,7 @@ The test suite is organized by area:
 ```text
 tests/autoregressive/
 tests/current_level_persistence/
+tests/long_fade_detection/
 tests/data/
 tests/evaluation/
 tests/switching/

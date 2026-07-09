@@ -1,0 +1,54 @@
+task_name: long_fade_detection
+model_id: xgboost_lag_scalar_classifier
+
+event_definition:
+  threshold_db: 10.0
+  min_fade_duration_seconds: 300
+  threshold_operator: ">="
+  sampling_time_seconds: 30
+  event_grouping_hours: 3
+
+source:
+  raw_data_dir: data/raw
+  external_test_dataset: fc-uplink-fade.csv
+  datasets:
+    - uplink_beacon_data_fucino_GX4.csv
+    - dati_meteo_beacon.csv
+    - fc-downlink-fade.csv
+    - UPLINK-FADE_Fucino_GX4_AprJun2021.csv
+    - UPLINK-FADE_Fucino_GX5_AprJun2021.csv
+    - DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
+    - DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv
+    - fc-uplink-fade.csv
+
+dataset:
+  path: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade
+  context_length: 30
+  sequence_input_key: X_relative_to_threshold
+  scalar_context_key: scalar_context_features
+  lag_scalar_input_key: X_lag_scalar
+  target_key: y_long_fade
+
+split:
+  development_event_split:
+    train_fraction: 0.85
+    min_events_for_validation_split: 2
+
+model:
+  n_estimators: 300
+  max_depth: 3
+  learning_rate: 0.05
+  subsample: 0.8
+  colsample_bytree: 0.8
+  reg_lambda: 1.0
+  objective: binary:logistic
+  eval_metric: aucpr
+  n_jobs: -1
+
+training:
+  primary_selection_metric: val_auprc
+  use_pos_weight: true
+  seed: 42
+
+output:
+  overwrite: true
