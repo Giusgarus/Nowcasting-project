@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -11,12 +12,20 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.tasks.long_fade_detection.utils.paths import (  # noqa: E402
-    summary_reports_dir,
-    summary_tables_dir,
+    model_summary_dir,
+)
+from src.utils.config import save_yaml  # noqa: E402
+from src.utils.results_paths import (  # noqa: E402
+    COMPARISON_INDEX_COLUMNS,
+    ensure_results_subdirs,
+    get_results_index_dir,
+    relative_project_path,
+    upsert_index_row,
 )
 
 RUNS_ROOT = PROJECT_ROOT / "results/runs/long_fade_detection"
-OUTPUT_NAME = "initial_model_comparison_thr10p0_dur300"
+SELECTION_ID = "externalHoldout_test_fc_uplink_fade"
+SUMMARY_ID = "long_fade_model_summary_thr10p0_dur300"
 SUMMARY_COLUMNS = [
     "model_id",
     "run_id",
@@ -113,12 +122,10 @@ def main() -> None:
     """Write CSV and Markdown summaries."""
 
     summary = build_summary()
-    table_dir = summary_tables_dir()
-    report_dir = summary_reports_dir()
-    table_dir.mkdir(parents=True, exist_ok=True)
-    report_dir.mkdir(parents=True, exist_ok=True)
-    csv_path = table_dir / f"{OUTPUT_NAME}.csv"
-    md_path = report_dir / f"{OUTPUT_NAME}.md"
+    output_dir = model_summary_dir(selection_id=SELECTION_ID, summary_id=SUMMARY_ID)
+    paths = ensure_results_subdirs(output_dir, ("tables", "reports"))
+    csv_path = paths["tables"] / "long_fade_model_comparison.csv"
+    md_path = paths["reports"] / "long_fade_model_comparison.md"
     summary.to_csv(csv_path, index=False)
     with md_path.open("w", encoding="utf-8") as stream:
         stream.write("# Long-Fade Detection Initial Model Comparison\n\n")
@@ -130,8 +137,41 @@ def main() -> None:
             stream.write(summary.to_string(index=False))
             stream.write("\n```\n")
             stream.write("\n")
-    print(f"Wrote {len(summary)} rows to {csv_path.relative_to(PROJECT_ROOT)}")
-    print(f"Report: {md_path.relative_to(PROJECT_ROOT)}")
+    created_at = datetime.now(timezone.utc).isoformat()
+    save_yaml(
+        output_dir / "metadata.yaml",
+        {
+            "comparison_id": SUMMARY_ID,
+            "comparison_type": "model_summary",
+            "task_name": "long_fade_detection",
+            "selection_id": SELECTION_ID,
+            "num_runs": int(len(summary)),
+            "output_files": {
+                "summary_table": relative_project_path(csv_path),
+                "summary_report": relative_project_path(md_path),
+            },
+            "created_at": created_at,
+        },
+    )
+    upsert_index_row(
+        get_results_index_dir() / "comparisons.csv",
+        {
+            "comparison_id": SUMMARY_ID,
+            "method_id": "multiple",
+            "reference_id": "",
+            "comparison_type": "model_summary",
+            "selection_id": SELECTION_ID,
+            "results_path": relative_project_path(output_dir),
+            "metrics_path": relative_project_path(paths["tables"]),
+            "figures_path": "",
+            "status": "complete",
+            "created_at": created_at,
+        },
+        id_column="comparison_id",
+        columns=COMPARISON_INDEX_COLUMNS,
+    )
+    print(f"Wrote {len(summary)} rows to {relative_project_path(csv_path)}")
+    print(f"Report: {relative_project_path(md_path)}")
 
 
 if __name__ == "__main__":

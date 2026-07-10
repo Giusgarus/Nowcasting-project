@@ -1,0 +1,43 @@
+task_name: long_fade_detection
+
+data:
+  selection_id: externalHoldout_test_fc_uplink_fade
+  dataset_path: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade
+
+methods:
+  - name: XGBoost Lag+Scalar
+    run_id: longFadeDetection_thr10p0_dur300_xgboost_lag_scalar_externalHoldout_test_fc_uplink_fade
+    model_id: xgboost_lag_scalar_classifier
+    model_family: xgboost
+    architecture: xgboost_lag_scalar_classifier
+    variant: lag_scalar
+    mode: trained
+  - name: TCN Classifier
+    run_id: longFadeDetection_thr10p0_dur300_tcn_classifier_externalHoldout_test_fc_uplink_fade
+    model_id: tcn_classifier
+    model_family: tcn
+    architecture: tcn_classifier
+    variant: scalar_context
+    mode: trained
+  - name: Shapelet Convolution Classifier
+    run_id: longFadeDetection_thr10p0_dur300_shapelet_convolution_classifier_externalHoldout_test_fc_uplink_fade
+    model_id: multiscale_shapelet_convolution_classifier
+    model_family: learnable_shapelets
+    architecture: multiscale_shapelet_convolution_classifier
+    variant: scalar_context
+    mode: trained
+
+conversion:
+  probability_threshold: 0.5
+  signal_threshold: 10.0
+  signal_condition: greater_than
+  require_current_signal_above_threshold: true
+  switch_time_samples: 10
+  apply_min_island_length: true
+
+plots:
+  max_events: 25
+
+output:
+  overwrite: true
+  summary_id: long_fade_switch_summary_thr10p0_dur300_prob0p5

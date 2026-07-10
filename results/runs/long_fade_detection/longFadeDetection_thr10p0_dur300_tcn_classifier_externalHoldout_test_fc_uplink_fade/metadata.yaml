@@ -1,0 +1,367 @@
+task_name: long_fade_detection
+model_id: tcn_classifier
+run_id: longFadeDetection_thr10p0_dur300_tcn_classifier_externalHoldout_test_fc_uplink_fade
+backend: pytorch
+results_path: results/runs/long_fade_detection/longFadeDetection_thr10p0_dur300_tcn_classifier_externalHoldout_test_fc_uplink_fade
+model_path: models/long_fade_detection/longFadeDetection_thr10p0_dur300_tcn_classifier_externalHoldout_test_fc_uplink_fade
+status: complete
+created_at: '2026-07-10T11:02:59.655473+00:00'
+selected_device: cuda:0
+best_epoch: 71
+pos_weight: 1.0
+grid_search_id: longFadeDetection_extended_thr10p0_dur300_L30_externalHoldout_test_fc_uplink_fade
+best_trial_id: trial_4386_ba22dd2e0e
+selection_metric: val_auprc
+selection_mode: max
+dataset_metadata:
+  task_name: long_fade_detection
+  config_path: configs/long_fade_detection/xgboost_lag_scalar_threshold10_duration300.yaml
+  config_fingerprint: 6bbd3cc00076bbe15b08fe4aa7246dca1dcc333d1b4c9749d9167d6e59e8f143
+  selection_id: externalHoldout_test_fc_uplink_fade
+  threshold_db: 10.0
+  threshold_operator: '>='
+  min_fade_duration_seconds: 300
+  sampling_time_seconds: 30
+  event_grouping_hours: 3.0
+  event_membership_rule: samples between the first and last threshold-crossing point
+    in each 3-hour grouped event are inside the event, including temporary below-threshold
+    samples
+  context_length: 30
+  sequence_input_key: X_relative_to_threshold
+  scalar_context_key: scalar_context_features
+  lag_scalar_input_key: X_lag_scalar
+  target_key: y_long_fade
+  model_input_policy:
+    sequence_input: X_relative_to_threshold = X_raw - threshold_db
+    xgboost_input: X_lag_scalar = flattened X_relative_to_threshold plus train-standardized
+      scalar_context_features
+    forbidden_inputs:
+    - above_threshold
+    - position_in_fade_fraction
+    - event_duration_seconds
+    - event_duration_samples
+    - inside_event
+    - y_long_fade
+  scalar_context_feature_names:
+  - current_signal
+  - signal_minus_threshold
+  - window_mean
+  - window_std
+  - window_min
+  - window_max
+  - window_range
+  - last_slope
+  - recent_slope_3
+  - recent_slope_5
+  - recent_mean_5
+  - recent_std_5
+  - elapsed_since_fade_start_seconds
+  - position_in_fade_samples
+  scalar_context_scaler:
+    feature_names:
+    - current_signal
+    - signal_minus_threshold
+    - window_mean
+    - window_std
+    - window_min
+    - window_max
+    - window_range
+    - last_slope
+    - recent_slope_3
+    - recent_slope_5
+    - recent_mean_5
+    - recent_std_5
+    - elapsed_since_fade_start_seconds
+    - position_in_fade_samples
+    mean:
+    - 6.959123611450195
+    - -3.0408761501312256
+    - 6.381619930267334
+    - 2.730590343475342
+    - 3.0876681804656982
+    - 12.359037399291992
+    - 9.271368980407715
+    - 0.024732666090130806
+    - 0.06100379675626755
+    - 0.15379440784454346
+    - 6.889679431915283
+    - 1.1439576148986816
+    - 3317.173095703125
+    - 110.57244110107422
+    std:
+    - 6.348689556121826
+    - 6.348689556121826
+    - 4.566371917724609
+    - 3.008885145187378
+    - 2.7978057861328125
+    - 9.601445198059082
+    - 8.959442138671875
+    - 2.460371494293213
+    - 2.707396984100342
+    - 4.068927764892578
+    - 6.01475715637207
+    - 1.5417979955673218
+    - 2601.44873046875
+    - 86.71495819091797
+    observed_std:
+    - 6.348689556121826
+    - 6.348689556121826
+    - 4.566371917724609
+    - 3.008885145187378
+    - 2.7978057861328125
+    - 9.601445198059082
+    - 8.959442138671875
+    - 2.460371494293213
+    - 2.707396984100342
+    - 4.068927764892578
+    - 6.01475715637207
+    - 1.5417979955673218
+    - 2601.44873046875
+    - 86.71495819091797
+    fitted_on: train
+    standardized: true
+  external_test_dataset: fc-uplink-fade.csv
+  development_datasets:
+  - uplink_beacon_data_fucino_GX4.csv
+  - dati_meteo_beacon.csv
+  - fc-downlink-fade.csv
+  - UPLINK-FADE_Fucino_GX4_AprJun2021.csv
+  - UPLINK-FADE_Fucino_GX5_AprJun2021.csv
+  - DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
+  - DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv
+  source_datasets:
+  - uplink_beacon_data_fucino_GX4.csv
+  - dati_meteo_beacon.csv
+  - fc-downlink-fade.csv
+  - UPLINK-FADE_Fucino_GX4_AprJun2021.csv
+  - UPLINK-FADE_Fucino_GX5_AprJun2021.csv
+  - DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
+  - DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv
+  - fc-uplink-fade.csv
+  load_metadata:
+    uplink_beacon_data_fucino_GX4.csv:
+      dataset_name: uplink_beacon_data_fucino_GX4.csv
+      file_path: /Users/giuseppe/Desktop/Tesi magistrale/Nowcasting project/data/raw/uplink_beacon_data_fucino_GX4.csv
+      has_header_detected: true
+      raw_num_columns: 5
+      ignored_columns_count: 3
+      used_time_column: Time
+      used_signal_column: Signal
+      used_positional_fallback: false
+      raw_rows: 481715
+      valid_rows: 481715
+      missing_timestamp_rows: 0
+      unparseable_timestamp_rows: 0
+      invalid_timestamp_rows: 0
+      missing_signal_rows: 0
+      non_numeric_signal_rows: 0
+      non_finite_signal_rows: 0
+      invalid_signal_rows: 0
+      strict_parse_invalid_rows: 0
+      suspected_sentinel_threshold: -10.0
+      suspected_sentinel_signal_rows: 0
+      total_flagged_rows: 0
+      rows_without_quality_flags: 481715
+      duplicate_timestamps: 0
+    dati_meteo_beacon.csv:
+      dataset_name: dati_meteo_beacon.csv
+      file_path: /Users/giuseppe/Desktop/Tesi magistrale/Nowcasting project/data/raw/dati_meteo_beacon.csv
+      has_header_detected: true
+      raw_num_columns: 6
+      ignored_columns_count: 4
+      used_time_column: beacon_time
+      used_signal_column: beacon_signal
+      used_positional_fallback: true
+      raw_rows: 484031
+      valid_rows: 484031
+      missing_timestamp_rows: 0
+      unparseable_timestamp_rows: 0
+      invalid_timestamp_rows: 0
+      missing_signal_rows: 0
+      non_numeric_signal_rows: 0
+      non_finite_signal_rows: 0
+      invalid_signal_rows: 0
+      strict_parse_invalid_rows: 0
+      suspected_sentinel_threshold: -10.0
+      suspected_sentinel_signal_rows: 0
+      total_flagged_rows: 0
+      rows_without_quality_flags: 484031
+      duplicate_timestamps: 0
+    fc-downlink-fade.csv:
+      dataset_name: fc-downlink-fade.csv
+      file_path: /Users/giuseppe/Desktop/Tesi magistrale/Nowcasting project/data/raw/fc-downlink-fade.csv
+      has_header_detected: false
+      raw_num_columns: 3
+      ignored_columns_count: 1
+      used_time_column: column_0
+      used_signal_column: column_1
+      used_positional_fallback: true
+      raw_rows: 484031
+      valid_rows: 380566
+      missing_timestamp_rows: 0
+      unparseable_timestamp_rows: 0
+      invalid_timestamp_rows: 0
+      missing_signal_rows: 103465
+      non_numeric_signal_rows: 0
+      non_finite_signal_rows: 0
+      invalid_signal_rows: 103465
+      strict_parse_invalid_rows: 103465
+      suspected_sentinel_threshold: -10.0
+      suspected_sentinel_signal_rows: 0
+      total_flagged_rows: 103465
+      rows_without_quality_flags: 380566
+      duplicate_timestamps: 0
+    UPLINK-FADE_Fucino_GX4_AprJun2021.csv:
+      dataset_name: UPLINK-FADE_Fucino_GX4_AprJun2021.csv
+      file_path: /Users/giuseppe/Desktop/Tesi magistrale/Nowcasting project/data/raw/UPLINK-FADE_Fucino_GX4_AprJun2021.csv
+      has_header_detected: false
+      raw_num_columns: 2
+      ignored_columns_count: 0
+      used_time_column: column_0
+      used_signal_column: column_1
+      used_positional_fallback: true
+      raw_rows: 259992
+      valid_rows: 259992
+      missing_timestamp_rows: 0
+      unparseable_timestamp_rows: 0
+      invalid_timestamp_rows: 0
+      missing_signal_rows: 0
+      non_numeric_signal_rows: 0
+      non_finite_signal_rows: 0
+      invalid_signal_rows: 0
+      strict_parse_invalid_rows: 0
+      suspected_sentinel_threshold: -10.0
+      suspected_sentinel_signal_rows: 0
+      total_flagged_rows: 0
+      rows_without_quality_flags: 259992
+      duplicate_timestamps: 0
+    UPLINK-FADE_Fucino_GX5_AprJun2021.csv:
+      dataset_name: UPLINK-FADE_Fucino_GX5_AprJun2021.csv
+      file_path: /Users/giuseppe/Desktop/Tesi magistrale/Nowcasting project/data/raw/UPLINK-FADE_Fucino_GX5_AprJun2021.csv
+      has_header_detected: false
+      raw_num_columns: 2
+      ignored_columns_count: 0
+      used_time_column: column_0
+      used_signal_column: column_1
+      used_positional_fallback: true
+      raw_rows: 256519
+      valid_rows: 256519
+      missing_timestamp_rows: 0
+      unparseable_timestamp_rows: 0
+      invalid_timestamp_rows: 0
+      missing_signal_rows: 0
+      non_numeric_signal_rows: 0
+      non_finite_signal_rows: 0
+      invalid_signal_rows: 0
+      strict_parse_invalid_rows: 0
+      suspected_sentinel_threshold: -10.0
+      suspected_sentinel_signal_rows: 0
+      total_flagged_rows: 0
+      rows_without_quality_flags: 256519
+      duplicate_timestamps: 0
+    DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv:
+      dataset_name: DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
+      file_path: /Users/giuseppe/Desktop/Tesi magistrale/Nowcasting project/data/raw/DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
+      has_header_detected: false
+      raw_num_columns: 2
+      ignored_columns_count: 0
+      used_time_column: column_0
+      used_signal_column: column_1
+      used_positional_fallback: true
+      raw_rows: 338281
+      valid_rows: 338281
+      missing_timestamp_rows: 0
+      unparseable_timestamp_rows: 0
+      invalid_timestamp_rows: 0
+      missing_signal_rows: 0
+      non_numeric_signal_rows: 0
+      non_finite_signal_rows: 0
+      invalid_signal_rows: 0
+      strict_parse_invalid_rows: 0
+      suspected_sentinel_threshold: -10.0
+      suspected_sentinel_signal_rows: 0
+      total_flagged_rows: 0
+      rows_without_quality_flags: 338281
+      duplicate_timestamps: 0
+    DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv:
+      dataset_name: DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv
+      file_path: /Users/giuseppe/Desktop/Tesi magistrale/Nowcasting project/data/raw/DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv
+      has_header_detected: false
+      raw_num_columns: 2
+      ignored_columns_count: 0
+      used_time_column: column_0
+      used_signal_column: column_1
+      used_positional_fallback: true
+      raw_rows: 256519
+      valid_rows: 256519
+      missing_timestamp_rows: 0
+      unparseable_timestamp_rows: 0
+      invalid_timestamp_rows: 0
+      missing_signal_rows: 0
+      non_numeric_signal_rows: 0
+      non_finite_signal_rows: 0
+      invalid_signal_rows: 0
+      strict_parse_invalid_rows: 0
+      suspected_sentinel_threshold: -10.0
+      suspected_sentinel_signal_rows: 0
+      total_flagged_rows: 0
+      rows_without_quality_flags: 256519
+      duplicate_timestamps: 0
+    fc-uplink-fade.csv:
+      dataset_name: fc-uplink-fade.csv
+      file_path: /Users/giuseppe/Desktop/Tesi magistrale/Nowcasting project/data/raw/fc-uplink-fade.csv
+      has_header_detected: false
+      raw_num_columns: 3
+      ignored_columns_count: 1
+      used_time_column: column_0
+      used_signal_column: column_1
+      used_positional_fallback: true
+      raw_rows: 481715
+      valid_rows: 378191
+      missing_timestamp_rows: 0
+      unparseable_timestamp_rows: 0
+      invalid_timestamp_rows: 0
+      missing_signal_rows: 103524
+      non_numeric_signal_rows: 0
+      non_finite_signal_rows: 0
+      invalid_signal_rows: 103524
+      strict_parse_invalid_rows: 103524
+      suspected_sentinel_threshold: -10.0
+      suspected_sentinel_signal_rows: 0
+      total_flagged_rows: 103524
+      rows_without_quality_flags: 378191
+      duplicate_timestamps: 0
+  split:
+    development_event_split:
+      train_fraction: 0.85
+      min_events_for_validation_split: 2
+  output_files:
+    train_npz: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade/train.npz
+    train_metadata: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade/train_metadata.parquet
+    val_npz: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade/val.npz
+    val_metadata: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade/val_metadata.parquet
+    test_npz: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade/test.npz
+    test_metadata: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade/test_metadata.parquet
+    split_summary: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade/split_summary.csv
+    external_holdout_split_plan: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade/external_holdout_split_plan.csv
+    event_summary: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade/event_summary.csv
+    dataset_metadata: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade/dataset_metadata.yaml
+  created_at: '2026-07-09T09:38:46.229037+00:00'
+  n_train_samples: 5798
+  n_train_events: 62
+  positive_rate_train: 0.985857192135219
+  n_val_samples: 1022
+  n_val_events: 15
+  positive_rate_val: 0.9911937377690803
+  n_test_samples: 3046
+  n_test_events: 25
+  positive_rate_test: 0.989494418910046
+parameters:
+  model.hidden_channels: 64
+  model.num_blocks: 5
+  model.kernel_size: 3
+  model.dropout: 0.1
+  model.scalar_hidden_dim: 64
+  training.learning_rate: 0.001
+  training.weight_decay: 0.0
+  training.batch_size: 256

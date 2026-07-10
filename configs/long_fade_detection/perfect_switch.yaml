@@ -1,0 +1,15 @@
+task_name: long_fade_detection
+
+data:
+  dataset_path: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade
+  raw_data_dir: data/raw
+  signal_column: Signal_prepared
+
+switch:
+  threshold: 10.0
+  condition: greater_than
+  switch_time: 10
+  apply_min_island_length: true
+
+output:
+  overwrite: true

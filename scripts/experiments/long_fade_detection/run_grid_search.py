@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import ast
 import copy
+import json
 import shutil
 import sys
 import time
@@ -640,6 +641,16 @@ def _best_parameters(
     }
 
 
+def _table_scalar(value: Any) -> Any:
+    """Return a value that pandas can safely store in a one-row summary table."""
+
+    if isinstance(value, tuple):
+        value = list(value)
+    if isinstance(value, (list, dict)):
+        return json.dumps(value)
+    return value
+
+
 def save_final_best_run(
     *,
     config: dict[str, Any],
@@ -751,7 +762,7 @@ def save_final_best_run(
     for key, value in reversed(selection_columns.items()):
         metrics_summary.insert(3, key, value)
     for key, value in parameters.items():
-        metrics_summary[key] = value
+        metrics_summary[key] = _table_scalar(value)
     metrics_summary["final_retrained_on_full_development"] = True
     save_outputs(
         config=final_config,
