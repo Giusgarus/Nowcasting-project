@@ -1,0 +1,18 @@
+search_id: longFadeDetection_extended_thr10p0_dur300_L30_externalHoldout_test_fc_uplink_fade
+task_name: long_fade_detection
+selection_id: externalHoldout_test_fc_uplink_fade
+dataset_path: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade
+config_path: configs/long_fade_detection/grid_search_threshold10_duration300.yaml
+config_fingerprint: ab4b4982ff31b1bf73ccb91690f835656b3702b94fc5ff865da35e811e23f136
+trial_counts:
+  xgboost_lag_scalar_classifier: 2880
+  tcn_classifier: 3456
+  multiscale_shapelet_convolution_classifier: 2592
+total_trials: 8928
+selection_metric: val_auprc
+selection_mode: max
+devices:
+- cuda:0
+- cuda:1
+- cuda:2
+created_at: '2026-07-09T10:26:02.755981+00:00'

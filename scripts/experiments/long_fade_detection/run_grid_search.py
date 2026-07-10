@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import copy
 import shutil
 import sys
@@ -88,7 +89,35 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default=None)
     parser.add_argument("--no-parallel", action="store_true")
     parser.add_argument("--max-trials-per-model", type=int, default=None)
+    parser.add_argument(
+        "--finalize-existing",
+        action="store_true",
+        help=(
+            "Skip trial execution and use the existing trials.csv to refit/save "
+            "the selected best runs."
+        ),
+    )
     return parser.parse_args()
+
+
+INTEGER_PARAMETER_NAMES = {
+    "model.n_estimators",
+    "model.max_depth",
+    "model.n_jobs",
+    "model.hidden_channels",
+    "model.num_blocks",
+    "model.kernel_size",
+    "model.n_shapelets_per_length",
+    "shapelets.n_shapelets_per_length",
+    "model.conv_channels",
+    "model.num_conv_layers",
+    "model.scalar_context_dim",
+    "model.scalar_hidden_dim",
+    "training.batch_size",
+    "training.max_epochs",
+    "training.early_stopping_patience",
+    "training.seed",
+}
 
 
 def deep_merge(base: dict[str, Any], update: Mapping[str, Any]) -> dict[str, Any]:
@@ -580,10 +609,34 @@ def make_prediction_frames(
     }
 
 
-def _best_parameters(best_trial: pd.Series, parameter_names: list[str]) -> dict[str, Any]:
+def _deserialize_trial_parameter(name: str, value: Any) -> Any:
+    """Recover one parameter value after a round-trip through CSV."""
+
+    if hasattr(value, "item"):
+        value = value.item()
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped.startswith(("[", "(", "{")):
+            try:
+                value = ast.literal_eval(stripped)
+            except (SyntaxError, ValueError):
+                value = stripped
+        else:
+            value = stripped
+    if name in INTEGER_PARAMETER_NAMES:
+        return int(value)
+    return value
+
+
+def _best_parameters(
+    best_trial: pd.Series,
+    parameter_grid: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Return best-trial parameters with CSV serialization artifacts removed."""
+
     return {
-        name: best_trial[name].item() if hasattr(best_trial[name], "item") else best_trial[name]
-        for name in parameter_names
+        name: _deserialize_trial_parameter(name, best_trial[name])
+        for name in parameter_grid
     }
 
 
@@ -601,7 +654,7 @@ def save_final_best_run(
     model_id = str(model_spec["model_id"])
     event_config = config["event_definition"]
     selection_id = str(config["selection_id"])
-    parameters = _best_parameters(best_trial, list(model_spec["parameter_grid"]))
+    parameters = _best_parameters(best_trial, model_spec["parameter_grid"])
     final_config = build_trial_config(config, model_spec, parameters)
     final_config = resolve_trial_device_config(final_config, device_name)
     run_id = make_run_id(
@@ -854,42 +907,55 @@ def main() -> None:
     if not dataset_path.is_dir():
         raise FileNotFoundError(f"Dataset folder not found: {dataset_path}")
     overwrite = bool(config.get("output", {}).get("overwrite", False)) or args.force
-    if search_dir.exists() and overwrite:
-        shutil.rmtree(search_dir)
-    elif search_dir.exists():
-        raise FileExistsError(f"Grid-search folder already exists: {search_dir}")
-    ensure_results_subdirs(search_dir, ("tables",))
-    save_yaml(search_dir / "config_resolved.yaml", config)
-    save_yaml(
-        search_dir / "metadata.yaml",
-        {
-            "search_id": search_id,
-            "task_name": "long_fade_detection",
-            "selection_id": selection_id,
-            "dataset_path": relative_project_path(dataset_path),
-            "config_path": relative_project_path(config_path),
-            "config_fingerprint": config_fingerprint(config),
-            "trial_counts": counts,
-            "total_trials": total_trials,
-            "selection_metric": config["search"]["selection_metric"],
-            "selection_mode": config["search"]["selection_mode"],
-            "devices": devices,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        },
-    )
-    jobs = build_jobs(
-        config=config,
-        model_specs=model_specs,
-        expanded_trials=expanded,
-        dataset_path=dataset_path,
-        search_dir=search_dir,
-    )
-    rows = []
-    for row in iter_parallel_trial_results(jobs, run_trial_job, devices):
-        rows.append(row)
+    if args.finalize_existing:
+        trial_table = search_dir / "tables" / "trials.csv"
+        if not trial_table.is_file():
+            raise FileNotFoundError(
+                "Cannot finalize existing grid because trials.csv was not found: "
+                f"{trial_table}"
+            )
+        trials = pd.read_csv(trial_table)
+        print(
+            f"Finalizing from existing trial table: {relative_project_path(trial_table)}",
+            flush=True,
+        )
+    else:
+        if search_dir.exists() and overwrite:
+            shutil.rmtree(search_dir)
+        elif search_dir.exists():
+            raise FileExistsError(f"Grid-search folder already exists: {search_dir}")
+        ensure_results_subdirs(search_dir, ("tables",))
+        save_yaml(search_dir / "config_resolved.yaml", config)
+        save_yaml(
+            search_dir / "metadata.yaml",
+            {
+                "search_id": search_id,
+                "task_name": "long_fade_detection",
+                "selection_id": selection_id,
+                "dataset_path": relative_project_path(dataset_path),
+                "config_path": relative_project_path(config_path),
+                "config_fingerprint": config_fingerprint(config),
+                "trial_counts": counts,
+                "total_trials": total_trials,
+                "selection_metric": config["search"]["selection_metric"],
+                "selection_mode": config["search"]["selection_mode"],
+                "devices": devices,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+        jobs = build_jobs(
+            config=config,
+            model_specs=model_specs,
+            expanded_trials=expanded,
+            dataset_path=dataset_path,
+            search_dir=search_dir,
+        )
+        rows = []
+        for row in iter_parallel_trial_results(jobs, run_trial_job, devices):
+            rows.append(row)
+            save_model_trial_tables(search_dir, rows)
+        trials = pd.DataFrame(rows)
         save_model_trial_tables(search_dir, rows)
-    trials = pd.DataFrame(rows)
-    save_model_trial_tables(search_dir, rows)
 
     best_rows = []
     final_device = devices[0] if devices else fallback_device

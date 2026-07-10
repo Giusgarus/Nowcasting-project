@@ -1,0 +1,182 @@
+task_name: long_fade_detection
+search_id: longFadeDetection_extended_thr10p0_dur300_L30_externalHoldout_test_fc_uplink_fade
+selection_id: externalHoldout_test_fc_uplink_fade
+event_definition:
+  threshold_db: 10.0
+  min_fade_duration_seconds: 300
+  threshold_operator: '>='
+  sampling_time_seconds: 30
+  event_grouping_hours: 3
+source:
+  raw_data_dir: data/raw
+  external_test_dataset: fc-uplink-fade.csv
+  datasets:
+  - uplink_beacon_data_fucino_GX4.csv
+  - dati_meteo_beacon.csv
+  - fc-downlink-fade.csv
+  - UPLINK-FADE_Fucino_GX4_AprJun2021.csv
+  - UPLINK-FADE_Fucino_GX5_AprJun2021.csv
+  - DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
+  - DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv
+  - fc-uplink-fade.csv
+dataset:
+  path: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade
+  context_length: 30
+  sequence_input_key: X_relative_to_threshold
+  scalar_context_key: scalar_context_features
+  lag_scalar_input_key: X_lag_scalar
+  target_key: y_long_fade
+split:
+  development_event_split:
+    train_fraction: 0.85
+    min_events_for_validation_split: 2
+search:
+  selection_metric: val_auprc
+  selection_mode: max
+  max_trials_per_model: 4000
+  save_trial_checkpoints: false
+  save_trial_history: false
+parallel:
+  enabled: true
+  cuda_device_ids: auto
+  max_workers: auto
+final_training:
+  retrain_on_full_development: true
+  use_best_epoch: true
+output:
+  overwrite: true
+  save_best_predictions: true
+training_defaults:
+  primary_selection_metric: val_auprc
+  use_pos_weight: true
+  seed: 42
+  max_epochs: 80
+  early_stopping_patience: 12
+  gradient_clip_norm: 1.0
+  mixed_precision: false
+models:
+- model_id: xgboost_lag_scalar_classifier
+  fixed:
+    model:
+      objective: binary:logistic
+      eval_metric: aucpr
+      tree_method: hist
+      device: auto
+      n_jobs: 4
+    training:
+      seed: 42
+  parameter_grid:
+    model.n_estimators:
+      start: 200
+      stop: 800
+      step: 200
+    model.max_depth:
+      start: 2
+      stop: 6
+      step: 1
+    model.learning_rate:
+    - 0.02
+    - 0.05
+    - 0.1
+    model.subsample:
+      start: 0.7
+      stop: 1.0
+      step: 0.1
+    model.colsample_bytree:
+      start: 0.7
+      stop: 1.0
+      step: 0.1
+    model.reg_lambda:
+    - 0.1
+    - 1.0
+    - 5.0
+- model_id: tcn_classifier
+  fixed:
+    model:
+      input_channels: 1
+      dilations:
+      - 1
+      - 2
+      - 4
+      - 8
+      - 16
+      pooling: last_mean_max
+      use_scalar_context: true
+    training:
+      seed: 42
+  parameter_grid:
+    model.hidden_channels:
+      start: 32
+      stop: 128
+      step: 32
+    model.num_blocks:
+      start: 3
+      stop: 5
+      step: 1
+    model.kernel_size:
+    - 3
+    - 5
+    model.dropout:
+      start: 0.0
+      stop: 0.3
+      step: 0.1
+    model.scalar_hidden_dim:
+    - 16
+    - 32
+    - 64
+    training.learning_rate:
+    - 0.0003
+    - 0.001
+    - 0.003
+    training.weight_decay:
+    - 0.0
+    - 0.0001
+    training.batch_size:
+    - 128
+    - 256
+- model_id: multiscale_shapelet_convolution_classifier
+  fixed:
+    model:
+      pooling: last_mean_max
+      use_scalar_context: true
+    training:
+      seed: 42
+  parameter_grid:
+    shapelets.shapelet_lengths:
+    - - 5
+      - 10
+      - 15
+    - - 10
+      - 15
+      - 20
+    shapelets.n_shapelets_per_length:
+      start: 16
+      stop: 48
+      step: 16
+    model.conv_channels:
+      start: 32
+      stop: 96
+      step: 32
+    model.num_conv_layers:
+      start: 1
+      stop: 2
+      step: 1
+    model.kernel_size:
+    - 3
+    - 5
+    model.dropout:
+      start: 0.0
+      stop: 0.2
+      step: 0.1
+    model.scalar_hidden_dim:
+    - 32
+    training.learning_rate:
+    - 0.0003
+    - 0.001
+    - 0.003
+    training.weight_decay:
+    - 0.0
+    - 0.0001
+    training.batch_size:
+    - 128
+    - 256
