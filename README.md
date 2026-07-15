@@ -15,15 +15,15 @@ model-independent reference.
 
 The autoregressive task predicts a future `Signal` trajectory:
 
-```text
-[S_{t+1}, ..., S_{t+h}]
-```
+$$
+\left[S_{t+1}, \ldots, S_{t+h}\right]
+$$
 
 from a past context:
 
-```text
-[S_{t-L+1}, ..., S_t]
-```
+$$
+\left[S_{t-L+1}, \ldots, S_t\right]
+$$
 
 Implemented models:
 
@@ -49,8 +49,45 @@ Main documentation:
 
 ### 2. Current-Level Persistence
 
-The `current_level_persistence` task predicts a scalar duration: how long the
-signal remains above a recovery level defined relative to the current signal.
+The `current_level_persistence` task estimates the residual persistence of the
+current signal level. At timestamp `t`, the model observes only the past and
+present context:
+
+$$
+X_t = \left[S_{t-L+1}, \ldots, S_t\right]
+$$
+
+For a configured positive margin `delta`, expressed in the same units as
+`Signal`, the persistence reference level is:
+
+$$
+r_t(\delta) = S_t - \delta
+$$
+
+The first recovery timestamp is the first future timestamp in the same
+continuous acquisition segment whose signal falls below this reference level:
+
+$$
+u_t(\delta) = \min \{u > t : S_u < r_t(\delta)\}
+$$
+
+The uncensored regression target is the corresponding elapsed duration:
+
+$$
+T_t(\delta) = \operatorname{elapsed\_seconds}(t, u_t(\delta))
+$$
+
+Thus, `delta` defines the required decrease below the current value before the
+current-level persistence interval is considered ended. With the current
+default, `delta = 0.5`, the signal is treated as persistent while it remains at
+or above `S_t - 0.5`.
+
+The shapelet input is expressed relative to the current value, with the
+subtraction applied elementwise:
+
+$$
+X_t^{rel} = X_t - S_t
+$$
 
 Current setup:
 
@@ -438,9 +475,8 @@ src/tasks/long_fade_detection/
 ```
 
 New code and documentation should use the task-scoped modules and directories.
-Compatibility namespaces under `src/datasets/`, `src/models/autoregressive/`,
-and `src/evaluation/forecast_metrics.py` exist only to keep older imports
-working.
+Compatibility namespaces under `src/datasets/` and
+`src/evaluation/forecast_metrics.py` exist only to keep older imports working.
 
 The test suite is organized by area:
 
