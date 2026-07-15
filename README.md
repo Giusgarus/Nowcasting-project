@@ -162,6 +162,10 @@ $$
 Current defaults are $\theta = 10.0$, $d_{\min} = 300$ seconds, $G = 3$ hours,
 $\Delta t = 30$ seconds, and $L = 30$.
 
+The implemented dataset builder uses the shared prepared event-window signal
+(`Signal_prepared`) stitched into one time-ordered series per dataset, rather
+than reading the long-fade inputs directly from raw CSV files.
+
 Implemented first-stage models:
 
 - XGBoost lag+scalar classifier;

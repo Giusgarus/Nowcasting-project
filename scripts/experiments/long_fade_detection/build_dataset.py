@@ -19,6 +19,7 @@ from src.tasks.long_fade_detection.data.dataset import (  # noqa: E402
     SPLITS,
     build_long_fade_arrays,
     build_long_fade_window_index,
+    load_prepared_event_window_signal_frames,
     load_raw_signal_frames,
     save_split_npz,
     split_summary,
@@ -81,6 +82,28 @@ def _split_counts(split_metadata: dict[str, pd.DataFrame]) -> dict[str, int | fl
     return output
 
 
+def load_signal_frames_from_config(
+    source_config: dict,
+) -> tuple[dict[str, pd.DataFrame], dict[str, dict], str]:
+    """Load the configured long-fade signal source."""
+
+    dataset_names = source_config.get("datasets")
+    if "event_windows_path" in source_config:
+        frames, metadata = load_prepared_event_window_signal_frames(
+            project_path(source_config["event_windows_path"]),
+            dataset_names=dataset_names,
+            signal_column=str(source_config.get("signal_column", "Signal_prepared")),
+        )
+        return frames, metadata, "prepared_event_windows"
+    if "raw_data_dir" in source_config:
+        frames, metadata = load_raw_signal_frames(
+            project_path(source_config["raw_data_dir"]),
+            dataset_names=dataset_names,
+        )
+        return frames, metadata, "raw_data"
+    raise ValueError("source must define either event_windows_path or raw_data_dir.")
+
+
 def main() -> None:
     """Build and save the configured dataset."""
 
@@ -126,9 +149,8 @@ def main() -> None:
         )
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    signal_frames, load_metadata = load_raw_signal_frames(
-        project_path(source_config["raw_data_dir"]),
-        dataset_names=source_config.get("datasets"),
+    signal_frames, load_metadata, source_type = load_signal_frames_from_config(
+        source_config
     )
     window_index = build_long_fade_window_index(
         signal_frames,
@@ -248,6 +270,8 @@ def main() -> None:
         "external_test_dataset": external_test_dataset,
         "development_datasets": development_datasets,
         "source_datasets": list(signal_frames),
+        "source_type": source_type,
+        "source_signal_column": str(source_config.get("signal_column", "Signal")),
         "load_metadata": load_metadata,
         "split": config["split"],
         "output_files": {**output_files, "dataset_metadata": relative_project_path(metadata_path)},

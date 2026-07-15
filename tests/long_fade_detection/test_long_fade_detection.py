@@ -22,6 +22,7 @@ from src.tasks.long_fade_detection.data.dataset import (
     compute_scalar_context_features,
     group_fade_events,
     lag_feature_names,
+    load_prepared_event_window_signal_frames,
 )
 from src.tasks.long_fade_detection.evaluation.metrics import (
     event_level_metrics,
@@ -197,6 +198,38 @@ def test_build_arrays_uses_train_only_scalar_standardization() -> None:
     )
     assert scaler["fitted_on"] == "train"
     assert metadata["test"]["dataset_name"].eq("test.csv").all()
+
+
+def test_load_prepared_event_windows_stitches_dataset_signal(tmp_path: Path) -> None:
+    path = tmp_path / "event_windows.parquet"
+    event_windows = pd.DataFrame(
+        {
+            "dataset_name": ["demo.csv", "demo.csv", "demo.csv", "other.csv"],
+            "dataset_id": ["dataset_003", "dataset_003", "dataset_003", "dataset_004"],
+            "Time": pd.to_datetime(
+                [
+                    "2021-01-01 00:00:00",
+                    "2021-01-01 00:00:30",
+                    "2021-01-01 00:00:30",
+                    "2021-01-02 00:00:00",
+                ]
+            ),
+            "Signal_prepared": [9.0, 10.0, 10.0, 11.0],
+        }
+    )
+    event_windows.to_parquet(path, index=False)
+
+    frames, metadata = load_prepared_event_window_signal_frames(
+        path,
+        dataset_names=["demo.csv"],
+        signal_column="Signal_prepared",
+    )
+
+    assert set(frames) == {"demo.csv"}
+    assert frames["demo.csv"]["Signal"].tolist() == [9.0, 10.0]
+    assert frames["demo.csv"]["dataset_id"].unique().tolist() == ["dataset_003"]
+    assert metadata["demo.csv"]["source_type"] == "prepared_event_windows"
+    assert metadata["demo.csv"]["num_stitched_rows"] == 2
 
 
 def test_xgboost_fallback_training_smoke() -> None:

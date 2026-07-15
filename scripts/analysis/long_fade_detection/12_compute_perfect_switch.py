@@ -19,7 +19,10 @@ from src.switching.metrics import (  # noqa: E402
     compute_global_switch_summary,
 )
 from src.switching.reference_switch import compute_perfect_switch_from_true_signal  # noqa: E402
-from src.tasks.long_fade_detection.data.dataset import load_raw_signal_frames  # noqa: E402
+from src.tasks.long_fade_detection.data.dataset import (  # noqa: E402
+    load_prepared_event_window_signal_frames,
+    load_raw_signal_frames,
+)
 from src.tasks.long_fade_detection.evaluation.switch_from_probability import (  # noqa: E402
     align_perfect_switch_to_long_fade_windows,
 )
@@ -50,7 +53,7 @@ def parse_args() -> argparse.Namespace:
 
 def build_test_event_timeseries(
     *,
-    raw_data_dir: Path,
+    signal_frames: dict[str, pd.DataFrame],
     test_metadata: pd.DataFrame,
 ) -> pd.DataFrame:
     """Return true signal samples for all long-fade test event spans."""
@@ -73,12 +76,9 @@ def build_test_event_timeseries(
     events = test_metadata[event_columns].drop_duplicates(
         subset=["dataset_name", "event_id"]
     )
-    dataset_names = sorted(events["dataset_name"].astype(str).unique())
-    frames, _ = load_raw_signal_frames(raw_data_dir, dataset_names=dataset_names)
-
     rows = []
     for event in events.itertuples(index=False):
-        frame = frames[str(event.dataset_name)]
+        frame = signal_frames[str(event.dataset_name)]
         start = pd.Timestamp(event.event_start_time)
         end = pd.Timestamp(event.event_end_time)
         selected = frame.loc[
@@ -113,6 +113,29 @@ def build_test_event_timeseries(
     return pd.concat(rows, ignore_index=True)
 
 
+def load_signal_frames_from_config(
+    data_config: dict,
+    *,
+    dataset_names: list[str],
+) -> tuple[dict[str, pd.DataFrame], dict[str, dict], str]:
+    """Load the signal source used by the long-fade dataset."""
+
+    if "event_windows_path" in data_config:
+        frames, metadata = load_prepared_event_window_signal_frames(
+            project_path(data_config["event_windows_path"]),
+            dataset_names=dataset_names,
+            signal_column=str(data_config.get("signal_column", "Signal_prepared")),
+        )
+        return frames, metadata, "prepared_event_windows"
+    if "raw_data_dir" in data_config:
+        frames, metadata = load_raw_signal_frames(
+            project_path(data_config["raw_data_dir"]),
+            dataset_names=dataset_names,
+        )
+        return frames, metadata, "raw_data"
+    raise ValueError("data must define either event_windows_path or raw_data_dir.")
+
+
 def main() -> None:
     args = parse_args()
     config_path = project_path(args.config)
@@ -123,7 +146,6 @@ def main() -> None:
     data_config = config["data"]
     switch_config = config["switch"]
     dataset_path = project_path(data_config["dataset_path"])
-    raw_data_dir = project_path(data_config["raw_data_dir"])
     dataset_metadata = load_yaml_config(dataset_path / "dataset_metadata.yaml")
     selection_id = str(dataset_metadata["selection_id"])
     test_metadata_path = dataset_path / "test_metadata.parquet"
@@ -131,8 +153,13 @@ def main() -> None:
     if test_metadata.empty or set(test_metadata["split"]) != {"test"}:
         raise ValueError("Long-fade test metadata must be a non-empty test split.")
 
+    dataset_names = sorted(test_metadata["dataset_name"].astype(str).unique())
+    signal_frames, load_metadata, source_type = load_signal_frames_from_config(
+        data_config,
+        dataset_names=dataset_names,
+    )
     event_timeseries = build_test_event_timeseries(
-        raw_data_dir=raw_data_dir,
+        signal_frames=signal_frames,
         test_metadata=test_metadata,
     )
     threshold = float(switch_config["threshold"])
@@ -198,7 +225,8 @@ def main() -> None:
         "config_path": relative_project_path(config_path),
         "config_fingerprint": config_fingerprint(config),
         "input_files": {
-            "raw_data_dir": relative_project_path(raw_data_dir),
+            "source_type": source_type,
+            "source_metadata": load_metadata,
             "test_metadata": relative_project_path(test_metadata_path),
         },
         "output_files": {

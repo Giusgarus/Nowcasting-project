@@ -294,7 +294,10 @@ def build_long_fade_window_index(
     rows: list[dict[str, Any]] = []
     window_number = 0
     for dataset_number, (dataset_name, frame) in enumerate(signal_frames.items(), start=1):
-        dataset_id = f"dataset_{dataset_number:03d}"
+        dataset_id = _dataset_id_from_frame(
+            frame,
+            default=f"dataset_{dataset_number:03d}",
+        )
         ordered = (
             frame[["Time", "Signal"]]
             .dropna()
@@ -358,6 +361,22 @@ def build_long_fade_window_index(
     if not rows:
         return pd.DataFrame()
     return pd.DataFrame(rows)
+
+
+def _dataset_id_from_frame(frame: pd.DataFrame, *, default: str) -> str:
+    """Return a stable dataset ID carried by a stitched signal frame."""
+
+    if "dataset_id" not in frame:
+        return default
+    values = frame["dataset_id"].dropna().astype(str).drop_duplicates()
+    if values.empty:
+        return default
+    if len(values) > 1:
+        raise ValueError(
+            "A stitched signal frame must contain at most one dataset_id. "
+            f"Found: {values.tolist()}"
+        )
+    return str(values.iloc[0])
 
 
 def build_long_fade_arrays(
@@ -523,6 +542,84 @@ def load_raw_signal_frames(
         )
         frames[name] = frame
         metadata[name] = meta
+    return frames, metadata
+
+
+def load_prepared_event_window_signal_frames(
+    event_windows_path: str | Path,
+    *,
+    dataset_names: Sequence[str] | None = None,
+    signal_column: str = "Signal_prepared",
+) -> tuple[dict[str, pd.DataFrame], dict[str, dict[str, Any]]]:
+    """Stitch prepared event-window rows into one Time/Signal frame per dataset.
+
+    Event windows can overlap. The returned frames are dataset-level time series
+    built from the union of all event-window timestamps, with duplicate
+    timestamps removed after validating that the prepared signal is consistent.
+    """
+
+    path = Path(event_windows_path)
+    event_windows = pd.read_parquet(path)
+    required = {"dataset_name", "dataset_id", "Time", signal_column}
+    missing = sorted(required - set(event_windows.columns))
+    if missing:
+        raise ValueError(f"Prepared event windows are missing columns: {missing}")
+
+    available_names = list(dict.fromkeys(event_windows["dataset_name"].astype(str)))
+    names = list(dataset_names) if dataset_names else available_names
+    missing_names = sorted(set(names) - set(available_names))
+    if missing_names:
+        raise ValueError(
+            "Prepared event windows do not contain requested datasets: "
+            f"{missing_names}"
+        )
+
+    frames: dict[str, pd.DataFrame] = {}
+    metadata: dict[str, dict[str, Any]] = {}
+    for name in names:
+        source = event_windows.loc[event_windows["dataset_name"].astype(str).eq(name)]
+        if source.empty:
+            continue
+        duplicate_rows = int(source.duplicated("Time", keep=False).sum())
+        duplicate_times = int(
+            source.loc[source.duplicated("Time", keep=False), "Time"].nunique()
+        )
+        conflicting_duplicate_times = 0
+        if duplicate_rows:
+            spreads = source.groupby("Time", sort=False)[signal_column].agg(
+                lambda values: float(
+                    pd.to_numeric(values, errors="raise").max()
+                    - pd.to_numeric(values, errors="raise").min()
+                )
+            )
+            conflicting_duplicate_times = int(spreads.gt(1e-6).sum())
+            if conflicting_duplicate_times:
+                examples = spreads.loc[spreads.gt(1e-6)].head(5).index.tolist()
+                raise ValueError(
+                    "Prepared event-window overlaps contain inconsistent "
+                    f"{signal_column} values for {name}. Examples: {examples}"
+                )
+
+        frame = (
+            source.loc[:, ["Time", "dataset_id", signal_column]]
+            .rename(columns={signal_column: "Signal"})
+            .dropna(subset=["Time", "Signal"])
+            .sort_values("Time", kind="stable")
+            .drop_duplicates("Time", keep="first")
+            .reset_index(drop=True)
+        )
+        frames[name] = frame
+        metadata[name] = {
+            "source_path": str(path),
+            "source_type": "prepared_event_windows",
+            "signal_column": signal_column,
+            "num_event_window_rows": int(len(source)),
+            "num_stitched_rows": int(len(frame)),
+            "num_duplicate_rows": duplicate_rows,
+            "num_duplicate_times": duplicate_times,
+            "num_conflicting_duplicate_times": conflicting_duplicate_times,
+            "dataset_id": _dataset_id_from_frame(frame, default=""),
+        }
     return frames, metadata
 
 

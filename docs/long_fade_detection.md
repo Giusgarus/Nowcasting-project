@@ -88,6 +88,13 @@ event duration.
 
 ## Dataset
 
+The long-fade dataset is built from the shared prepared event-window signal,
+not directly from raw CSV rows. The builder stitches
+`data/interim/event_windows/threshold_10p0/all_event_windows.parquet` into one
+time-ordered `Time`/`Signal` series per dataset using `Signal_prepared`. This
+keeps the long-fade inputs aligned with the common cleaned/imputed signal used
+by the autoregressive and current-level persistence branches.
+
 Build the dataset:
 
 ```bash
