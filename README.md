@@ -74,7 +74,7 @@ $$
 The uncensored regression target is the corresponding elapsed duration:
 
 $$
-T_t(\delta) = \operatorname{elapsed\_seconds}(t, u_t(\delta))
+T_t(\delta) = elapsed\_seconds(t, u_t(\delta))
 $$
 
 Thus, `delta` defines the required decrease below the current value before the
@@ -125,10 +125,42 @@ post-processing pipeline.
 
 ### 3. Long-Fade Detection
 
-`long_fade_detection` is the first binary follow-up to the current-level
-duration-regression task. It predicts whether a grouped fade event will last at
-least a configurable duration, initially 300 seconds, using only information
-available up to each timestamp inside the grouped event.
+The `long_fade_detection` task is a binary grouped-event classification
+problem. For a configured fade threshold $\theta$, define threshold-crossing
+timestamps as:
+
+$$
+C_\theta = \{t : S_t \geq \theta\}
+$$
+
+A grouped fade event starts at the first threshold crossing. Further crossings
+within the grouping horizon $G$ from that first crossing are assigned to the
+same event; the event span includes all timestamps from the first to the last
+crossing in the group, including temporary below-threshold samples.
+
+For grouped event $E_k$, let its duration be:
+
+$$
+D_k = |E_k| \cdot \Delta t
+$$
+
+where $\Delta t$ is the sampling time. At each timestamp $t$ inside $E_k$, the
+binary target is:
+
+$$
+y_t = \mathbb{1}\{D_k \geq d_{\min}\}
+$$
+
+All timestamps inside the same grouped event therefore share the same label.
+The model observes only information available up to timestamp $t$, typically
+the threshold-relative context:
+
+$$
+X_t^{\theta} = \left[S_{t-L+1} - \theta, \ldots, S_t - \theta\right]
+$$
+
+Current defaults are $\theta = 10.0$, $d_{\min} = 300$ seconds, $G = 3$ hours,
+$\Delta t = 30$ seconds, and $L = 30$.
 
 Implemented first-stage models:
 
