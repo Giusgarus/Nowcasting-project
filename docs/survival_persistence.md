@@ -261,18 +261,16 @@ Audited dataset counts:
 ```text
 train:      117 events, 1655 samples, 0 censored events
 validation:  24 events,  774 samples, 1 censored event
-test:        55 events,  875 samples, 2 censored events
+test:        56 events,  900 samples, 2 censored events
 ```
 
 Additional diagnostics from the audit:
 
 ```text
-represented events: 196
-observed events: 193
+represented events: 197
+observed events: 194
 censored events: 3
-events with internal below-threshold samples: 86
-observed events shorter than 300 seconds: 93
-context exclusions: 25
+context exclusions: 0
 ```
 
 The 300-second value is reported only as a diagnostic threshold. It is not used
@@ -291,4 +289,76 @@ conda run -n Nowcasting python scripts/experiments/survival_persistence/build_da
 ```bash
 conda run -n Nowcasting python scripts/experiments/survival_persistence/audit_dataset.py \
   --config configs/survival_persistence/dataset_threshold10_L30_external_holdout.yaml
+```
+
+## XGBoost-AFT Baseline
+
+The first model baseline uses XGBoost with `objective: survival:aft`.
+It consumes configurable tabular feature sets from the canonical dataset and
+uses the saved AFT labels directly:
+
+```text
+label_lower_bound = y_lower_bound_seconds
+label_upper_bound = y_upper_bound_seconds
+```
+
+Observed samples have equal lower/upper bounds. Right-censored samples keep
+`upper = inf`; they are not dropped or converted to finite pseudo-targets.
+
+Default config:
+
+```text
+configs/survival_persistence/models/xgboost_aft_scalar_context.yaml
+```
+
+Run:
+
+```bash
+conda run -n Nowcasting env PYTHONPATH=. python scripts/experiments/survival_persistence/run_xgboost_aft.py \
+  --config configs/survival_persistence/models/xgboost_aft_scalar_context.yaml
+```
+
+Outputs:
+
+```text
+results/runs/survival_persistence/<selection_id>/<run_id>/
+models/survival_persistence/xgboost_aft/<run_id>/
+results/index/survival_persistence_runs.csv
+```
+
+The runner saves split predictions, AFT loss, Harrell C-index, IPCW Brier
+scores, calibration tables, train-fitted Kaplan-Meier baseline metrics,
+feature names, feature importance, and diagnostic plots. Early stopping uses
+validation only; test is evaluated once after model selection.
+
+## XGBoost-AFT Grid Search
+
+The grid-search runner evaluates a validation-only grid over feature set,
+sample weighting, AFT distribution, AFT scale, and XGBoost tree parameters.
+It uses all available CUDA GPUs for independent trials when possible; if CUDA
+is unavailable it falls back to MPS when usable by the model backend, otherwise
+CPU. XGBoost does not support MPS directly, so MPS is recorded as a CPU
+fallback for this model family.
+
+Default config:
+
+```text
+configs/survival_persistence/models/xgboost_aft_grid_search.yaml
+```
+
+The default grid currently contains `1920` trials.
+
+Run:
+
+```bash
+PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_xgboost_aft_grid_search.py \
+  --config configs/survival_persistence/models/xgboost_aft_grid_search.yaml
+```
+
+Outputs:
+
+```text
+results/grid_searches/survival_persistence/<selection_id>/<search_id>/
+results/runs/survival_persistence/<selection_id>/<best_run_id>/
+models/survival_persistence/xgboost_aft/<best_run_id>/
 ```

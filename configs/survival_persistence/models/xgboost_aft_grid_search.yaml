@@ -1,0 +1,102 @@
+task_name: survival_persistence
+model_name: xgboost_aft
+search_id: survivalPersistence_xgboostAft_extended_externalHoldout_test_fc_uplink_fade
+schema_version: 1
+
+dataset:
+  path: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade
+
+search:
+  selection_metric: val_aft_nloglik
+  selection_mode: min
+  max_trials: 4000
+  save_trial_predictions: false
+  save_trial_boosters: false
+
+parallel:
+  enabled: true
+  cuda_device_ids: auto
+  max_workers: auto
+
+model:
+  objective: survival:aft
+  eval_metric: aft-nloglik
+  tree_method: hist
+
+training:
+  num_boost_round: 1200
+  early_stopping_rounds: 60
+  eval_split: validation
+  seed: 42
+  nthread: 4
+
+prediction:
+  horizons_seconds:
+    - 30
+    - 60
+    - 120
+    - 180
+    - 300
+    - 600
+    - 900
+    - 1800
+    - 3600
+    - 7200
+
+evaluation:
+  calibration_horizons_seconds:
+    - 60
+    - 300
+    - 900
+  calibration_bins: 10
+  bootstrap_replicates: 200
+
+parameter_grid:
+  dataset.feature_set:
+    - scalar_context
+    - raw_flattened
+    - raw_plus_scalar
+    - relative_threshold_plus_scalar
+    - relative_current_plus_scalar
+  dataset.sample_weighting:
+    - uniform
+    - event_balanced
+  model.aft_loss_distribution:
+    - normal
+    - logistic
+    - extreme
+  model.aft_loss_distribution_scale:
+    - 1.0
+    - 2.0
+  model.max_depth:
+    start: 3
+    stop: 6
+    step: 3
+  model.learning_rate:
+    - 0.03
+    - 0.1
+  model.min_child_weight:
+    - 1.0
+  model.subsample:
+    start: 0.8
+    stop: 1.0
+    step: 0.2
+  model.colsample_bytree:
+    start: 0.8
+    stop: 1.0
+    step: 0.2
+  model.reg_lambda:
+    - 1.0
+    - 5.0
+  model.reg_alpha:
+    - 0.0
+  model.gamma:
+    - 0.0
+
+final_training:
+  publish_best_run: true
+
+output:
+  overwrite: true
+
+seed: 42

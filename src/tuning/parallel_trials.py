@@ -6,7 +6,7 @@ from multiprocessing import get_context
 from typing import Any
 from warnings import warn
 
-from src.utils.device import select_device
+from src.utils.device import available_accelerator_devices, select_device
 
 
 def prepare_trial_device(device_name: str):
@@ -28,7 +28,7 @@ def choose_trial_devices(
 ) -> list[str]:
     """Choose currently available devices for independent trial workers."""
 
-    fallback = fallback_device or select_device()
+    fallback = fallback_device or available_accelerator_devices()[0]
     if not bool(parallel_config.get("enabled", False)):
         return [fallback]
 

@@ -198,14 +198,14 @@ segment ends.
 
 Implemented scope:
 
-- dataset builder only;
+- dataset builder and XGBoost-AFT baseline;
+- XGBoost-AFT validation grid search;
 - observed and right-censored continuous-time labels;
 - train-only scalar-context standardization;
 - event-balanced sample weights;
 - reproducible dataset-audit diagnostics.
 
-Survival models such as XGBoost-AFT, discrete-time TCN, and DeepHit are not
-implemented yet.
+Discrete-time TCN and DeepHit survival models are not implemented yet.
 
 Main documentation:
 

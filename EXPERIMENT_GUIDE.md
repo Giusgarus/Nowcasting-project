@@ -833,7 +833,72 @@ results/reports/long_fade_detection/initial_model_comparison_thr10p0_dur300.md
 
 Details are in [docs/long_fade_detection.md](docs/long_fade_detection.md).
 
-## 16. Central Result Indexes
+## 16. Survival Persistence
+
+Build and audit the model-independent survival dataset:
+
+```bash
+conda run -n Nowcasting env PYTHONPATH=. python scripts/experiments/survival_persistence/build_dataset.py \
+  --config configs/survival_persistence/dataset_threshold10_L30_external_holdout.yaml \
+  --force
+
+conda run -n Nowcasting env PYTHONPATH=. python scripts/experiments/survival_persistence/audit_dataset.py \
+  --config configs/survival_persistence/dataset_threshold10_L30_external_holdout.yaml
+```
+
+Run the first XGBoost-AFT baseline:
+
+```bash
+conda run -n Nowcasting env PYTHONPATH=. python scripts/experiments/survival_persistence/run_xgboost_aft.py \
+  --config configs/survival_persistence/models/xgboost_aft_scalar_context.yaml
+```
+
+The baseline uses validation early stopping and evaluates the external test
+split once. Outputs are under:
+
+```text
+results/runs/survival_persistence/<selection_id>/<run_id>/
+models/survival_persistence/xgboost_aft/<run_id>/
+```
+
+Run the extended XGBoost-AFT grid search:
+
+```bash
+mkdir -p logs/survival_persistence
+
+PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_xgboost_aft_grid_search.py \
+  --config configs/survival_persistence/models/xgboost_aft_grid_search.yaml \
+  2>&1 | tee logs/survival_persistence/xgboost_aft_grid_search.log
+```
+
+In `tmux`, start a session and detach after launching:
+
+```bash
+tmux new -s survival_aft_grid
+mkdir -p logs/survival_persistence
+PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_xgboost_aft_grid_search.py \
+  --config configs/survival_persistence/models/xgboost_aft_grid_search.yaml \
+  2>&1 | tee logs/survival_persistence/xgboost_aft_grid_search.log
+```
+
+Detach with `Ctrl-b`, then `d`.
+
+Before launching the full grid on a new server, run a small smoke test. This
+runs only six trials, writes them under a separate `__smoke` search folder, and
+does not finalize or overwrite the canonical best run:
+
+```bash
+mkdir -p logs/survival_persistence
+
+PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_xgboost_aft_grid_search.py \
+  --config configs/survival_persistence/models/xgboost_aft_grid_search.yaml \
+  --max-trials 6 \
+  --skip-finalize \
+  --search-suffix smoke \
+  2>&1 | tee logs/survival_persistence/xgboost_aft_grid_search_smoke.log
+```
+
+## 17. Central Result Indexes
 
 Use these files to locate generated artifacts without scanning every folder:
 
@@ -843,9 +908,10 @@ results/index/runs.csv
 results/index/grid_searches.csv
 results/index/switch_references.csv
 results/index/comparisons.csv
+results/index/survival_persistence_runs.csv
 ```
 
-## 17. Recommended Complete Campaign
+## 18. Recommended Complete Campaign
 
 For a new raw-data or methodological configuration:
 
@@ -865,8 +931,10 @@ For a new raw-data or methodological configuration:
     central indexes.
 14. For `long_fade_detection`, build its dataset separately, then run the
     three first-stage classifiers and the summary script.
+15. For `survival_persistence`, build and audit the dataset, then run the
+    XGBoost-AFT baseline.
 
-## 18. Configuration Consistency Checklist
+## 19. Configuration Consistency Checklist
 
 Before running downstream stages, verify that these values refer to the same
 prepared dataset:
