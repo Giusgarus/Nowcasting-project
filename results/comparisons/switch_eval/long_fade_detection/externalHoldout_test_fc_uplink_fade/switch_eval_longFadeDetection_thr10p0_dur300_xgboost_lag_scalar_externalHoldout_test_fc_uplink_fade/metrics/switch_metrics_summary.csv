@@ -1,2 +1,2 @@
 method,split,num_points,num_perfect_positive,num_model_positive_raw,num_model_positive,points_changed_by_min_island,sample_interval_seconds,active_duration_seconds,precision,recall,f1,intersection_over_union,balanced_accuracy,false_positive_rate,false_negative_rate,true_positives,true_negatives,false_positives,false_negatives,decision_rule
-XGBoost Lag+Scalar,test,3046,532,725,955,230,30.0,28650.0,0.5570680628272251,1.0,0.7155346334902488,0.5570680628272251,0.915871121718377,0.16825775656324582,0.0,532,2091,423,0,predicted_long_fade_probability_threshold
+XGBoost Lag+Scalar,test,2569,467,658,876,218,30.0,26280.0,0.5331050228310502,1.0,0.6954579300074459,0.5331050228310502,0.9027117031398668,0.19457659372026642,0.0,467,1693,409,0,predicted_long_fade_probability_threshold

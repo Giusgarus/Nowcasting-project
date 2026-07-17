@@ -13,6 +13,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.data.splits import assign_external_holdout_splits  # noqa: E402
+from src.data.imputation import (  # noqa: E402
+    impute_small_time_gaps,
+    small_gap_imputation_config_from_mapping,
+)
 from src.tasks.long_fade_detection.data.dataset import (  # noqa: E402
     SCALAR_CONTEXT_FEATURE_NAMES,
     SPLIT_FILE_NAMES,
@@ -104,6 +108,38 @@ def load_signal_frames_from_config(
     raise ValueError("source must define either event_windows_path or raw_data_dir.")
 
 
+def apply_small_gap_imputation_to_frames(
+    signal_frames: dict[str, pd.DataFrame],
+    *,
+    config: dict,
+) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
+    """Optionally impute short gaps in the loaded long-fade source frames."""
+
+    imputation_config = small_gap_imputation_config_from_mapping(
+        config.get("small_gap_imputation"),
+        enabled_default=False,
+    )
+    summaries: list[pd.DataFrame] = []
+    if not imputation_config.enabled:
+        return signal_frames, pd.DataFrame()
+    output: dict[str, pd.DataFrame] = {}
+    for dataset_name, frame in signal_frames.items():
+        imputation_result = impute_small_time_gaps(
+            frame.assign(dataset_name=dataset_name),
+            time_column="Time",
+            signal_column="Signal",
+            group_columns=("dataset_name", "dataset_id"),
+            config=imputation_config,
+        )
+        output[dataset_name] = imputation_result.dataframe.drop(
+            columns=["dataset_name"],
+            errors="ignore",
+        )
+        summaries.append(imputation_result.summary)
+    summary = pd.concat(summaries, ignore_index=True) if summaries else pd.DataFrame()
+    return output, summary
+
+
 def main() -> None:
     """Build and save the configured dataset."""
 
@@ -151,6 +187,10 @@ def main() -> None:
 
     signal_frames, load_metadata, source_type = load_signal_frames_from_config(
         source_config
+    )
+    signal_frames, imputation_summary = apply_small_gap_imputation_to_frames(
+        signal_frames,
+        config=config,
     )
     window_index = build_long_fade_window_index(
         signal_frames,
@@ -202,8 +242,11 @@ def main() -> None:
     split_summary_path = output_dir / "split_summary.csv"
     split_plan_path = output_dir / "external_holdout_split_plan.csv"
     event_summary_path = output_dir / "event_summary.csv"
+    imputation_summary_path = output_dir / "small_gap_imputation_summary.csv"
     split_summary(split_metadata).to_csv(split_summary_path, index=False)
     split_plan.to_csv(split_plan_path, index=False)
+    if not imputation_summary.empty:
+        imputation_summary.to_csv(imputation_summary_path, index=False)
     (
         selected_index.drop_duplicates("global_event_id")
         .loc[
@@ -227,9 +270,17 @@ def main() -> None:
     output_files["split_summary"] = relative_project_path(split_summary_path)
     output_files["external_holdout_split_plan"] = relative_project_path(split_plan_path)
     output_files["event_summary"] = relative_project_path(event_summary_path)
+    if not imputation_summary.empty:
+        output_files["small_gap_imputation_summary"] = relative_project_path(
+            imputation_summary_path
+        )
 
     counts = _split_counts(split_metadata)
     metadata_path = output_dir / "dataset_metadata.yaml"
+    imputation_config = small_gap_imputation_config_from_mapping(
+        config.get("small_gap_imputation"),
+        enabled_default=False,
+    )
     metadata = {
         "task_name": "long_fade_detection",
         "config_path": relative_project_path(config_path),
@@ -272,6 +323,16 @@ def main() -> None:
         "source_datasets": list(signal_frames),
         "source_type": source_type,
         "source_signal_column": str(source_config.get("signal_column", "Signal")),
+        "small_gap_imputation": {
+            "enabled": imputation_config.enabled,
+            "expected_seconds": imputation_config.expected_seconds,
+            "max_gap_seconds": imputation_config.max_gap_seconds,
+            "max_missing_run": imputation_config.max_missing_run,
+            "method": imputation_config.method,
+            "summary": relative_project_path(imputation_summary_path)
+            if not imputation_summary.empty
+            else "",
+        },
         "load_metadata": load_metadata,
         "split": config["split"],
         "output_files": {**output_files, "dataset_metadata": relative_project_path(metadata_path)},

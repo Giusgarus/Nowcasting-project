@@ -1,0 +1,13 @@
+split,global_window_id,context_length,context_final_timestamp_equals_sample_time,all_context_times_lte_sample_time,single_segment,crosses_acquisition_gap,x_raw_matches_signal,x_relative_to_threshold_matches,x_relative_to_current_ends_at_zero,x_relative_to_current_matches
+train,UPLINK-FADE_Fucino_GX5_AprJun2021.csv::sp_window_000000269,30,True,True,True,False,True,True,True,True
+train,uplink_beacon_data_fucino_GX4.csv::sp_window_000001995,30,True,True,True,False,True,True,True,True
+train,uplink_beacon_data_fucino_GX4.csv::sp_window_000002351,30,True,True,True,False,True,True,True,True
+train,uplink_beacon_data_fucino_GX4.csv::sp_window_000002548,30,True,True,True,False,True,True,True,True
+validation,UPLINK-FADE_Fucino_GX4_AprJun2021.csv::sp_window_000000217,30,True,True,True,False,True,True,True,True
+validation,dati_meteo_beacon.csv::sp_window_000000559,30,True,True,True,False,True,True,True,True
+validation,uplink_beacon_data_fucino_GX4.csv::sp_window_000002963,30,True,True,True,False,True,True,True,True
+validation,uplink_beacon_data_fucino_GX4.csv::sp_window_000003093,30,True,True,True,False,True,True,True,True
+test,fc-uplink-fade.csv::sp_window_000001058,30,True,True,True,False,True,True,True,True
+test,fc-uplink-fade.csv::sp_window_000001404,30,True,True,True,False,True,True,True,True
+test,fc-uplink-fade.csv::sp_window_000001586,30,True,True,True,False,True,True,True,True
+test,fc-uplink-fade.csv::sp_window_000001648,30,True,True,True,False,True,True,True,True

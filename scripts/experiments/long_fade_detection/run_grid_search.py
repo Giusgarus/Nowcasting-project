@@ -181,6 +181,15 @@ def build_trial_config(
     return apply_flat_overrides(model_base_config(config, model_spec), parameters)
 
 
+def normalize_trial_parameters(parameters: Mapping[str, Any]) -> dict[str, Any]:
+    """Cast grid-search parameters to the runtime types expected by models."""
+
+    return {
+        name: int(value) if name in INTEGER_PARAMETER_NAMES else value
+        for name, value in parameters.items()
+    }
+
+
 def expand_model_trials(
     config: Mapping[str, Any],
     model_spec: Mapping[str, Any],
@@ -188,14 +197,18 @@ def expand_model_trials(
     """Expand one model-specific parameter grid."""
 
     candidates = expand_parameter_grid(model_spec["parameter_grid"])
-    return [
-        {
-            "model_id": str(model_spec["model_id"]),
-            "parameters": parameters,
-            "config": build_trial_config(config, model_spec, parameters),
-        }
-        for parameters in candidates
-    ]
+    trials = []
+    for parameters in candidates:
+        normalized = normalize_trial_parameters(parameters)
+        trials.append(
+            {
+                "model_id": str(model_spec["model_id"]),
+                "parameters": normalized,
+                "config": build_trial_config(config, model_spec, normalized),
+            }
+        )
+    return trials
+
 
 
 def validate_config(config: Mapping[str, Any]) -> dict[str, int]:

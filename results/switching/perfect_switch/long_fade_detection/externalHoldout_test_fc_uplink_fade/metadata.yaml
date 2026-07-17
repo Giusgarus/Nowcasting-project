@@ -8,13 +8,24 @@ condition: greater_than
 switch_time: 10
 apply_min_island_length: true
 num_events: 25
-num_decision_windows: 3046
+num_decision_windows: 2569
 config_path: configs/long_fade_detection/perfect_switch.yaml
-config_fingerprint: 092818a5de7c5f942edfcf081ebf2325055aa1023911994f0c8dcfaf5b9be462
+config_fingerprint: 57c4e8a166cde5969296ea2fa054df6bf22f121125422699334a7113e5615100
 input_files:
-  raw_data_dir: data/raw
+  source_type: prepared_event_windows
+  source_metadata:
+    fc-uplink-fade.csv:
+      source_path: /Users/giuseppe/Desktop/Tesi magistrale/Nowcasting project/data/interim/event_windows/threshold_10p0/all_event_windows.parquet
+      source_type: prepared_event_windows
+      signal_column: Signal_prepared
+      num_event_window_rows: 8962
+      num_stitched_rows: 8962
+      num_duplicate_rows: 0
+      num_duplicate_times: 0
+      num_conflicting_duplicate_times: 0
+      dataset_id: dataset_007
   test_metadata: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade/test_metadata.parquet
 output_files:
   timeseries: results/switching/perfect_switch/long_fade_detection/externalHoldout_test_fc_uplink_fade/tables/perfect_switch_timeseries.parquet
   decision_targets: results/switching/perfect_switch/long_fade_detection/externalHoldout_test_fc_uplink_fade/tables/perfect_switch_decision_targets.parquet
-created_at: '2026-07-10T11:29:07.607833+00:00'
+created_at: '2026-07-17T07:42:34.892148+00:00'

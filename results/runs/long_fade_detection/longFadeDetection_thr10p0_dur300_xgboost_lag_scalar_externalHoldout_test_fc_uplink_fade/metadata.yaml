@@ -5,18 +5,18 @@ backend: xgboost
 results_path: results/runs/long_fade_detection/longFadeDetection_thr10p0_dur300_xgboost_lag_scalar_externalHoldout_test_fc_uplink_fade
 model_path: models/long_fade_detection/longFadeDetection_thr10p0_dur300_xgboost_lag_scalar_externalHoldout_test_fc_uplink_fade
 status: complete
-created_at: '2026-07-10T11:01:58.700731+00:00'
+created_at: '2026-07-16T23:17:37.790521+00:00'
 selected_device: cuda:0
 best_epoch: null
 pos_weight: 1.0
 grid_search_id: longFadeDetection_extended_thr10p0_dur300_L30_externalHoldout_test_fc_uplink_fade
-best_trial_id: trial_709_ccb8e68a27
+best_trial_id: trial_691_08a6308a4d
 selection_metric: val_auprc
 selection_mode: max
 dataset_metadata:
   task_name: long_fade_detection
-  config_path: configs/long_fade_detection/xgboost_lag_scalar_threshold10_duration300.yaml
-  config_fingerprint: 6bbd3cc00076bbe15b08fe4aa7246dca1dcc333d1b4c9749d9167d6e59e8f143
+  config_path: configs/long_fade_detection/grid_search_threshold10_duration300.yaml
+  config_fingerprint: 8c6af4a852e80baeffacff0eadd99b568a8c4779627922d73b0cf1d6094dbfa7
   selection_id: externalHoldout_test_fc_uplink_fade
   threshold_db: 10.0
   threshold_operator: '>='
@@ -74,50 +74,50 @@ dataset_metadata:
     - elapsed_since_fade_start_seconds
     - position_in_fade_samples
     mean:
-    - 6.959123611450195
-    - -3.0408761501312256
-    - 6.381619930267334
-    - 2.730590343475342
-    - 3.0876681804656982
-    - 12.359037399291992
-    - 9.271368980407715
-    - 0.024732666090130806
-    - 0.06100379675626755
-    - 0.15379440784454346
-    - 6.889679431915283
-    - 1.1439576148986816
-    - 3317.173095703125
-    - 110.57244110107422
+    - 7.449596881866455
+    - -2.550403118133545
+    - 6.793403148651123
+    - 2.9507107734680176
+    - 3.2898671627044678
+    - 13.33905029296875
+    - 10.049182891845703
+    - 0.027500543743371964
+    - 0.06809762865304947
+    - 0.1680976301431656
+    - 7.372931003570557
+    - 1.149628758430481
+    - 2781.30517578125
+    - 92.71017456054688
     std:
-    - 6.348689556121826
-    - 6.348689556121826
-    - 4.566371917724609
-    - 3.008885145187378
-    - 2.7978057861328125
-    - 9.601445198059082
-    - 8.959442138671875
-    - 2.460371494293213
-    - 2.707396984100342
-    - 4.068927764892578
-    - 6.01475715637207
-    - 1.5417979955673218
-    - 2601.44873046875
-    - 86.71495819091797
+    - 6.7624897956848145
+    - 6.7624897956848145
+    - 4.862184524536133
+    - 3.2682459354400635
+    - 2.9295170307159424
+    - 10.243809700012207
+    - 9.620975494384766
+    - 2.283682107925415
+    - 2.939424991607666
+    - 4.4652323722839355
+    - 6.433921813964844
+    - 1.6137803792953491
+    - 2419.38623046875
+    - 80.64620971679688
     observed_std:
-    - 6.348689556121826
-    - 6.348689556121826
-    - 4.566371917724609
-    - 3.008885145187378
-    - 2.7978057861328125
-    - 9.601445198059082
-    - 8.959442138671875
-    - 2.460371494293213
-    - 2.707396984100342
-    - 4.068927764892578
-    - 6.01475715637207
-    - 1.5417979955673218
-    - 2601.44873046875
-    - 86.71495819091797
+    - 6.7624897956848145
+    - 6.7624897956848145
+    - 4.862184524536133
+    - 3.2682459354400635
+    - 2.9295170307159424
+    - 10.243809700012207
+    - 9.620975494384766
+    - 2.283682107925415
+    - 2.939424991607666
+    - 4.4652323722839355
+    - 6.433921813964844
+    - 1.6137803792953491
+    - 2419.38623046875
+    - 80.64620971679688
     fitted_on: train
     standardized: true
   external_test_dataset: fc-uplink-fade.csv
@@ -138,199 +138,89 @@ dataset_metadata:
   - DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
   - DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv
   - fc-uplink-fade.csv
+  source_type: prepared_event_windows
+  source_signal_column: Signal_prepared
   load_metadata:
     uplink_beacon_data_fucino_GX4.csv:
-      dataset_name: uplink_beacon_data_fucino_GX4.csv
-      file_path: /Users/giuseppe/Desktop/Tesi magistrale/Nowcasting project/data/raw/uplink_beacon_data_fucino_GX4.csv
-      has_header_detected: true
-      raw_num_columns: 5
-      ignored_columns_count: 3
-      used_time_column: Time
-      used_signal_column: Signal
-      used_positional_fallback: false
-      raw_rows: 481715
-      valid_rows: 481715
-      missing_timestamp_rows: 0
-      unparseable_timestamp_rows: 0
-      invalid_timestamp_rows: 0
-      missing_signal_rows: 0
-      non_numeric_signal_rows: 0
-      non_finite_signal_rows: 0
-      invalid_signal_rows: 0
-      strict_parse_invalid_rows: 0
-      suspected_sentinel_threshold: -10.0
-      suspected_sentinel_signal_rows: 0
-      total_flagged_rows: 0
-      rows_without_quality_flags: 481715
-      duplicate_timestamps: 0
+      source_path: /home/mbi/tesi/grusso/Nowcasting project/data/interim/event_windows/threshold_10p0/all_event_windows.parquet
+      source_type: prepared_event_windows
+      signal_column: Signal_prepared
+      num_event_window_rows: 12070
+      num_stitched_rows: 12070
+      num_duplicate_rows: 0
+      num_duplicate_times: 0
+      num_conflicting_duplicate_times: 0
+      dataset_id: dataset_008
     dati_meteo_beacon.csv:
-      dataset_name: dati_meteo_beacon.csv
-      file_path: /Users/giuseppe/Desktop/Tesi magistrale/Nowcasting project/data/raw/dati_meteo_beacon.csv
-      has_header_detected: true
-      raw_num_columns: 6
-      ignored_columns_count: 4
-      used_time_column: beacon_time
-      used_signal_column: beacon_signal
-      used_positional_fallback: true
-      raw_rows: 484031
-      valid_rows: 484031
-      missing_timestamp_rows: 0
-      unparseable_timestamp_rows: 0
-      invalid_timestamp_rows: 0
-      missing_signal_rows: 0
-      non_numeric_signal_rows: 0
-      non_finite_signal_rows: 0
-      invalid_signal_rows: 0
-      strict_parse_invalid_rows: 0
-      suspected_sentinel_threshold: -10.0
-      suspected_sentinel_signal_rows: 0
-      total_flagged_rows: 0
-      rows_without_quality_flags: 484031
-      duplicate_timestamps: 0
+      source_path: /home/mbi/tesi/grusso/Nowcasting project/data/interim/event_windows/threshold_10p0/all_event_windows.parquet
+      source_type: prepared_event_windows
+      signal_column: Signal_prepared
+      num_event_window_rows: 3905
+      num_stitched_rows: 3905
+      num_duplicate_rows: 0
+      num_duplicate_times: 0
+      num_conflicting_duplicate_times: 0
+      dataset_id: dataset_005
     fc-downlink-fade.csv:
-      dataset_name: fc-downlink-fade.csv
-      file_path: /Users/giuseppe/Desktop/Tesi magistrale/Nowcasting project/data/raw/fc-downlink-fade.csv
-      has_header_detected: false
-      raw_num_columns: 3
-      ignored_columns_count: 1
-      used_time_column: column_0
-      used_signal_column: column_1
-      used_positional_fallback: true
-      raw_rows: 484031
-      valid_rows: 380566
-      missing_timestamp_rows: 0
-      unparseable_timestamp_rows: 0
-      invalid_timestamp_rows: 0
-      missing_signal_rows: 103465
-      non_numeric_signal_rows: 0
-      non_finite_signal_rows: 0
-      invalid_signal_rows: 103465
-      strict_parse_invalid_rows: 103465
-      suspected_sentinel_threshold: -10.0
-      suspected_sentinel_signal_rows: 0
-      total_flagged_rows: 103465
-      rows_without_quality_flags: 380566
-      duplicate_timestamps: 0
+      source_path: /home/mbi/tesi/grusso/Nowcasting project/data/interim/event_windows/threshold_10p0/all_event_windows.parquet
+      source_type: prepared_event_windows
+      signal_column: Signal_prepared
+      num_event_window_rows: 3794
+      num_stitched_rows: 3794
+      num_duplicate_rows: 0
+      num_duplicate_times: 0
+      num_conflicting_duplicate_times: 0
+      dataset_id: dataset_006
     UPLINK-FADE_Fucino_GX4_AprJun2021.csv:
-      dataset_name: UPLINK-FADE_Fucino_GX4_AprJun2021.csv
-      file_path: /Users/giuseppe/Desktop/Tesi magistrale/Nowcasting project/data/raw/UPLINK-FADE_Fucino_GX4_AprJun2021.csv
-      has_header_detected: false
-      raw_num_columns: 2
-      ignored_columns_count: 0
-      used_time_column: column_0
-      used_signal_column: column_1
-      used_positional_fallback: true
-      raw_rows: 259992
-      valid_rows: 259992
-      missing_timestamp_rows: 0
-      unparseable_timestamp_rows: 0
-      invalid_timestamp_rows: 0
-      missing_signal_rows: 0
-      non_numeric_signal_rows: 0
-      non_finite_signal_rows: 0
-      invalid_signal_rows: 0
-      strict_parse_invalid_rows: 0
-      suspected_sentinel_threshold: -10.0
-      suspected_sentinel_signal_rows: 0
-      total_flagged_rows: 0
-      rows_without_quality_flags: 259992
-      duplicate_timestamps: 0
+      source_path: /home/mbi/tesi/grusso/Nowcasting project/data/interim/event_windows/threshold_10p0/all_event_windows.parquet
+      source_type: prepared_event_windows
+      signal_column: Signal_prepared
+      num_event_window_rows: 2885
+      num_stitched_rows: 2885
+      num_duplicate_rows: 0
+      num_duplicate_times: 0
+      num_conflicting_duplicate_times: 0
+      dataset_id: dataset_003
     UPLINK-FADE_Fucino_GX5_AprJun2021.csv:
-      dataset_name: UPLINK-FADE_Fucino_GX5_AprJun2021.csv
-      file_path: /Users/giuseppe/Desktop/Tesi magistrale/Nowcasting project/data/raw/UPLINK-FADE_Fucino_GX5_AprJun2021.csv
-      has_header_detected: false
-      raw_num_columns: 2
-      ignored_columns_count: 0
-      used_time_column: column_0
-      used_signal_column: column_1
-      used_positional_fallback: true
-      raw_rows: 256519
-      valid_rows: 256519
-      missing_timestamp_rows: 0
-      unparseable_timestamp_rows: 0
-      invalid_timestamp_rows: 0
-      missing_signal_rows: 0
-      non_numeric_signal_rows: 0
-      non_finite_signal_rows: 0
-      invalid_signal_rows: 0
-      strict_parse_invalid_rows: 0
-      suspected_sentinel_threshold: -10.0
-      suspected_sentinel_signal_rows: 0
-      total_flagged_rows: 0
-      rows_without_quality_flags: 256519
-      duplicate_timestamps: 0
+      source_path: /home/mbi/tesi/grusso/Nowcasting project/data/interim/event_windows/threshold_10p0/all_event_windows.parquet
+      source_type: prepared_event_windows
+      signal_column: Signal_prepared
+      num_event_window_rows: 2525
+      num_stitched_rows: 2525
+      num_duplicate_rows: 0
+      num_duplicate_times: 0
+      num_conflicting_duplicate_times: 0
+      dataset_id: dataset_004
     DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv:
-      dataset_name: DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
-      file_path: /Users/giuseppe/Desktop/Tesi magistrale/Nowcasting project/data/raw/DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
-      has_header_detected: false
-      raw_num_columns: 2
-      ignored_columns_count: 0
-      used_time_column: column_0
-      used_signal_column: column_1
-      used_positional_fallback: true
-      raw_rows: 338281
-      valid_rows: 338281
-      missing_timestamp_rows: 0
-      unparseable_timestamp_rows: 0
-      invalid_timestamp_rows: 0
-      missing_signal_rows: 0
-      non_numeric_signal_rows: 0
-      non_finite_signal_rows: 0
-      invalid_signal_rows: 0
-      strict_parse_invalid_rows: 0
-      suspected_sentinel_threshold: -10.0
-      suspected_sentinel_signal_rows: 0
-      total_flagged_rows: 0
-      rows_without_quality_flags: 338281
-      duplicate_timestamps: 0
+      source_path: /home/mbi/tesi/grusso/Nowcasting project/data/interim/event_windows/threshold_10p0/all_event_windows.parquet
+      source_type: prepared_event_windows
+      signal_column: Signal_prepared
+      num_event_window_rows: 1803
+      num_stitched_rows: 1803
+      num_duplicate_rows: 0
+      num_duplicate_times: 0
+      num_conflicting_duplicate_times: 0
+      dataset_id: dataset_001
     DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv:
-      dataset_name: DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv
-      file_path: /Users/giuseppe/Desktop/Tesi magistrale/Nowcasting project/data/raw/DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv
-      has_header_detected: false
-      raw_num_columns: 2
-      ignored_columns_count: 0
-      used_time_column: column_0
-      used_signal_column: column_1
-      used_positional_fallback: true
-      raw_rows: 256519
-      valid_rows: 256519
-      missing_timestamp_rows: 0
-      unparseable_timestamp_rows: 0
-      invalid_timestamp_rows: 0
-      missing_signal_rows: 0
-      non_numeric_signal_rows: 0
-      non_finite_signal_rows: 0
-      invalid_signal_rows: 0
-      strict_parse_invalid_rows: 0
-      suspected_sentinel_threshold: -10.0
-      suspected_sentinel_signal_rows: 0
-      total_flagged_rows: 0
-      rows_without_quality_flags: 256519
-      duplicate_timestamps: 0
+      source_path: /home/mbi/tesi/grusso/Nowcasting project/data/interim/event_windows/threshold_10p0/all_event_windows.parquet
+      source_type: prepared_event_windows
+      signal_column: Signal_prepared
+      num_event_window_rows: 364
+      num_stitched_rows: 364
+      num_duplicate_rows: 0
+      num_duplicate_times: 0
+      num_conflicting_duplicate_times: 0
+      dataset_id: dataset_002
     fc-uplink-fade.csv:
-      dataset_name: fc-uplink-fade.csv
-      file_path: /Users/giuseppe/Desktop/Tesi magistrale/Nowcasting project/data/raw/fc-uplink-fade.csv
-      has_header_detected: false
-      raw_num_columns: 3
-      ignored_columns_count: 1
-      used_time_column: column_0
-      used_signal_column: column_1
-      used_positional_fallback: true
-      raw_rows: 481715
-      valid_rows: 378191
-      missing_timestamp_rows: 0
-      unparseable_timestamp_rows: 0
-      invalid_timestamp_rows: 0
-      missing_signal_rows: 103524
-      non_numeric_signal_rows: 0
-      non_finite_signal_rows: 0
-      invalid_signal_rows: 103524
-      strict_parse_invalid_rows: 103524
-      suspected_sentinel_threshold: -10.0
-      suspected_sentinel_signal_rows: 0
-      total_flagged_rows: 103524
-      rows_without_quality_flags: 378191
-      duplicate_timestamps: 0
+      source_path: /home/mbi/tesi/grusso/Nowcasting project/data/interim/event_windows/threshold_10p0/all_event_windows.parquet
+      source_type: prepared_event_windows
+      signal_column: Signal_prepared
+      num_event_window_rows: 8962
+      num_stitched_rows: 8962
+      num_duplicate_rows: 0
+      num_duplicate_times: 0
+      num_conflicting_duplicate_times: 0
+      dataset_id: dataset_007
   split:
     development_event_split:
       train_fraction: 0.85
@@ -346,20 +236,20 @@ dataset_metadata:
     external_holdout_split_plan: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade/external_holdout_split_plan.csv
     event_summary: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade/event_summary.csv
     dataset_metadata: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade/dataset_metadata.yaml
-  created_at: '2026-07-09T09:38:46.229037+00:00'
-  n_train_samples: 5798
+  created_at: '2026-07-15T10:44:08.681125+00:00'
+  n_train_samples: 4589
   n_train_events: 62
-  positive_rate_train: 0.985857192135219
-  n_val_samples: 1022
+  positive_rate_train: 0.9806057964698192
+  n_val_samples: 790
   n_val_events: 15
-  positive_rate_val: 0.9911937377690803
-  n_test_samples: 3046
+  positive_rate_val: 0.9886075949367089
+  n_test_samples: 2569
   n_test_events: 25
-  positive_rate_test: 0.989494418910046
+  positive_rate_test: 0.9867652783184119
 parameters:
   model.n_estimators: 200
   model.max_depth: 6
   model.learning_rate: 0.1
-  model.subsample: 1.0
-  model.colsample_bytree: 0.7
+  model.subsample: 0.8
+  model.colsample_bytree: 0.9
   model.reg_lambda: 0.1

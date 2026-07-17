@@ -1,0 +1,3 @@
+adapter,lower_bounds_strictly_positive,observed_upper_equals_lower,censored_upper_is_inf,tabular_features_all_finite,passed
+xgboost_aft,True,True,True,True,True
+discrete_time_tcn_and_deephit,True,,,,True

@@ -13,6 +13,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.data.splits import assign_external_holdout_splits
+from src.data.imputation import (
+    impute_small_time_gaps,
+    small_gap_imputation_config_from_mapping,
+)
 from src.tasks.current_level_persistence.data.dataset import (
     SCALAR_CONTEXT_FEATURE_NAMES,
     SPLIT_FILE_NAMES,
@@ -140,6 +144,23 @@ def main() -> None:
     event_windows = pd.read_parquet(event_windows_path)
     event_quality = pd.read_parquet(event_quality_path)
     full_signal = pd.read_parquet(full_signal_path)
+    imputation_config = small_gap_imputation_config_from_mapping(
+        config.get("small_gap_imputation"),
+        enabled_default=False,
+    )
+    imputation_summary_path: Path | None = None
+    if imputation_config.enabled:
+        imputation_result = impute_small_time_gaps(
+            full_signal,
+            time_column="Time",
+            signal_column=full_signal_column,
+            group_columns=("dataset_id", "dataset_name", "segment_id"),
+            config=imputation_config,
+        )
+        full_signal = imputation_result.dataframe
+        imputation_summary_path = output_dir / "small_gap_imputation_summary.csv"
+        imputation_result.summary.to_csv(imputation_summary_path, index=False)
+
     window_index = build_current_level_persistence_index(
         event_windows,
         event_quality,
@@ -189,6 +210,10 @@ def main() -> None:
     )
 
     output_files: dict[str, str] = {}
+    if imputation_summary_path is not None:
+        output_files["small_gap_imputation_summary"] = relative_project_path(
+            imputation_summary_path
+        )
     for split in SPLITS:
         file_stem = SPLIT_FILE_NAMES[split]
         npz_path = output_dir / f"{file_stem}.npz"
@@ -288,6 +313,17 @@ def main() -> None:
             "event_windows": relative_project_path(event_windows_path),
             "event_quality": relative_project_path(event_quality_path),
             "full_signal": relative_project_path(full_signal_path),
+        },
+        "small_gap_imputation": {
+            "enabled": imputation_config.enabled,
+            "scope": "full_signal_target_search",
+            "expected_seconds": imputation_config.expected_seconds,
+            "max_gap_seconds": imputation_config.max_gap_seconds,
+            "max_missing_run": imputation_config.max_missing_run,
+            "method": imputation_config.method,
+            "summary": relative_project_path(imputation_summary_path)
+            if imputation_summary_path is not None
+            else "",
         },
         "output_files": output_files,
         "num_train_windows": len(split_metadata["train"]),

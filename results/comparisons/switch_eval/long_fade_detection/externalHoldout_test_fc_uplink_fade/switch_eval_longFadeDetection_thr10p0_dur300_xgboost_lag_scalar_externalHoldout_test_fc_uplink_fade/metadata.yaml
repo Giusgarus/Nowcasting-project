@@ -55,8 +55,8 @@ output_files:
   - results/comparisons/switch_eval/long_fade_detection/externalHoldout_test_fc_uplink_fade/switch_eval_longFadeDetection_thr10p0_dur300_xgboost_lag_scalar_externalHoldout_test_fc_uplink_fade/figures/event_switch_plots/lfd_event_00024_switch_comparison.png
   - results/comparisons/switch_eval/long_fade_detection/externalHoldout_test_fc_uplink_fade/switch_eval_longFadeDetection_thr10p0_dur300_xgboost_lag_scalar_externalHoldout_test_fc_uplink_fade/figures/event_switch_plots/lfd_event_00025_switch_comparison.png
 num_events: 25
-num_decisions: 3046
+num_decisions: 2569
 num_quality_excluded_predictions: 0
 config_path: configs/long_fade_detection/switch_comparison.yaml
 config_fingerprint: b737d68d2f9a53fefea1e49d994a0a97758a9350908b065ac506de17f2491248
-created_at: '2026-07-10T11:29:28.790829+00:00'
+created_at: '2026-07-17T07:42:57.902628+00:00'

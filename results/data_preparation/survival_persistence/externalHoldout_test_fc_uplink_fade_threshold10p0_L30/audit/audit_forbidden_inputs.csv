@@ -1,0 +1,3 @@
+check,passed,forbidden_overlap
+forbidden_fields_absent_from_scalar_context,True,
+canonical_dataset_has_no_fixed_discrete_survival_arrays,True,

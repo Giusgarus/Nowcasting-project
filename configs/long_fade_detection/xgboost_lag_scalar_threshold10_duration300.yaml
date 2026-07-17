@@ -22,6 +22,13 @@ source:
     - DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv
     - fc-uplink-fade.csv
 
+small_gap_imputation:
+  enabled: true
+  expected_seconds: 30
+  max_gap_seconds: 90
+  max_missing_run: 2
+  method: linear_time
+
 dataset:
   path: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade
   context_length: 30

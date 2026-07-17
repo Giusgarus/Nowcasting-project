@@ -7,7 +7,8 @@ event_definition:
   sampling_time_seconds: 30
   event_grouping_hours: 3
 source:
-  raw_data_dir: data/raw
+  event_windows_path: data/interim/event_windows/threshold_10p0/all_event_windows.parquet
+  signal_column: Signal_prepared
   external_test_dataset: fc-uplink-fade.csv
   datasets:
   - uplink_beacon_data_fucino_GX4.csv
@@ -37,9 +38,9 @@ training:
   early_stopping_patience: 12
   gradient_clip_norm: 1.0
   mixed_precision: false
-  learning_rate: 0.001
+  learning_rate: 0.0003
   weight_decay: 0.0
-  batch_size: 256
+  batch_size: 128
 shapelets: {}
 model:
   input_channels: 1
@@ -51,10 +52,10 @@ model:
   - 16
   pooling: last_mean_max
   use_scalar_context: true
-  hidden_channels: 64
+  hidden_channels: 128
   num_blocks: 5
   kernel_size: 3
-  dropout: 0.1
+  dropout: 0.0
   scalar_hidden_dim: 64
 output:
   overwrite: true

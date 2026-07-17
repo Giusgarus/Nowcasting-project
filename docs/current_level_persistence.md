@@ -36,6 +36,12 @@ The duration is the actual timestamp difference between `t` and that first
 recovery observation. The event-centered window limits which decision
 timestamps are modelled, but it does not truncate the future target search.
 
+Before this target search, the configured builder may apply the same
+conservative small-gap interpolation used by the prepared event windows:
+30-second expected sampling, at most 90-second gaps, and at most two missing
+samples in a row. The interpolation is only inside the same `segment_id`; it
+does not bridge acquisition breaks.
+
 The 30-point context must remain inside one continuous `segment_id`. If no
 recovery is observed before that acquisition segment ends, the target is
 right-censored and excluded from supervised duration regression. A later value

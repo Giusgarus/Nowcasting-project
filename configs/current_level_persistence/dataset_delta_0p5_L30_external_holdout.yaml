@@ -11,6 +11,13 @@ source:
   signal_column: Signal_prepared
   full_signal_column: Signal
 
+small_gap_imputation:
+  enabled: true
+  expected_seconds: 30
+  max_gap_seconds: 90
+  max_missing_run: 2
+  method: linear_time
+
 event_window_quality:
   allow_warning_events_for_window_index: true
 

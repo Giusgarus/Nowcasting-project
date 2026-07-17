@@ -104,6 +104,11 @@ use actual elapsed timestamps. Contexts never cross acquisition gaps; samples
 whose recovery is not observed before a continuous segment ends are marked as
 right-censored and excluded from duration regression.
 
+Recoverable small gaps can be interpolated before duration target search using
+the shared conservative policy: expected 30-second sampling, maximum 90-second
+gap, maximum two inserted samples, and no interpolation across acquisition
+segments.
+
 The 12 scalar features preserve absolute level and recent summary information.
 Their standardization is fitted on train only. Scalar-context runs use distinct
 IDs, so the earlier shapelet-only results are not overwritten.
@@ -176,12 +181,42 @@ Main documentation:
 
 - [Long-Fade Detection](docs/long_fade_detection.md)
 
+### 4. Survival Persistence
+
+The `survival_persistence` task builds a model-independent continuous-time
+survival dataset for the remaining duration of the current grouped fade
+episode:
+
+$$
+S(u | X_t) = P(R_t > u | X_t)
+$$
+
+where `R_t` is the remaining time until the beginning of stable recovery. The
+event definition uses a state machine with configurable activation and recovery
+thresholds, stable-recovery confirmation, and right-censoring at continuous
+segment ends.
+
+Implemented scope:
+
+- dataset builder only;
+- observed and right-censored continuous-time labels;
+- train-only scalar-context standardization;
+- event-balanced sample weights;
+- reproducible dataset-audit diagnostics.
+
+Survival models such as XGBoost-AFT, discrete-time TCN, and DeepHit are not
+implemented yet.
+
+Main documentation:
+
+- [Survival Persistence](docs/survival_persistence.md)
+
 ### Deferred Work
 
 The following branches are intentionally not finalized yet:
 
 - Mamba autoregressive experiments;
-- probabilistic survival modelling;
+- survival model training and evaluation;
 - the broader shapelet-pattern operational branch beyond the implemented
   current-level persistence task;
 - Smart/baseline switch integration.

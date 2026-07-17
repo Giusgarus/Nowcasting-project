@@ -1,0 +1,5 @@
+adapter,bin_set,num_finite_edges,num_bins_with_tail,min_time_bin_index,max_time_bin_index,tail_bin_count,observed_event_mask_count,observed_sample_count,censored_sample_count,censored_tail_count,at_risk_mask_shape,passed,tail_policy_note
+discrete_time_tcn,suggested,10,11,0,8,0,3253,3253,76,0,"(3329, 11)",True,explicit tail bin after the last finite edge
+deephit,suggested,10,11,0,8,0,3253,3253,76,0,"(3329, 11)",True,explicit tail bin after the last finite edge
+discrete_time_tcn,coarse,5,6,0,4,0,3253,3253,76,0,"(3329, 6)",True,explicit tail bin after the last finite edge
+deephit,coarse,5,6,0,4,0,3253,3253,76,0,"(3329, 6)",True,explicit tail bin after the last finite edge

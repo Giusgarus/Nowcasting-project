@@ -1,0 +1,4 @@
+split,number_of_samples,observed_target_samples,censored_target_samples,above_threshold_samples,below_threshold_internal_samples,pct_above_threshold_samples,pct_below_threshold_internal_samples
+train,1655,1655,0,1360,295,82.17522658610272,17.82477341389728
+validation,774,768,6,693,81,89.53488372093024,10.465116279069768
+test,900,830,70,761,139,84.55555555555556,15.444444444444445

@@ -95,6 +95,11 @@ time-ordered `Time`/`Signal` series per dataset using `Signal_prepared`. This
 keeps the long-fade inputs aligned with the common cleaned/imputed signal used
 by the autoregressive and current-level persistence branches.
 
+The builder also exposes the shared small-gap imputation switch. With the
+current configs this is mostly a safety pass, because `Signal_prepared` already
+contains recoverable event-window interpolation; it still never bridges long
+acquisition gaps or different loaded series.
+
 Build the dataset:
 
 ```bash

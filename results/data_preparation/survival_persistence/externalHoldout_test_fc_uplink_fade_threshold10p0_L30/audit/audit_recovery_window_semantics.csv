@@ -1,0 +1,9 @@
+property,value
+candidate_window,"[candidate_recovery_start, candidate_recovery_start + recovery_window_seconds]"
+left_endpoint,inclusive
+right_endpoint,inclusive
+time_basis,actual timestamps
+denominator,observations inside the inclusive recovery window
+minimum_recovery_observations,2
+required_fraction,0.8
+abort_on_new_threshold_on_crossing,True

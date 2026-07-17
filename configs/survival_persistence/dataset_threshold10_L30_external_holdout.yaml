@@ -1,0 +1,66 @@
+task_name: survival_persistence
+schema_version: 1
+
+event_definition:
+  threshold_on: 10.0
+  threshold_off: 10.0
+  threshold_on_operator: ">"
+  threshold_off_operator: "<="
+  recovery_window_seconds: 300
+  recovery_required_fraction: 0.8
+  recovery_fraction_mode: sample_fraction
+  minimum_recovery_observations: 2
+  abort_candidate_recovery_on_threshold_on_crossing: true
+  allow_hysteresis: true
+
+dataset:
+  context_length: 30
+  sample_policy: all_event_timestamps
+  operational_eligibility: current_above_threshold
+  require_contiguous_context: true
+  keep_censored_samples: true
+  sampling_time_seconds: 30
+
+source:
+  full_signal_path: data/interim/clean_signal/all_signal_clean.parquet
+  signal_column: Signal
+
+small_gap_imputation:
+  enabled: true
+  expected_seconds: 30
+  max_gap_seconds: 90
+  max_missing_run: 2
+  method: linear_time
+
+input_representation:
+  raw: true
+  relative_to_threshold: true
+  relative_to_current: true
+  scalar_context: true
+  standardize_scalar_context: true
+
+suggested_discretization:
+  edges_seconds:
+    - 30
+    - 60
+    - 120
+    - 180
+    - 300
+    - 600
+    - 900
+    - 1800
+    - 3600
+    - 7200
+
+split:
+  mode: external_holdout_by_dataset
+  external_test_dataset: fc-uplink-fade.csv
+  development_event_split:
+    train_fraction: 0.85
+    validation_fraction: 0.15
+    min_events_for_validation_split: 3
+
+output:
+  overwrite: false
+
+seed: 42

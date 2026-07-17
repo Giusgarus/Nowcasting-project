@@ -3,7 +3,7 @@ task_name: long_fade_detection
 selection_id: externalHoldout_test_fc_uplink_fade
 dataset_path: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade
 config_path: configs/long_fade_detection/grid_search_threshold10_duration300.yaml
-config_fingerprint: ab4b4982ff31b1bf73ccb91690f835656b3702b94fc5ff865da35e811e23f136
+config_fingerprint: 8c6af4a852e80baeffacff0eadd99b568a8c4779627922d73b0cf1d6094dbfa7
 trial_counts:
   xgboost_lag_scalar_classifier: 2880
   tcn_classifier: 3456
@@ -15,4 +15,4 @@ devices:
 - cuda:0
 - cuda:1
 - cuda:2
-created_at: '2026-07-09T10:26:02.755981+00:00'
+created_at: '2026-07-16T08:05:36.867371+00:00'

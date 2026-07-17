@@ -1,6 +1,6 @@
 task_name: current_level_persistence
 config_path: configs/current_level_persistence/dataset_delta_0p5_L30_external_holdout.yaml
-config_fingerprint: e81a44f91517c795d5260e01fd439dfbb4699a847feb26f60e23880596995274
+config_fingerprint: 1738eed59b3abcf12f3c93f882085916225c480d0792c3cb9d072a2a3cccdd71
 selection_id: externalHoldout_test_fc_uplink_fade
 selection_folder: externalHoldout_test_fc_uplink_fade
 context_length: 30
@@ -67,7 +67,7 @@ split:
     min_events_for_validation_split: 3
 splits:
   train:
-    n_samples: 19604
+    n_samples: 19598
     n_events: 61
     datasets:
     - DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
@@ -78,7 +78,7 @@ splits:
     - fc-downlink-fade.csv
     - uplink_beacon_data_fucino_GX4.csv
   val:
-    n_samples: 4802
+    n_samples: 4798
     n_events: 15
     datasets:
     - DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
@@ -94,31 +94,40 @@ splits:
     - fc-uplink-fade.csv
 target_statistics_seconds:
   train:
-    mean: 11042.185268312589
+    mean: 11200.816613940198
     median: 334.0
     min: 25.0
     max: 5250276.0
     p10: 31.0
-    p90: 13933.7
+    p90: 14640.3
   val:
-    mean: 6309.800916284881
-    median: 299.0
+    mean: 6073.933722384327
+    median: 275.0
     min: 8.0
     max: 455287.0
     p10: 31.0
-    p90: 10857.700000000019
+    p90: 10658.60000000002
   test:
-    mean: 2524.719225269726
+    mean: 2547.0869621734046
     median: 154.0
     min: 17.0
     max: 294976.0
     p10: 29.0
-    p90: 6051.000000000004
+    p90: 6384.800000000006
 source_files:
   event_windows: data/interim/event_windows/threshold_10p0/all_event_windows.parquet
   event_quality: data/interim/event_windows/threshold_10p0/event_window_quality.parquet
   full_signal: data/interim/clean_signal/all_signal_clean.parquet
+small_gap_imputation:
+  enabled: true
+  scope: full_signal_target_search
+  expected_seconds: 30.0
+  max_gap_seconds: 90.0
+  max_missing_run: 2
+  method: linear_time
+  summary: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/small_gap_imputation_summary.csv
 output_files:
+  small_gap_imputation_summary: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/small_gap_imputation_summary.csv
   train_npz: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/train.npz
   train_metadata: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/train_metadata.parquet
   val_npz: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/val.npz
@@ -130,10 +139,10 @@ output_files:
   censored_window_metadata: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/censored_window_metadata.parquet
   censoring_summary: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/censoring_summary.csv
   dataset_metadata: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/dataset_metadata.yaml
-num_train_windows: 19604
-num_val_windows: 4802
+num_train_windows: 19598
+num_val_windows: 4798
 num_test_windows: 7693
-num_censored_windows: 805
+num_censored_windows: 815
 num_events_total: 100
 num_datasets_total: 8
-created_at: '2026-07-07T08:13:29.776057+00:00'
+created_at: '2026-07-17T09:04:20.380015+00:00'

@@ -1,0 +1,12 @@
+global_event_id,split,dataset_name,sample_time,current_signal,current_above_threshold,target_endpoint,stored_y_time_seconds,recomputed_y_time_seconds,absolute_difference,y_lower_bound_seconds,y_upper_bound_seconds,y_event_observed,y_time_samples
+fc-downlink-fade.csv::sp_event_00016,validation,fc-downlink-fade.csv,2020-10-07 06:56:57,10.3,True,2020-10-07 06:59:57,180.0,180.0,0.0,180.0,inf,0,6
+fc-downlink-fade.csv::sp_event_00016,validation,fc-downlink-fade.csv,2020-10-07 06:58:28,19.2,True,2020-10-07 06:59:57,89.0,89.0,0.0,89.0,inf,0,3
+fc-downlink-fade.csv::sp_event_00016,validation,fc-downlink-fade.csv,2020-10-07 06:59:28,7.7,False,2020-10-07 06:59:57,29.0,29.0,0.0,29.0,inf,0,1
+fc-uplink-fade.csv::sp_event_00013,test,fc-uplink-fade.csv,2020-08-31 14:21:43,11.0,True,2020-08-31 14:44:43,1380.0,1380.0,0.0,1380.0,inf,0,46
+fc-uplink-fade.csv::sp_event_00013,test,fc-uplink-fade.csv,2020-08-31 14:22:12,9.4,False,2020-08-31 14:44:43,1351.0,1351.0,0.0,1351.0,inf,0,46
+fc-uplink-fade.csv::sp_event_00013,test,fc-uplink-fade.csv,2020-08-31 14:33:12,11.1,True,2020-08-31 14:44:43,691.0,691.0,0.0,691.0,inf,0,24
+fc-uplink-fade.csv::sp_event_00013,test,fc-uplink-fade.csv,2020-08-31 14:44:12,15.2,True,2020-08-31 14:44:43,31.0,31.0,0.0,31.0,inf,0,2
+fc-uplink-fade.csv::sp_event_00037,test,fc-uplink-fade.csv,2020-10-07 06:47:57,10.2,True,2020-10-07 06:59:57,720.0,720.0,0.0,720.0,inf,0,24
+fc-uplink-fade.csv::sp_event_00037,test,fc-uplink-fade.csv,2020-10-07 06:48:28,9.4,False,2020-10-07 06:59:57,689.0,689.0,0.0,689.0,inf,0,23
+fc-uplink-fade.csv::sp_event_00037,test,fc-uplink-fade.csv,2020-10-07 06:53:57,12.8,True,2020-10-07 06:59:57,360.0,360.0,0.0,360.0,inf,0,12
+fc-uplink-fade.csv::sp_event_00037,test,fc-uplink-fade.csv,2020-10-07 06:59:28,15.3,True,2020-10-07 06:59:57,29.0,29.0,0.0,29.0,inf,0,1
