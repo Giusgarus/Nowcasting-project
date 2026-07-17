@@ -591,8 +591,8 @@ def main() -> None:
             trial_rows.append(row)
             print(
                 format_trial_start(
-                    trial_index=int(row["trial_index"]),
-                    total_trials=effective_trials,
+                    index=int(row["trial_index"]),
+                    total=effective_trials,
                     run_id=f"survival_xgboost_aft_{row['feature_set']}_{row['sample_weighting']}",
                     trial_id=str(row["trial_id"]),
                     device=str(row["device"]),
