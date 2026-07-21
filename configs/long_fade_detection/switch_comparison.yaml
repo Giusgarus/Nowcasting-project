@@ -37,6 +37,13 @@ conversion:
 
 plots:
   max_events: 25
+  display_window:
+    enabled: true
+    signal_source_path: data/interim/clean_signal/all_signal_clean.parquet
+    signal_column: Signal
+    before_minutes: 90
+    after_minutes: 90
+    fill_missing_switch_with: 0
 
 output:
   overwrite: true

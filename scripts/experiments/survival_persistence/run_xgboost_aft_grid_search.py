@@ -41,12 +41,15 @@ from src.tasks.survival_persistence.models.xgboost_aft import (  # noqa: E402
 from src.tasks.survival_persistence.utils.paths import (  # noqa: E402
     RUN_INDEX_COLUMNS,
     TASK_NAME,
+    grid_search_dir,
     make_run_id,
     model_dir,
+    model_selection_dir,
     run_dir,
     run_index_path,
 )
 from src.tuning.grid_search import (  # noqa: E402
+    apply_flat_overrides,
     expand_parameter_grid,
     make_trial_id,
     select_best_trial,
@@ -97,31 +100,6 @@ def parse_args() -> argparse.Namespace:
         help="Append a suffix to the search_id, e.g. smoke, to avoid overwriting a full grid.",
     )
     return parser.parse_args()
-
-
-def deep_merge(base: dict[str, Any], update: Mapping[str, Any]) -> dict[str, Any]:
-    """Return a deep copy of base recursively updated by update."""
-
-    result = copy.deepcopy(base)
-    for key, value in update.items():
-        if isinstance(value, Mapping) and isinstance(result.get(key), dict):
-            result[key] = deep_merge(result[key], value)
-        else:
-            result[key] = copy.deepcopy(value)
-    return result
-
-
-def apply_flat_overrides(config: dict[str, Any], overrides: Mapping[str, Any]) -> dict:
-    """Apply dotted-key overrides to a copy of config."""
-
-    result = copy.deepcopy(config)
-    for dotted_key, value in overrides.items():
-        target = result
-        parts = str(dotted_key).split(".")
-        for part in parts[:-1]:
-            target = target.setdefault(part, {})
-        target[parts[-1]] = copy.deepcopy(value)
-    return result
 
 
 def single_run_base_config(config: Mapping[str, Any]) -> dict[str, Any]:
@@ -182,19 +160,6 @@ def validate_config(config: Mapping[str, Any]) -> int:
             "limit explicitly; no combinations were skipped."
         )
     return len(trials)
-
-
-def grid_search_dir(*, selection_id: str, search_id: str) -> Path:
-    """Return the survival grid-search artifact directory."""
-
-    return (
-        PROJECT_ROOT
-        / "results"
-        / "grid_searches"
-        / TASK_NAME
-        / sanitize_id(selection_id)
-        / sanitize_id(search_id)
-    )
 
 
 def xgboost_params_for_device(params: Mapping[str, Any], device: str) -> dict[str, Any]:
@@ -654,6 +619,26 @@ def main() -> None:
     )
     best_runs = pd.DataFrame([best_run])
     best_runs.to_csv(tables_dir / "best_runs.csv", index=False)
+    selection_dir = model_selection_dir(selection_id=selection_id, search_id=search_id)
+    (selection_dir / "tables").mkdir(parents=True, exist_ok=True)
+    best_runs.to_csv(selection_dir / "tables" / "best_runs.csv", index=False)
+    save_yaml(
+        selection_dir / "metadata.yaml",
+        {
+            "search_id": search_id,
+            "task_name": TASK_NAME,
+            "model_family": "xgboost",
+            "selection_id": selection_id,
+            "selection_metric": config["search"]["selection_metric"],
+            "selection_mode": config["search"]["selection_mode"],
+            "source_grid_search_path": relative_project_path(search_dir),
+            "summary_table": relative_project_path(
+                selection_dir / "tables" / "best_runs.csv"
+            ),
+            "status": "complete",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
     upsert_index_row(
         get_results_index_dir() / "grid_searches.csv",
         {

@@ -9,6 +9,8 @@ import src.tuning.parallel_trials as parallel_trials
 from src.utils.config import load_yaml_config
 
 from src.tuning.grid_search import (
+    apply_flat_overrides,
+    deep_merge,
     expand_parameter_grid,
     make_trial_id,
     select_best_trial,
@@ -95,6 +97,40 @@ def test_grid_and_selection_reject_invalid_inputs() -> None:
             metric="metric",
             mode="smallest",
         )
+
+
+def test_deep_merge_recursively_copies_nested_mappings() -> None:
+    base = {"model": {"hidden": 16, "dropout": 0.1}, "training": {"seed": 42}}
+    update = {"model": {"dropout": 0.2}, "new": {"enabled": True}}
+
+    merged = deep_merge(base, update)
+    merged["model"]["hidden"] = 32
+    update["new"]["enabled"] = False
+
+    assert merged["model"]["dropout"] == 0.2
+    assert base["model"]["hidden"] == 16
+    assert merged["new"]["enabled"] is True
+
+
+def test_apply_flat_overrides_builds_missing_nested_sections() -> None:
+    config = {"model": {"hidden": 16}, "training": {"seed": 42}}
+
+    resolved = apply_flat_overrides(
+        config,
+        {
+            "model.hidden": 32,
+            "optimizer.learning_rate": 0.001,
+        },
+    )
+
+    assert resolved["model"]["hidden"] == 32
+    assert resolved["optimizer"]["learning_rate"] == 0.001
+    assert config == {"model": {"hidden": 16}, "training": {"seed": 42}}
+
+
+def test_apply_flat_overrides_rejects_invalid_dotted_keys() -> None:
+    with pytest.raises(ValueError, match="Invalid override key"):
+        apply_flat_overrides({}, {"model..hidden": 16})
 
 
 def test_gru_grid_search_config_includes_num_layers_in_grid() -> None:

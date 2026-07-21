@@ -1,0 +1,16 @@
+schema_version: 1
+task_name: survival_persistence
+
+data:
+  dataset_path: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade
+  signal_source_path: data/interim/clean_signal/all_signal_clean.parquet
+  signal_column: Signal
+
+switch:
+  threshold: 10.0
+  condition: greater_than
+  switch_time: 10
+  apply_min_island_length: true
+
+output:
+  overwrite: true

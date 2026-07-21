@@ -203,7 +203,8 @@ Implemented scope:
 - observed and right-censored continuous-time labels;
 - train-only scalar-context standardization;
 - event-balanced sample weights;
-- reproducible dataset-audit diagnostics.
+- reproducible dataset-audit diagnostics;
+- survival-probability-to-switch evaluation against Perfect Switch.
 
 Discrete-time TCN and DeepHit survival models are not implemented yet.
 
@@ -211,12 +212,54 @@ Main documentation:
 
 - [Survival Persistence](docs/survival_persistence.md)
 
+## Switch Decision Rules
+
+All final switch metrics compare a model-derived binary switch against the
+task-scoped Perfect Switch reference. Each task first builds a raw decision at
+its own decision timestamp, then applies the shared post-processing:
+
+```text
+model_switch_raw
+  -> min-island extension to switch_time samples
+  -> hold switch active while the observed Signal remains above threshold
+  -> model_switch
+```
+
+The legacy adjusted switch columns are still saved for diagnostics, but the
+reported model-vs-Perfect metrics use the post-processed `model_switch` and
+`perfect_switch` columns.
+
+Current configured rules:
+
+- **Autoregressive forecasting**:
+  `model_switch_raw(t) = 1` when at least
+  `required_points_above_threshold` predicted horizon values exceed the signal
+  threshold. In the canonical `L30_h10_thr10` setup this means all 10 predicted
+  future points must be greater than `10.0`.
+- **Current-level persistence**:
+  `model_switch_raw(t) = 1` when the predicted remaining persistence duration
+  is at least `300` seconds and, when configured, the current observed signal is
+  greater than `10.0`.
+- **Long-fade detection**:
+  `model_switch_raw(t) = 1` when `P(long_fade | X_t) >= 0.5` and, when
+  configured, the current observed signal is greater than `10.0`.
+- **Survival persistence**:
+  `model_switch_raw(t) = 1` when the predicted survival probability at the
+  300-second horizon satisfies `S(300s | X_t) >= 0.5` and, when configured, the
+  current observed signal is greater than `10.0`.
+
+Switch metrics are computed on each task's native decision timestamps.
+Display-only event plots for long-fade and survival may be widened to a
+90-minute-before/90-minute-after view, with missing task decisions shown as
+zero outside the native decision segment. That plotting extension does not
+change the metric denominator.
+
 ### Deferred Work
 
 The following branches are intentionally not finalized yet:
 
 - Mamba autoregressive experiments;
-- survival model training and evaluation;
+- additional survival model families beyond XGBoost-AFT;
 - the broader shapelet-pattern operational branch beyond the implemented
   current-level persistence task;
 - Smart/baseline switch integration.
@@ -432,7 +475,46 @@ Summarize completed long-fade runs:
 conda run -n Nowcasting python scripts/experiments/long_fade_detection/summarize_runs.py
 ```
 
+Build task-scoped Perfect Switch and switch comparisons:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/long_fade_detection/12_compute_perfect_switch.py
+conda run -n Nowcasting python scripts/analysis/long_fade_detection/13_compare_switch_methods.py
+```
+
 Details are in [docs/long_fade_detection.md](docs/long_fade_detection.md).
+
+### Survival Persistence Pipeline
+
+Build and audit the survival dataset:
+
+```bash
+conda run -n Nowcasting env PYTHONPATH=. python scripts/experiments/survival_persistence/build_dataset.py \
+  --config configs/survival_persistence/dataset_threshold10_L30_external_holdout.yaml \
+  --force
+
+conda run -n Nowcasting env PYTHONPATH=. python scripts/experiments/survival_persistence/audit_dataset.py \
+  --config configs/survival_persistence/dataset_threshold10_L30_external_holdout.yaml
+```
+
+Run the XGBoost-AFT grid search:
+
+```bash
+PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_xgboost_aft_grid_search.py \
+  --config configs/survival_persistence/models/xgboost_aft_grid_search.yaml
+```
+
+Build Perfect Switch and switch metrics:
+
+```bash
+conda run -n Nowcasting env PYTHONPATH=. python scripts/analysis/survival_persistence/12_compute_perfect_switch.py \
+  --config configs/survival_persistence/perfect_switch.yaml
+
+conda run -n Nowcasting env PYTHONPATH=. python scripts/analysis/survival_persistence/13_compare_switch_methods.py \
+  --config configs/survival_persistence/switch_comparison.yaml
+```
+
+Details are in [docs/survival_persistence.md](docs/survival_persistence.md).
 
 ## Configuration Layout
 
@@ -448,16 +530,27 @@ configs/
 │   └── xgboost_grid_search.yaml
 ├── current_level_persistence/
 │   ├── dataset_delta_0p5_L30_external_holdout.yaml
+│   ├── perfect_switch.yaml
 │   ├── shapelet_mlp_delta_0p5.yaml
 │   ├── shapelet_transformer_delta_0p5.yaml
 │   ├── shapelet_convolution_delta_0p5.yaml
 │   ├── shapelet_grid_search_delta_0p5.yaml
+│   ├── switch_comparison.yaml
 │   └── xgboost_grid_search_delta_0p5.yaml
 ├── long_fade_detection/
+│   ├── perfect_switch.yaml
 │   ├── xgboost_lag_scalar_threshold10_duration300.yaml
 │   ├── tcn_threshold10_duration300.yaml
 │   ├── shapelet_conv_threshold10_duration300.yaml
+│   ├── switch_comparison.yaml
 │   └── grid_search_threshold10_duration300.yaml
+├── survival_persistence/
+│   ├── dataset_threshold10_L30_external_holdout.yaml
+│   ├── perfect_switch.yaml
+│   ├── switch_comparison.yaml
+│   └── models/
+│       ├── xgboost_aft_grid_search.yaml
+│       └── xgboost_aft_scalar_context.yaml
 ├── data.yaml
 ├── data_preparation.yaml
 ├── perfect_switch*.yaml
@@ -465,7 +558,8 @@ configs/
 ```
 
 Task-specific model and dataset configs live under their task folder. Shared
-preparation, Perfect Switch, and switch-comparison configs remain top-level.
+autoregressive preparation, Perfect Switch, and switch-comparison configs remain
+top-level for the autoregressive branch.
 
 ## Artifact Layout
 
@@ -475,6 +569,7 @@ Datasets:
 data/processed/autoregressive/
 data/processed/current_level_persistence/
 data/processed/long_fade_detection/
+data/processed/survival_persistence/
 ```
 
 Model checkpoints:
@@ -516,6 +611,7 @@ results/index/grid_searches.csv
 results/index/switch_references.csv
 results/index/comparisons.csv
 results/index/current_level_persistence_runs.csv
+results/index/survival_persistence_runs.csv
 ```
 
 The repository tracks lightweight CSV/YAML summaries and selected prediction

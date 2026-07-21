@@ -1,0 +1,15 @@
+task_name: survival_persistence
+model_name: xgboost_aft
+search_id: survivalPersistence_xgboostAft_extended_externalHoldout_test_fc_uplink_fade
+config_path: configs/survival_persistence/models/xgboost_aft_grid_search.yaml
+config_fingerprint: 13c2c7dca392a313befe49133d1ed403893cc4c8e3a2762d3b7c3b4c6a4378c1
+selection_id: externalHoldout_test_fc_uplink_fade
+dataset_path: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade
+num_trials: 1920
+num_executed_trials: 1920
+devices:
+- cuda:0
+- cuda:1
+- cuda:2
+skip_finalize: false
+created_at: '2026-07-17T14:20:58.093617+00:00'

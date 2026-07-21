@@ -1,5 +1,6 @@
 """Model-agnostic utilities for deterministic validation-only grid searches."""
 
+import copy
 import hashlib
 import json
 from decimal import Decimal
@@ -9,6 +10,38 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+
+
+def deep_merge(base: Mapping[str, Any], update: Mapping[str, Any]) -> dict[str, Any]:
+    """Return a deep copy of ``base`` recursively updated by ``update``."""
+
+    result = copy.deepcopy(dict(base))
+    for key, value in update.items():
+        if isinstance(value, Mapping) and isinstance(result.get(key), Mapping):
+            result[key] = deep_merge(result[key], value)
+        else:
+            result[key] = copy.deepcopy(value)
+    return result
+
+
+def apply_flat_overrides(
+    config: Mapping[str, Any],
+    overrides: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Return a deep copy of ``config`` with dotted-key overrides applied."""
+
+    result = copy.deepcopy(dict(config))
+    for dotted_key, value in overrides.items():
+        parts = str(dotted_key).split(".")
+        if not parts or any(part == "" for part in parts):
+            raise ValueError(f"Invalid override key: {dotted_key!r}")
+        target = result
+        for part in parts[:-1]:
+            if part not in target or not isinstance(target[part], dict):
+                target[part] = {}
+            target = target[part]
+        target[parts[-1]] = copy.deepcopy(value)
+    return result
 
 
 def _expand_range_spec(name: str, spec: Mapping[str, Any]) -> list[Any]:

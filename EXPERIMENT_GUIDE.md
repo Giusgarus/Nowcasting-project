@@ -18,12 +18,15 @@ raw data review
     -> model-versus-Perfect-Switch comparisons
 ```
 
-Mamba and survival experiments are not implemented yet. The separate
+Mamba experiments are not implemented yet. The separate
 `current_level_persistence` task has a task-scoped dataset builder and
-learnable-shapelet training runner; see `docs/current_level_persistence.md`
+learnable-shapelet/XGBoost runners; see `docs/current_level_persistence.md`
 for its dataset and model commands.
 The first-stage `long_fade_detection` binary task is documented in
 `docs/long_fade_detection.md`.
+The `survival_persistence` task currently includes the model-independent
+dataset pipeline and the first XGBoost-AFT baseline/grid; see
+`docs/survival_persistence.md`.
 
 ## 1. Environment And Verification
 
@@ -827,8 +830,18 @@ conda run -n Nowcasting python scripts/experiments/long_fade_detection/summarize
 Summary outputs:
 
 ```text
-results/tables/long_fade_detection/initial_model_comparison_thr10p0_dur300.csv
-results/reports/long_fade_detection/initial_model_comparison_thr10p0_dur300.md
+results/comparisons/model_summary/long_fade_detection/<selection_id>/long_fade_model_summary_thr10p0_dur300/tables/long_fade_model_comparison.csv
+results/comparisons/model_summary/long_fade_detection/<selection_id>/long_fade_model_summary_thr10p0_dur300/reports/long_fade_model_comparison.md
+```
+
+Build long-fade switch references and comparisons:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/long_fade_detection/12_compute_perfect_switch.py \
+  --config configs/long_fade_detection/perfect_switch.yaml
+
+conda run -n Nowcasting python scripts/analysis/long_fade_detection/13_compare_switch_methods.py \
+  --config configs/long_fade_detection/switch_comparison.yaml
 ```
 
 Details are in [docs/long_fade_detection.md](docs/long_fade_detection.md).
@@ -871,6 +884,15 @@ PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/
   2>&1 | tee logs/survival_persistence/xgboost_aft_grid_search.log
 ```
 
+Grid outputs:
+
+```text
+results/grid_searches/survival_persistence/<selection_id>/<search_id>/
+results/comparisons/model_selection/survival_persistence/<selection_id>/<search_id>/
+results/runs/survival_persistence/<selection_id>/<best_run_id>/
+models/survival_persistence/xgboost_aft/<best_run_id>/
+```
+
 In `tmux`, start a session and detach after launching:
 
 ```bash
@@ -884,7 +906,7 @@ PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/
 Detach with `Ctrl-b`, then `d`.
 
 Before launching the full grid on a new server, run a small smoke test. This
-runs only six trials, writes them under a separate `__smoke` search folder, and
+runs only six trials, writes them under a separate smoke search folder, and
 does not finalize or overwrite the canonical best run:
 
 ```bash
@@ -897,6 +919,26 @@ PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/
   --search-suffix smoke \
   2>&1 | tee logs/survival_persistence/xgboost_aft_grid_search_smoke.log
 ```
+
+Build survival Perfect Switch and switch metrics from saved predictions:
+
+```bash
+conda run -n Nowcasting env PYTHONPATH=. python scripts/analysis/survival_persistence/12_compute_perfect_switch.py \
+  --config configs/survival_persistence/perfect_switch.yaml
+
+conda run -n Nowcasting env PYTHONPATH=. python scripts/analysis/survival_persistence/13_compare_switch_methods.py \
+  --config configs/survival_persistence/switch_comparison.yaml
+```
+
+The current conversion rule is:
+
+```text
+model_switch_raw(t) = 1 if S(300s | X_t) >= 0.5 and Signal(t) > 10.0
+```
+
+The shared switch post-processing is then applied. Event plots use a display-only
+90-minute-before/90-minute-after window, while metrics remain computed on native
+survival decision timestamps.
 
 ## 17. Central Result Indexes
 
@@ -931,8 +973,8 @@ For a new raw-data or methodological configuration:
     central indexes.
 14. For `long_fade_detection`, build its dataset separately, then run the
     three first-stage classifiers and the summary script.
-15. For `survival_persistence`, build and audit the dataset, then run the
-    XGBoost-AFT baseline.
+15. For `survival_persistence`, build and audit the dataset, run XGBoost-AFT,
+    then build Perfect Switch and survival-probability switch comparisons.
 
 ## 19. Configuration Consistency Checklist
 

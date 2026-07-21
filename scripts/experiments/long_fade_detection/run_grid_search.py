@@ -52,6 +52,8 @@ from src.tasks.long_fade_detection.utils.paths import (  # noqa: E402
     run_dir,
 )
 from src.tuning.grid_search import (  # noqa: E402
+    apply_flat_overrides,
+    deep_merge,
     expand_parameter_grid,
     make_trial_id,
     select_best_trial,
@@ -119,35 +121,6 @@ INTEGER_PARAMETER_NAMES = {
     "training.early_stopping_patience",
     "training.seed",
 }
-
-
-def deep_merge(base: dict[str, Any], update: Mapping[str, Any]) -> dict[str, Any]:
-    """Return a deep copy of ``base`` recursively updated by ``update``."""
-
-    result = copy.deepcopy(base)
-    for key, value in update.items():
-        if isinstance(value, Mapping) and isinstance(result.get(key), dict):
-            result[key] = deep_merge(result[key], value)
-        else:
-            result[key] = copy.deepcopy(value)
-    return result
-
-
-def apply_flat_overrides(config: dict[str, Any], overrides: Mapping[str, Any]) -> dict:
-    """Return a copy of config with dotted-key overrides applied."""
-
-    result = copy.deepcopy(config)
-    for dotted_key, value in overrides.items():
-        target = result
-        parts = str(dotted_key).split(".")
-        if not parts or any(part == "" for part in parts):
-            raise ValueError(f"Invalid override key: {dotted_key!r}")
-        for part in parts[:-1]:
-            if part not in target or not isinstance(target[part], dict):
-                target[part] = {}
-            target = target[part]
-        target[parts[-1]] = copy.deepcopy(value)
-    return result
 
 
 def model_base_config(config: Mapping[str, Any], model_spec: Mapping[str, Any]) -> dict:

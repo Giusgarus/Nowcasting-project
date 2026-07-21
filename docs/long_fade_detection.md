@@ -257,6 +257,40 @@ conda run -n Nowcasting python scripts/experiments/long_fade_detection/summarize
 Outputs:
 
 ```text
-results/tables/long_fade_detection/initial_model_comparison_thr10p0_dur300.csv
-results/reports/long_fade_detection/initial_model_comparison_thr10p0_dur300.md
+results/comparisons/model_summary/long_fade_detection/<selection_id>/long_fade_model_summary_thr10p0_dur300/tables/long_fade_model_comparison.csv
+results/comparisons/model_summary/long_fade_detection/<selection_id>/long_fade_model_summary_thr10p0_dur300/reports/long_fade_model_comparison.md
 ```
+
+## Switch Evaluation
+
+The long-fade classifiers output `P(long_fade)`. The current switch conversion
+uses:
+
+```text
+model_switch_raw(t) = 1 if P(long_fade | X_t) >= 0.5 and Signal(t) > 10.0
+```
+
+Then the shared min-island and stateful signal-above-threshold hold are applied.
+
+Commands:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/long_fade_detection/12_compute_perfect_switch.py \
+  --config configs/long_fade_detection/perfect_switch.yaml
+
+conda run -n Nowcasting python scripts/analysis/long_fade_detection/13_compare_switch_methods.py \
+  --config configs/long_fade_detection/switch_comparison.yaml
+```
+
+If only plot layout changed and existing model-vs-Perfect parquet files are
+still valid, refresh plots without recomputing metrics:
+
+```bash
+conda run -n Nowcasting env PYTHONPATH=. python scripts/analysis/long_fade_detection/13_compare_switch_methods.py \
+  --config configs/long_fade_detection/switch_comparison.yaml \
+  --refresh-plots-only
+```
+
+Event plots are displayed over a wider 90-minute-before/90-minute-after window.
+Switch values outside native long-fade decision timestamps are displayed as zero
+only in the plot; metrics remain computed only on native long-fade timestamps.

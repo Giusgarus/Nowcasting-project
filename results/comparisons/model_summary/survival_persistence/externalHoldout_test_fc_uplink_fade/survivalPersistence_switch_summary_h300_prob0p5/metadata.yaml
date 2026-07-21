@@ -1,0 +1,11 @@
+comparison_id: survivalPersistence_switch_summary_h300_prob0p5
+comparison_type: model_summary
+task_name: survival_persistence
+selection_id: externalHoldout_test_fc_uplink_fade
+reference_id: perfect_switch_survival_persistence_externalHoldout_test_fc_uplink_fade
+survival_horizon_seconds: 300.0
+survival_probability_threshold: 0.5
+require_current_signal_above_threshold: true
+method_ids:
+- survivalPersistence_xgboost_aft_raw_flattened_uniform_externalHoldout_test_fc_uplink_fade
+created_at: '2026-07-21T08:00:39.968668+00:00'

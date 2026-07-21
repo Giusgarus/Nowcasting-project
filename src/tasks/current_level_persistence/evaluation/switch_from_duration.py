@@ -20,7 +20,7 @@ def derive_switch_from_duration(
     *,
     switch_time_seconds: float,
 ) -> np.ndarray:
-    """Return the future duration-to-switch placeholder rule."""
+    """Return the configured duration-to-switch decision rule."""
 
     if switch_time_seconds < 0:
         raise ValueError("switch_time_seconds must be non-negative.")

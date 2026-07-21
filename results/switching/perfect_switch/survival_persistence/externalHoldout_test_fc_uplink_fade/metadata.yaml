@@ -1,0 +1,20 @@
+reference_id: perfect_switch_survival_persistence_externalHoldout_test_fc_uplink_fade
+reference_type: perfect_switch
+task_name: survival_persistence
+selection_id: externalHoldout_test_fc_uplink_fade
+split: test
+threshold: 10.0
+condition: greater_than
+switch_time: 10
+apply_min_island_length: true
+num_events: 56
+num_decision_windows: 900
+config_path: configs/survival_persistence/perfect_switch.yaml
+config_fingerprint: dc249e04113aadfb8c5a41720a529e6764d1bbc4ce760d02eec5a42e96dc94ff
+input_files:
+  signal_source: data/interim/clean_signal/all_signal_clean.parquet
+  test_metadata: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade/test_metadata.parquet
+output_files:
+  timeseries: results/switching/perfect_switch/survival_persistence/externalHoldout_test_fc_uplink_fade/tables/perfect_switch_timeseries.parquet
+  decision_targets: results/switching/perfect_switch/survival_persistence/externalHoldout_test_fc_uplink_fade/tables/perfect_switch_decision_targets.parquet
+created_at: '2026-07-21T07:55:15.665140+00:00'

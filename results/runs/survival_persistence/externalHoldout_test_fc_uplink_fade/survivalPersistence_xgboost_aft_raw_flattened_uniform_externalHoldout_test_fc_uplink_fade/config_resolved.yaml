@@ -1,0 +1,49 @@
+task_name: survival_persistence
+model_name: xgboost_aft
+schema_version: 1
+dataset:
+  path: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade
+  feature_set: raw_flattened
+  sample_weighting: uniform
+model:
+  objective: survival:aft
+  eval_metric: aft-nloglik
+  tree_method: hist
+  aft_loss_distribution: logistic
+  aft_loss_distribution_scale: 1.0
+  max_depth: 3
+  learning_rate: 0.1
+  min_child_weight: 1.0
+  subsample: 1.0
+  colsample_bytree: 1.0
+  reg_lambda: 5.0
+  reg_alpha: 0.0
+  gamma: 0.0
+training:
+  num_boost_round: 1200
+  early_stopping_rounds: 60
+  eval_split: validation
+  seed: 42
+  nthread: 4
+prediction:
+  horizons_seconds:
+  - 30
+  - 60
+  - 120
+  - 180
+  - 300
+  - 600
+  - 900
+  - 1800
+  - 3600
+  - 7200
+evaluation:
+  calibration_horizons_seconds:
+  - 60
+  - 300
+  - 900
+  calibration_bins: 10
+  bootstrap_replicates: 200
+output:
+  overwrite: true
+seed: 42

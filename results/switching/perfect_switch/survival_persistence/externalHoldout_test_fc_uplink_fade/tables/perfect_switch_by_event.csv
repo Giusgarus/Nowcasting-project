@@ -1,0 +1,57 @@
+event_id,dataset_id,dataset_name,split,num_points,num_positive_raw,num_positive_after_min_island,num_points_changed_by_min_island,positive_rate_raw,positive_rate_after_min_island,raw_vs_postprocessed_agreement,num_islands_raw,num_islands_after_min_island,first_positive_time_raw,first_positive_time_after_min_island,last_positive_time_raw,last_positive_time_after_min_island,max_signal,quality_flag
+sp_event_00001,dataset_007,fc-uplink-fade.csv,test,38,36,36,0,0.9473684210526315,0.9473684210526315,1.0,2,2,2020-08-01 16:09:10,2020-08-01 16:09:10,2020-08-01 16:27:09,2020-08-01 16:27:09,34.1,observed
+sp_event_00002,dataset_007,fc-uplink-fade.csv,test,9,0,0,0,0.0,0.0,1.0,0,0,,,,,11.9,observed
+sp_event_00003,dataset_007,fc-uplink-fade.csv,test,72,71,71,0,0.9861111111111112,0.9861111111111112,1.0,1,1,2020-08-04 21:17:16,2020-08-04 21:17:16,2020-08-04 21:52:16,2020-08-04 21:52:16,42.0,observed
+sp_event_00004,dataset_007,fc-uplink-fade.csv,test,50,39,39,0,0.78,0.78,1.0,3,3,2020-08-31 03:20:42,2020-08-31 03:20:42,2020-08-31 03:42:11,2020-08-31 03:42:11,35.1,observed
+sp_event_00005,dataset_007,fc-uplink-fade.csv,test,2,0,0,0,0.0,0.0,1.0,0,0,,,,,10.7,observed
+sp_event_00006,dataset_007,fc-uplink-fade.csv,test,7,0,0,0,0.0,0.0,1.0,0,0,,,,,12.6,observed
+sp_event_00007,dataset_007,fc-uplink-fade.csv,test,19,0,0,0,0.0,0.0,1.0,0,0,,,,,16.6,observed
+sp_event_00008,dataset_007,fc-uplink-fade.csv,test,13,12,12,0,0.9230769230769231,0.9230769230769231,1.0,1,1,2020-08-31 11:26:43,2020-08-31 11:26:43,2020-08-31 11:32:12,2020-08-31 11:32:12,69.0,observed
+sp_event_00009,dataset_007,fc-uplink-fade.csv,test,4,0,0,0,0.0,0.0,1.0,0,0,,,,,12.3,observed
+sp_event_00010,dataset_007,fc-uplink-fade.csv,test,16,15,15,0,0.9375,0.9375,1.0,1,1,2020-08-31 12:20:42,2020-08-31 12:20:42,2020-08-31 12:27:42,2020-08-31 12:27:42,42.5,observed
+sp_event_00011,dataset_007,fc-uplink-fade.csv,test,106,95,95,0,0.8962264150943396,0.8962264150943396,1.0,1,1,2020-08-31 13:09:43,2020-08-31 13:09:43,2020-08-31 13:56:43,2020-08-31 13:56:43,29.4,observed
+sp_event_00012,dataset_007,fc-uplink-fade.csv,test,5,0,0,0,0.0,0.0,1.0,0,0,,,,,11.9,observed
+sp_event_00013,dataset_007,fc-uplink-fade.csv,test,47,43,43,0,0.9148936170212766,0.9148936170212766,1.0,2,2,2020-08-31 14:23:12,2020-08-31 14:23:12,2020-08-31 14:44:43,2020-08-31 14:44:43,22.2,censored
+sp_event_00014,dataset_007,fc-uplink-fade.csv,test,16,0,0,0,0.0,0.0,1.0,0,0,,,,,11.0,observed
+sp_event_00015,dataset_007,fc-uplink-fade.csv,test,35,12,12,0,0.34285714285714286,0.34285714285714286,1.0,1,1,2020-09-10 14:47:11,2020-09-10 14:47:11,2020-09-10 14:52:36,2020-09-10 14:52:36,15.2,observed
+sp_event_00016,dataset_007,fc-uplink-fade.csv,test,29,28,28,0,0.9655172413793104,0.9655172413793104,1.0,1,1,2020-09-25 03:24:52,2020-09-25 03:24:52,2020-09-25 03:38:17,2020-09-25 03:38:17,34.5,observed
+sp_event_00017,dataset_007,fc-uplink-fade.csv,test,7,0,0,0,0.0,0.0,1.0,0,0,,,,,26.9,observed
+sp_event_00018,dataset_007,fc-uplink-fade.csv,test,11,0,0,0,0.0,0.0,1.0,0,0,,,,,29.2,observed
+sp_event_00019,dataset_007,fc-uplink-fade.csv,test,3,0,0,0,0.0,0.0,1.0,0,0,,,,,17.5,observed
+sp_event_00020,dataset_007,fc-uplink-fade.csv,test,8,0,0,0,0.0,0.0,1.0,0,0,,,,,18.2,observed
+sp_event_00021,dataset_007,fc-uplink-fade.csv,test,9,0,0,0,0.0,0.0,1.0,0,0,,,,,20.5,observed
+sp_event_00022,dataset_007,fc-uplink-fade.csv,test,2,0,0,0,0.0,0.0,1.0,0,0,,,,,13.1,observed
+sp_event_00023,dataset_007,fc-uplink-fade.csv,test,4,0,0,0,0.0,0.0,1.0,0,0,,,,,12.7,observed
+sp_event_00024,dataset_007,fc-uplink-fade.csv,test,11,0,0,0,0.0,0.0,1.0,0,0,,,,,14.6,observed
+sp_event_00025,dataset_007,fc-uplink-fade.csv,test,5,0,0,0,0.0,0.0,1.0,0,0,,,,,16.8,observed
+sp_event_00026,dataset_007,fc-uplink-fade.csv,test,18,0,0,0,0.0,0.0,1.0,0,0,,,,,13.8,observed
+sp_event_00027,dataset_007,fc-uplink-fade.csv,test,10,0,0,0,0.0,0.0,1.0,0,0,,,,,13.1,observed
+sp_event_00028,dataset_007,fc-uplink-fade.csv,test,2,0,0,0,0.0,0.0,1.0,0,0,,,,,10.1,observed
+sp_event_00029,dataset_007,fc-uplink-fade.csv,test,25,0,0,0,0.0,0.0,1.0,0,0,,,,,19.3,observed
+sp_event_00030,dataset_007,fc-uplink-fade.csv,test,10,0,0,0,0.0,0.0,1.0,0,0,,,,,25.9,observed
+sp_event_00031,dataset_007,fc-uplink-fade.csv,test,14,13,13,0,0.9285714285714286,0.9285714285714286,1.0,1,1,2020-10-03 21:27:30,2020-10-03 21:27:30,2020-10-03 21:33:30,2020-10-03 21:33:30,28.9,observed
+sp_event_00032,dataset_007,fc-uplink-fade.csv,test,11,0,0,0,0.0,0.0,1.0,0,0,,,,,22.4,observed
+sp_event_00033,dataset_007,fc-uplink-fade.csv,test,16,0,0,0,0.0,0.0,1.0,0,0,,,,,15.5,observed
+sp_event_00034,dataset_007,fc-uplink-fade.csv,test,19,0,0,0,0.0,0.0,1.0,0,0,,,,,11.5,observed
+sp_event_00035,dataset_007,fc-uplink-fade.csv,test,40,23,23,0,0.575,0.575,1.0,1,1,2020-10-07 05:13:57,2020-10-07 05:13:57,2020-10-07 05:24:57,2020-10-07 05:24:57,17.7,observed
+sp_event_00036,dataset_007,fc-uplink-fade.csv,test,15,0,0,0,0.0,0.0,1.0,0,0,,,,,12.4,observed
+sp_event_00037,dataset_007,fc-uplink-fade.csv,test,25,18,18,0,0.72,0.72,1.0,1,1,2020-10-07 06:51:28,2020-10-07 06:51:28,2020-10-07 06:59:57,2020-10-07 06:59:57,38.3,censored
+sp_event_00038,dataset_007,fc-uplink-fade.csv,test,7,0,0,0,0.0,0.0,1.0,0,0,,,,,12.3,observed
+sp_event_00039,dataset_007,fc-uplink-fade.csv,test,53,41,41,0,0.7735849056603774,0.7735849056603774,1.0,1,1,2020-10-07 11:13:13,2020-10-07 11:13:13,2020-10-07 11:33:13,2020-10-07 11:33:13,36.3,observed
+sp_event_00040,dataset_007,fc-uplink-fade.csv,test,16,0,0,0,0.0,0.0,1.0,0,0,,,,,14.9,observed
+sp_event_00041,dataset_007,fc-uplink-fade.csv,test,2,0,0,0,0.0,0.0,1.0,0,0,,,,,10.2,observed
+sp_event_00042,dataset_007,fc-uplink-fade.csv,test,3,0,0,0,0.0,0.0,1.0,0,0,,,,,10.9,observed
+sp_event_00043,dataset_007,fc-uplink-fade.csv,test,4,0,0,0,0.0,0.0,1.0,0,0,,,,,10.4,observed
+sp_event_00044,dataset_007,fc-uplink-fade.csv,test,8,0,0,0,0.0,0.0,1.0,0,0,,,,,12.5,observed
+sp_event_00045,dataset_007,fc-uplink-fade.csv,test,13,12,12,0,0.9230769230769231,0.9230769230769231,1.0,1,1,2020-10-11 13:17:46,2020-10-11 13:17:46,2020-10-11 13:23:20,2020-10-11 13:23:20,12.8,observed
+sp_event_00046,dataset_007,fc-uplink-fade.csv,test,10,0,0,0,0.0,0.0,1.0,0,0,,,,,11.5,observed
+sp_event_00047,dataset_007,fc-uplink-fade.csv,test,4,0,0,0,0.0,0.0,1.0,0,0,,,,,10.8,observed
+sp_event_00048,dataset_007,fc-uplink-fade.csv,test,30,27,27,0,0.9,0.9,1.0,1,1,2020-10-15 04:31:24,2020-10-15 04:31:24,2020-10-15 04:44:24,2020-10-15 04:44:24,26.8,observed
+sp_event_00049,dataset_007,fc-uplink-fade.csv,test,19,18,18,0,0.9473684210526315,0.9473684210526315,1.0,1,1,2020-10-15 05:09:24,2020-10-15 05:09:24,2020-10-15 05:17:51,2020-10-15 05:17:51,13.9,observed
+sp_event_00050,dataset_007,fc-uplink-fade.csv,test,3,0,0,0,0.0,0.0,1.0,0,0,,,,,10.4,observed
+sp_event_00051,dataset_007,fc-uplink-fade.csv,test,3,0,0,0,0.0,0.0,1.0,0,0,,,,,10.7,observed
+sp_event_00052,dataset_007,fc-uplink-fade.csv,test,9,0,0,0,0.0,0.0,1.0,0,0,,,,,14.8,observed
+sp_event_00053,dataset_007,fc-uplink-fade.csv,test,2,0,0,0,0.0,0.0,1.0,0,0,,,,,10.4,observed
+sp_event_00054,dataset_007,fc-uplink-fade.csv,test,18,17,17,0,0.9444444444444444,0.9444444444444444,1.0,1,1,2020-11-16 17:59:28,2020-11-16 17:59:28,2020-11-16 18:07:28,2020-11-16 18:07:28,13.2,observed
+sp_event_00055,dataset_007,fc-uplink-fade.csv,test,13,12,12,0,0.9230769230769231,0.9230769230769231,1.0,1,1,2020-11-16 18:23:30,2020-11-16 18:23:30,2020-11-16 18:29:02,2020-11-16 18:29:02,13.4,observed
+sp_event_00056,dataset_007,fc-uplink-fade.csv,test,6,0,0,0,0.0,0.0,1.0,0,0,,,,,12.6,observed

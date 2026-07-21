@@ -16,7 +16,11 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.switching.comparison import compute_model_vs_perfect_metrics  # noqa: E402
 from src.switching.metrics import build_switch_behavior_metrics_tables  # noqa: E402
-from src.switching.plots import plot_switch_methods_for_event  # noqa: E402
+from src.switching.plots import (  # noqa: E402
+    build_centered_event_display_frame,
+    map_switch_to_display_frame,
+    plot_switch_methods_for_event,
+)
 from src.tasks.long_fade_detection.evaluation.switch_from_probability import (  # noqa: E402
     build_probability_switch_timeseries,
 )
@@ -48,7 +52,98 @@ def project_path(value: str | Path) -> Path:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
+    parser.add_argument(
+        "--refresh-plots-only",
+        action="store_true",
+        help=(
+            "Regenerate event plots from saved switch-comparison parquet files "
+            "without recomputing metrics or checking model/dataset fingerprints."
+        ),
+    )
     return parser.parse_args()
+
+
+def load_display_signal_source(config: dict) -> tuple[pd.DataFrame | None, dict]:
+    """Load the optional full-signal source used only for event plot display."""
+
+    display_config = dict(config.get("plots", {}).get("display_window", {}))
+    if not bool(display_config.get("enabled", False)):
+        return None, display_config
+    source_path = project_path(display_config["signal_source_path"])
+    return pd.read_parquet(source_path), display_config
+
+
+def plot_event_switch_comparisons(
+    *,
+    perfect_timeseries: pd.DataFrame,
+    comparison: pd.DataFrame,
+    figures_dir: Path,
+    method_name: str,
+    threshold: float,
+    max_events: int,
+    title_suffix: str,
+    display_signal_source: pd.DataFrame | None,
+    display_config: dict,
+) -> list[str]:
+    """Save event switch plots, optionally using a wider display-only window."""
+
+    saved_figures = []
+    event_order = (
+        perfect_timeseries.groupby("event_id", sort=False)["event_timestamp"]
+        .first()
+        .sort_values()
+        .index[:max_events]
+    )
+    for event_id in event_order:
+        perfect_event = perfect_timeseries.loc[
+            perfect_timeseries["event_id"].eq(event_id)
+        ].sort_values("Time", kind="stable")
+        model_event = comparison.loc[
+            comparison["event_id"].eq(event_id),
+            ["Time", "model_switch_min_time"],
+        ].sort_values("Time", kind="stable")
+
+        if display_signal_source is not None:
+            plot_frame = build_centered_event_display_frame(
+                display_signal_source,
+                perfect_event,
+                before_minutes=float(display_config.get("before_minutes", 90)),
+                after_minutes=float(display_config.get("after_minutes", 90)),
+                signal_column=str(display_config.get("signal_column", "Signal")),
+            )
+            fill_value = int(display_config.get("fill_missing_switch_with", 0))
+            switch_methods = {
+                "Perfect Switch": map_switch_to_display_frame(
+                    plot_frame,
+                    perfect_event,
+                    "perfect_switch",
+                    fill_value=fill_value,
+                ),
+                method_name: map_switch_to_display_frame(
+                    plot_frame,
+                    model_event,
+                    "model_switch_min_time",
+                    fill_value=fill_value,
+                ),
+            }
+        else:
+            plot_frame = perfect_event
+            model_lookup = model_event.set_index("Time")["model_switch_min_time"]
+            switch_methods = {
+                "Perfect Switch": perfect_event["perfect_switch"].to_numpy(dtype=float),
+                method_name: perfect_event["Time"].map(model_lookup).to_numpy(dtype=float),
+            }
+
+        figure_path = figures_dir / f"{event_id}_switch_comparison.png"
+        plot_switch_methods_for_event(
+            plot_frame,
+            switch_methods,
+            figure_path,
+            threshold=threshold,
+            event_title=f"{event_id} | Perfect vs {method_name} | {title_suffix}",
+        )
+        saved_figures.append(relative_project_path(figure_path))
+    return saved_figures
 
 
 def main() -> None:
@@ -79,6 +174,7 @@ def main() -> None:
     switch_time = int(conversion["switch_time_samples"])
     apply_min_island = bool(conversion["apply_min_island_length"])
     overwrite = bool(config["output"].get("overwrite", False))
+    display_signal_source, display_config = load_display_signal_source(config)
 
     print("=== Long-Fade Detection Switch Comparison ===")
     print(f"Selection: {selection_id}")
@@ -87,6 +183,38 @@ def main() -> None:
     print(f"Require current signal above threshold: {require_signal_gate}")
     print(f"Post-processing switch time: {switch_time} samples")
     print("Uses saved test predictions only; no model is trained or loaded.")
+
+    if args.refresh_plots_only:
+        print("Refresh-plots-only mode: metrics and predictions are not modified.")
+        for method in config["methods"]:
+            run_id = str(method["run_id"])
+            comparison_id = make_comparison_id(run_id)
+            output_dir = switch_comparison_dir(
+                selection_id=selection_id,
+                comparison_id=comparison_id,
+            )
+            comparison_path = output_dir / "predictions/model_vs_perfect_switch.parquet"
+            if not comparison_path.exists():
+                raise FileNotFoundError(
+                    f"Saved switch comparison not found: {comparison_path}"
+                )
+            comparison = pd.read_parquet(comparison_path)
+            figures_dir = output_dir / "figures/event_switch_plots"
+            if overwrite and figures_dir.exists():
+                shutil.rmtree(figures_dir)
+            saved_figures = plot_event_switch_comparisons(
+                perfect_timeseries=perfect_timeseries,
+                comparison=comparison,
+                figures_dir=figures_dir,
+                method_name=str(method["name"]),
+                threshold=signal_threshold,
+                max_events=int(config["plots"]["max_events"]),
+                title_suffix=f"probability threshold={probability_threshold:g}",
+                display_signal_source=display_signal_source,
+                display_config=display_config,
+            )
+            print(f"{method['name']}: refreshed {len(saved_figures)} plots")
+        return
 
     summary_rows = []
     behavior_rows = []
@@ -193,41 +321,17 @@ def main() -> None:
         figures_dir = output_paths["figures"] / "event_switch_plots"
         if overwrite and figures_dir.exists():
             shutil.rmtree(figures_dir)
-        saved_figures = []
-        event_order = (
-            perfect_timeseries.groupby("event_id", sort=False)["event_timestamp"]
-            .first()
-            .sort_values()
-            .index[: int(config["plots"]["max_events"])]
+        saved_figures = plot_event_switch_comparisons(
+            perfect_timeseries=perfect_timeseries,
+            comparison=comparison,
+            figures_dir=figures_dir,
+            method_name=str(method["name"]),
+            threshold=signal_threshold,
+            max_events=int(config["plots"]["max_events"]),
+            title_suffix=f"probability threshold={probability_threshold:g}",
+            display_signal_source=display_signal_source,
+            display_config=display_config,
         )
-        for event_id in event_order:
-            perfect_event = perfect_timeseries.loc[
-                perfect_timeseries["event_id"].eq(event_id)
-            ].sort_values("Time", kind="stable")
-            model_event = comparison.loc[
-                comparison["event_id"].eq(event_id),
-                ["Time", "model_switch_min_time"],
-            ]
-            model_lookup = model_event.set_index("Time")["model_switch_min_time"]
-            figure_path = figures_dir / f"{event_id}_switch_comparison.png"
-            plot_switch_methods_for_event(
-                perfect_event,
-                {
-                    "Perfect Switch": perfect_event["perfect_switch"].to_numpy(
-                        dtype=float
-                    ),
-                    str(method["name"]): perfect_event["Time"]
-                    .map(model_lookup)
-                    .to_numpy(dtype=float),
-                },
-                figure_path,
-                threshold=signal_threshold,
-                event_title=(
-                    f"{event_id} | Perfect vs {method['name']} | "
-                    f"probability threshold={probability_threshold:g}"
-                ),
-            )
-            saved_figures.append(relative_project_path(figure_path))
 
         created_at = datetime.now(timezone.utc).isoformat()
         metadata = {

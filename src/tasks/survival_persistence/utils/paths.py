@@ -134,3 +134,78 @@ def run_index_path(root: Path = PROJECT_ROOT) -> Path:
     """Return the task-scoped survival run index."""
 
     return root / "results" / "index" / f"{TASK_NAME}_runs.csv"
+
+
+def grid_search_dir(
+    *,
+    selection_id: str,
+    search_id: str,
+    root: Path = PROJECT_ROOT,
+) -> Path:
+    """Return the task-scoped survival grid-search artifact directory."""
+
+    return (
+        root
+        / "results"
+        / "grid_searches"
+        / TASK_NAME
+        / sanitize_id(selection_id)
+        / sanitize_id(search_id)
+    )
+
+
+def model_selection_dir(
+    *,
+    selection_id: str,
+    search_id: str,
+    root: Path = PROJECT_ROOT,
+) -> Path:
+    """Return the cross-run model-selection summary directory."""
+
+    return (
+        root
+        / "results"
+        / "comparisons"
+        / "model_selection"
+        / TASK_NAME
+        / sanitize_id(selection_id)
+        / sanitize_id(search_id)
+    )
+
+
+def switch_comparison_dir(
+    *,
+    selection_id: str,
+    comparison_id: str,
+    root: Path = PROJECT_ROOT,
+) -> Path:
+    """Return one task-scoped model-vs-Perfect switch-comparison directory."""
+
+    return (
+        root
+        / "results"
+        / "comparisons"
+        / "switch_eval"
+        / TASK_NAME
+        / sanitize_id(selection_id)
+        / sanitize_id(comparison_id)
+    )
+
+
+def switch_summary_dir(
+    *,
+    selection_id: str,
+    summary_id: str,
+    root: Path = PROJECT_ROOT,
+) -> Path:
+    """Return the cross-model switch-summary directory for this task."""
+
+    return (
+        root
+        / "results"
+        / "comparisons"
+        / "model_summary"
+        / TASK_NAME
+        / sanitize_id(selection_id)
+        / sanitize_id(summary_id)
+    )

@@ -9,6 +9,91 @@ import numpy as np
 import pandas as pd
 
 
+def build_centered_event_display_frame(
+    signal_source: pd.DataFrame,
+    event_frame: pd.DataFrame,
+    *,
+    before_minutes: float,
+    after_minutes: float,
+    signal_column: str = "Signal",
+) -> pd.DataFrame:
+    """Return a signal-only display window centered on an event timestamp."""
+
+    required_signal_columns = {"dataset_id", "dataset_name", "Time", signal_column}
+    missing_signal = sorted(required_signal_columns - set(signal_source.columns))
+    if missing_signal:
+        raise ValueError(f"signal_source is missing columns: {missing_signal}")
+    if event_frame.empty:
+        raise ValueError("event_frame cannot be empty.")
+
+    event = event_frame.sort_values("Time", kind="stable").iloc[0]
+    center = (
+        pd.Timestamp(event["event_timestamp"])
+        if "event_timestamp" in event_frame.columns and pd.notna(event["event_timestamp"])
+        else pd.Timestamp(event["Time"])
+    )
+    start = center - pd.Timedelta(minutes=float(before_minutes))
+    end = center + pd.Timedelta(minutes=float(after_minutes))
+
+    source = signal_source.copy()
+    source["Time"] = pd.to_datetime(source["Time"], errors="raise")
+    selected = source.loc[
+        source["dataset_id"].astype(str).eq(str(event["dataset_id"]))
+        & source["dataset_name"].astype(str).eq(str(event["dataset_name"]))
+        & source["Time"].ge(start)
+        & source["Time"].le(end),
+        ["dataset_id", "dataset_name", "Time", signal_column],
+    ].copy()
+    if selected.empty:
+        raise ValueError(
+            "No signal samples found for centered display window "
+            f"around {center}."
+        )
+    selected = selected.sort_values("Time", kind="stable").reset_index(drop=True)
+    selected["Signal_true"] = selected[signal_column].astype(float)
+    if signal_column != "Signal_true":
+        selected = selected.drop(columns=signal_column)
+
+    metadata_columns = [
+        "event_id",
+        "global_event_id",
+        "split",
+        "quality_flag",
+        "event_timestamp",
+        "threshold",
+        "switch_time",
+    ]
+    for column in metadata_columns:
+        if column in event_frame.columns:
+            selected[column] = event_frame[column].dropna().iloc[0]
+    if "event_timestamp" not in selected.columns:
+        selected["event_timestamp"] = center
+    return selected
+
+
+def map_switch_to_display_frame(
+    display_frame: pd.DataFrame,
+    switch_frame: pd.DataFrame,
+    switch_column: str,
+    *,
+    fill_value: int = 0,
+) -> np.ndarray:
+    """Map native-task switch values to a display frame, filling missing times."""
+
+    if switch_column not in switch_frame.columns:
+        raise ValueError(f"switch_frame is missing column '{switch_column}'.")
+    if "Time" not in display_frame.columns or "Time" not in switch_frame.columns:
+        raise ValueError("Both display_frame and switch_frame must contain Time.")
+
+    lookup = switch_frame.copy()
+    lookup["Time"] = pd.to_datetime(lookup["Time"], errors="raise")
+    lookup = lookup.drop_duplicates(subset=["Time"], keep="last")
+    series = lookup.set_index("Time")[switch_column]
+    times = pd.to_datetime(display_frame["Time"], errors="raise")
+    mapped = times.map(series).fillna(fill_value)
+    return mapped.to_numpy(dtype=np.int8)
+
+
 def plot_switch_methods_for_event(
     event_frame: pd.DataFrame,
     switch_methods: Mapping[str, Sequence[int] | np.ndarray],

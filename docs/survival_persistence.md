@@ -359,6 +359,53 @@ Outputs:
 
 ```text
 results/grid_searches/survival_persistence/<selection_id>/<search_id>/
+results/comparisons/model_selection/survival_persistence/<selection_id>/<search_id>/
 results/runs/survival_persistence/<selection_id>/<best_run_id>/
 models/survival_persistence/xgboost_aft/<best_run_id>/
 ```
+
+## Switch Evaluation
+
+The survival model does not directly output a binary switch. The current
+operational conversion uses the saved survival probability at the 300-second
+horizon:
+
+```text
+model_switch_raw(t) = 1 if S(300s | X_t) >= 0.5 and Signal(t) > 10.0
+```
+
+The threshold `0.5` is a fixed decision rule, not fitted on the test set. After
+the raw decision is formed, the shared switch post-processing is applied:
+
+```text
+raw switch
+  -> min-island rule
+  -> stateful hold while the true signal remains above threshold
+  -> model_switch_min_time
+```
+
+The Perfect Switch reference is task-scoped and uses the same shared reference
+implementation as the other tasks.
+
+Commands:
+
+```bash
+conda run -n Nowcasting env PYTHONPATH=. python scripts/analysis/survival_persistence/12_compute_perfect_switch.py \
+  --config configs/survival_persistence/perfect_switch.yaml
+
+conda run -n Nowcasting env PYTHONPATH=. python scripts/analysis/survival_persistence/13_compare_switch_methods.py \
+  --config configs/survival_persistence/switch_comparison.yaml
+```
+
+Outputs:
+
+```text
+results/switching/perfect_switch/survival_persistence/<selection_id>/
+results/comparisons/switch_eval/survival_persistence/<selection_id>/<comparison_id>/
+results/comparisons/model_summary/survival_persistence/<selection_id>/<summary_id>/
+```
+
+Event plots are displayed over a wider 90-minute-before/90-minute-after window
+for visual comparability with other tasks. Switch values outside the native
+survival decision timestamps are displayed as zero only in the plot; switch
+metrics remain computed only on native survival decision timestamps.
