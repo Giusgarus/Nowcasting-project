@@ -1,0 +1,248 @@
+task_name: survival_persistence
+model_name: discrete_time_tcn_controlled_selection
+schema_version: 1
+
+dataset:
+  path: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade
+
+selection:
+  search_id: discreteTimeTcn_controlled_externalHoldout_test_fc_uplink_fade_L30
+  primary_metric: validation_integrated_brier_score
+  primary_mode: min
+  stage_d_candidate_count: 2
+  seed_stability_seeds:
+    - 42
+    - 123
+    - 456
+
+smoke_integrity:
+  run_path: results/runs/survival_persistence/externalHoldout_test_fc_uplink_fade/survivalPersistence_discrete_time_tcn_relative_threshold_plus_scalar_uniform_externalHoldout_test_fc_uplink_fade_smoke
+  prediction_tolerance: 0.00001
+
+xgboost_reference:
+  run_id: survivalPersistence_xgboost_aft_raw_flattened_uniform_externalHoldout_test_fc_uplink_fade
+
+parallel:
+  enabled: true
+  cuda_device_ids: auto
+  max_workers: auto
+
+base:
+  task_name: survival_persistence
+  model_name: discrete_time_tcn
+  schema_version: 1
+
+  dataset:
+    path: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade
+    sequence_representation: relative_to_threshold
+    use_scalar_context: true
+    sample_weighting: uniform
+
+  binning:
+    strategy: hybrid
+    include_open_ended: true
+    bin_edges_seconds:
+      - 0
+      - 15
+      - 30
+      - 45
+      - 60
+      - 90
+      - 120
+      - 180
+      - 240
+      - 300
+      - 420
+      - 600
+      - 900
+      - 1200
+      - 1800
+      - 2700
+      - 3600
+      - 5400
+      - 7200
+
+  model:
+    context_length: 30
+    hidden_channels:
+      - 32
+      - 32
+      - 32
+    kernel_size: 3
+    dilations:
+      - 1
+      - 2
+      - 4
+    dropout: 0.15
+    activation: gelu
+    normalization: group_norm
+    pooling: last
+    scalar_hidden_dim: 32
+
+  training:
+    batch_size: 128
+    max_epochs: 80
+    early_stopping_patience: 12
+    min_delta: 0.0
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    gradient_clip_norm: 1.0
+    lr_scheduler_factor: 0.5
+    lr_scheduler_patience: 5
+    mixed_precision: false
+    num_workers: 0
+    pin_memory: false
+    seed: 42
+
+  prediction:
+    horizons_seconds:
+      - 30
+      - 60
+      - 120
+      - 180
+      - 300
+      - 600
+      - 900
+      - 1800
+      - 3600
+      - 7200
+
+  evaluation:
+    calibration_horizons_seconds:
+      - 60
+      - 300
+      - 900
+    calibration_bins: 10
+
+  device: auto
+  seed: 42
+
+stages:
+  stage_a_binning:
+    experiments:
+      - id: uniform_300s_to_7200
+        overrides:
+          binning:
+            strategy: uniform
+            include_open_ended: true
+            bin_width_seconds: 300
+            max_time_seconds: 7200
+      - id: train_quantile_18
+        overrides:
+          binning:
+            strategy: train_quantile
+            include_open_ended: true
+            num_bins: 18
+      - id: hybrid_operational
+        overrides:
+          binning:
+            strategy: hybrid
+            include_open_ended: true
+            bin_edges_seconds:
+              - 0
+              - 15
+              - 30
+              - 45
+              - 60
+              - 90
+              - 120
+              - 180
+              - 240
+              - 300
+              - 420
+              - 600
+              - 900
+              - 1200
+              - 1800
+              - 2700
+              - 3600
+              - 5400
+              - 7200
+
+  stage_b_input:
+    experiments:
+      - id: raw_scalar
+        overrides:
+          dataset:
+            sequence_representation: raw
+            use_scalar_context: true
+      - id: relative_threshold_scalar
+        overrides:
+          dataset:
+            sequence_representation: relative_to_threshold
+            use_scalar_context: true
+      - id: relative_current_scalar
+        overrides:
+          dataset:
+            sequence_representation: relative_to_current
+            use_scalar_context: true
+      - id: multichannel_scalar
+        overrides:
+          dataset:
+            sequence_representation: multichannel
+            use_scalar_context: true
+      - id: relative_threshold_no_scalar
+        overrides:
+          dataset:
+            sequence_representation: relative_to_threshold
+            use_scalar_context: false
+
+  stage_c_weighting:
+    experiments:
+      - id: uniform
+        overrides:
+          dataset:
+            sample_weighting: uniform
+      - id: event_balanced
+        overrides:
+          dataset:
+            sample_weighting: event_balanced
+
+  stage_d_architecture:
+    experiments:
+      - id: small
+        overrides:
+          model:
+            hidden_channels:
+              - 32
+              - 32
+              - 32
+            dilations:
+              - 1
+              - 2
+              - 4
+            kernel_size: 3
+            dropout: 0.15
+            scalar_hidden_dim: 32
+      - id: medium
+        overrides:
+          model:
+            hidden_channels:
+              - 32
+              - 32
+              - 64
+              - 64
+            dilations:
+              - 1
+              - 2
+              - 4
+              - 8
+            kernel_size: 3
+            dropout: 0.15
+            scalar_hidden_dim: 32
+      - id: medium_dropout_0p25
+        overrides:
+          model:
+            hidden_channels:
+              - 32
+              - 32
+              - 64
+              - 64
+            dilations:
+              - 1
+              - 2
+              - 4
+              - 8
+            kernel_size: 3
+            dropout: 0.25
+            scalar_hidden_dim: 32

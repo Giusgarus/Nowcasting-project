@@ -932,6 +932,36 @@ This runner keeps the canonical continuous-time survival dataset unchanged and
 builds the discrete hazard labels in memory. Validation NLL selects the best
 epoch; the external test split is evaluated once after that selection.
 
+Run the controlled validation-only TCN selection:
+
+```bash
+mkdir -p logs/survival_persistence
+
+PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn_controlled.py \
+  --config configs/survival_persistence/models/discrete_time_tcn_controlled.yaml \
+  --stage smoke_integrity \
+  2>&1 | tee logs/survival_persistence/discrete_time_tcn_controlled_smoke_integrity.log
+
+PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn_controlled.py \
+  --config configs/survival_persistence/models/discrete_time_tcn_controlled.yaml \
+  --stage all \
+  2>&1 | tee logs/survival_persistence/discrete_time_tcn_controlled.log
+```
+
+Use `tmux` for the full run on the server:
+
+```bash
+tmux new -s survival_tcn_controlled
+mkdir -p logs/survival_persistence
+PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn_controlled.py \
+  --config configs/survival_persistence/models/discrete_time_tcn_controlled.yaml \
+  --stage all \
+  2>&1 | tee logs/survival_persistence/discrete_time_tcn_controlled.log
+```
+
+Detach with `Ctrl-b`, then `d`. Stages A-E use validation only; `final_test`
+loads the external test split only after `final_selection_record.yaml` exists.
+
 Build survival Perfect Switch and switch metrics from saved predictions:
 
 ```bash

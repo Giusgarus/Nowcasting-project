@@ -406,6 +406,59 @@ The smoke baseline uses `relative_to_threshold` sequence input plus train-
 standardized scalar context. It uses validation NLL for early stopping and
 evaluates the external test split once after selecting the best epoch.
 
+## Controlled Discrete-Time TCN Selection
+
+The controlled-selection runner is separate from the smoke runner. It runs the
+staged validation-only protocol:
+
+```text
+stage_a_binning
+stage_b_input
+stage_c_weighting
+stage_d_architecture
+stage_e_seed_stability
+final_test
+```
+
+Stages A-E load only train and validation artifacts. The external test split is
+loaded only by `final_test`, after `final_selection_record.yaml` has been
+written from validation evidence.
+
+Config:
+
+```text
+configs/survival_persistence/models/discrete_time_tcn_controlled.yaml
+```
+
+Smoke-integrity check:
+
+```bash
+conda run -n Nowcasting env PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn_controlled.py \
+  --config configs/survival_persistence/models/discrete_time_tcn_controlled.yaml \
+  --stage smoke_integrity
+```
+
+Run the full controlled protocol:
+
+```bash
+PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn_controlled.py \
+  --config configs/survival_persistence/models/discrete_time_tcn_controlled.yaml \
+  --stage all
+```
+
+Outputs:
+
+```text
+results/comparisons/model_selection/survival_persistence/<selection_id>/<search_id>/
+results/runs/survival_persistence/<selection_id>/<controlled_run_id>/
+models/survival_persistence/discrete_time_tcn/<controlled_run_id>/
+```
+
+Selection uses validation Integrated Brier Score as the primary metric. The
+runner saves stage comparison tables, selected-stage YAML files, seed-stability
+tables, `final_selection_record.yaml`, and final test metrics only after the
+selection has been frozen.
+
 ## Switch Evaluation
 
 The survival model does not directly output a binary switch. The current

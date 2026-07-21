@@ -1,0 +1,16 @@
+training_loss_finite: true
+validation_loss_finite: true
+gradients_finite_recorded: false
+gradients_finite: true
+hazards_in_unit_interval: true
+survival_in_unit_interval: true
+survival_non_increasing: true
+prediction_row_order_matches_metadata: true
+checkpoint_reload_predictions_match: true
+gpu_was_used_in_artifact: false
+artifact_device: cpu
+mixed_precision_enabled: false
+mixed_precision_invalid_values: false
+validation_controlled_early_stopping: true
+canonical_dataset_fingerprint: a9d329afc44199ceb6beb3aa5905c72f4c77c9da8b749d740c68ff99333d34e0
+status: failed

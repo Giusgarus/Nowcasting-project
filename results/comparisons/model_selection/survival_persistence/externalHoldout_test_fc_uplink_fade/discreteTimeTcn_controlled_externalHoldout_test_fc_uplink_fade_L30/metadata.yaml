@@ -1,0 +1,12 @@
+task_name: survival_persistence
+model_name: discrete_time_tcn_controlled_selection
+search_id: discreteTimeTcn_controlled_externalHoldout_test_fc_uplink_fade_L30
+selection_id: externalHoldout_test_fc_uplink_fade
+dataset_path: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade
+dataset_fingerprint_train_validation: f5444a1b2381b4e60c3e473d5a2543478e0ac18b921f732dda4aac2ce75da115
+primary_metric: validation_integrated_brier_score
+primary_mode: min
+config_path: configs/survival_persistence/models/discrete_time_tcn_controlled.yaml
+config_fingerprint: 946c83cdc1c572dc3b1bc5c3cdf455b8924e652f74d714d7cc50c963ca77206d
+status: dry_run
+updated_at: '2026-07-21T11:03:50.158311+00:00'

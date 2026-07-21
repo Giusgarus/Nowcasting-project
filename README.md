@@ -511,6 +511,14 @@ conda run -n Nowcasting env PYTHONPATH=. python scripts/experiments/survival_per
   --config configs/survival_persistence/models/discrete_time_tcn_smoke.yaml
 ```
 
+Run the controlled validation-only TCN selection:
+
+```bash
+PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn_controlled.py \
+  --config configs/survival_persistence/models/discrete_time_tcn_controlled.yaml \
+  --stage all
+```
+
 Build Perfect Switch and switch metrics:
 
 ```bash
