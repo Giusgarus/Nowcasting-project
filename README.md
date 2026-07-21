@@ -198,7 +198,7 @@ segment ends.
 
 Implemented scope:
 
-- dataset builder and XGBoost-AFT baseline;
+- dataset builder, XGBoost-AFT baseline, and discrete-time TCN smoke baseline;
 - XGBoost-AFT validation grid search;
 - observed and right-censored continuous-time labels;
 - train-only scalar-context standardization;
@@ -206,7 +206,7 @@ Implemented scope:
 - reproducible dataset-audit diagnostics;
 - survival-probability-to-switch evaluation against Perfect Switch.
 
-Discrete-time TCN and DeepHit survival models are not implemented yet.
+DeepHit survival models are not implemented yet.
 
 Main documentation:
 
@@ -259,7 +259,7 @@ change the metric denominator.
 The following branches are intentionally not finalized yet:
 
 - Mamba autoregressive experiments;
-- additional survival model families beyond XGBoost-AFT;
+- additional survival model families beyond XGBoost-AFT and discrete-time TCN;
 - the broader shapelet-pattern operational branch beyond the implemented
   current-level persistence task;
 - Smart/baseline switch integration.
@@ -502,6 +502,13 @@ Run the XGBoost-AFT grid search:
 ```bash
 PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_xgboost_aft_grid_search.py \
   --config configs/survival_persistence/models/xgboost_aft_grid_search.yaml
+```
+
+Run the discrete-time TCN smoke baseline:
+
+```bash
+conda run -n Nowcasting env PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn.py \
+  --config configs/survival_persistence/models/discrete_time_tcn_smoke.yaml
 ```
 
 Build Perfect Switch and switch metrics:

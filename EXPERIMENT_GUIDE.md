@@ -25,7 +25,8 @@ for its dataset and model commands.
 The first-stage `long_fade_detection` binary task is documented in
 `docs/long_fade_detection.md`.
 The `survival_persistence` task currently includes the model-independent
-dataset pipeline and the first XGBoost-AFT baseline/grid; see
+dataset pipeline, XGBoost-AFT baseline/grid, and a discrete-time TCN smoke
+baseline; see
 `docs/survival_persistence.md`.
 
 ## 1. Environment And Verification
@@ -920,6 +921,17 @@ PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/
   2>&1 | tee logs/survival_persistence/xgboost_aft_grid_search_smoke.log
 ```
 
+Run the discrete-time TCN smoke baseline:
+
+```bash
+conda run -n Nowcasting env PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn.py \
+  --config configs/survival_persistence/models/discrete_time_tcn_smoke.yaml
+```
+
+This runner keeps the canonical continuous-time survival dataset unchanged and
+builds the discrete hazard labels in memory. Validation NLL selects the best
+epoch; the external test split is evaluated once after that selection.
+
 Build survival Perfect Switch and switch metrics from saved predictions:
 
 ```bash
@@ -973,8 +985,9 @@ For a new raw-data or methodological configuration:
     central indexes.
 14. For `long_fade_detection`, build its dataset separately, then run the
     three first-stage classifiers and the summary script.
-15. For `survival_persistence`, build and audit the dataset, run XGBoost-AFT,
-    then build Perfect Switch and survival-probability switch comparisons.
+15. For `survival_persistence`, build and audit the dataset, run the selected
+    survival baselines, then build Perfect Switch and survival-probability
+    switch comparisons.
 
 ## 19. Configuration Consistency Checklist
 

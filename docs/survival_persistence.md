@@ -216,11 +216,11 @@ final event position fraction
 The canonical dataset is continuous-time. It does not save fixed DeepHit or
 discrete-time masks.
 
-Future model adapters should derive their own labels:
+Model adapters derive their own labels:
 
 - XGBoost-AFT: use lower and upper survival bounds;
-- discrete-time TCN: derive bins and masks from model-configured bin edges;
-- DeepHit: derive event/censoring bins from model-configured bin edges.
+- discrete-time TCN: derive bins and masks from model-configured bin edges in memory;
+- future DeepHit: derive event/censoring bins from model-configured bin edges.
 
 Changing time bins must not require rebuilding this dataset.
 
@@ -363,6 +363,48 @@ results/comparisons/model_selection/survival_persistence/<selection_id>/<search_
 results/runs/survival_persistence/<selection_id>/<best_run_id>/
 models/survival_persistence/xgboost_aft/<best_run_id>/
 ```
+
+## Discrete-Time TCN Baseline
+
+The second survival baseline is a causal PyTorch TCN that predicts one discrete
+hazard logit per survival-time bin:
+
+```text
+h_k = P(R in bin k | R survived all previous bins, X_t)
+S_k = product_j<=k (1 - h_j)
+```
+
+The canonical continuous-time dataset is not rebuilt. The runner converts
+`y_time_seconds`, `y_event_observed`, `y_lower_bound_seconds`, and
+`y_upper_bound_seconds` to discrete event/censoring masks in memory.
+Observed samples contribute survived bins before the event plus the event bin.
+Right-censored samples contribute only fully observed survived bins; the
+partially observed censoring bin is excluded.
+
+Smoke config:
+
+```text
+configs/survival_persistence/models/discrete_time_tcn_smoke.yaml
+```
+
+Run:
+
+```bash
+conda run -n Nowcasting env PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn.py \
+  --config configs/survival_persistence/models/discrete_time_tcn_smoke.yaml
+```
+
+Outputs:
+
+```text
+results/runs/survival_persistence/<selection_id>/<run_id>/
+models/survival_persistence/discrete_time_tcn/<run_id>/
+results/index/survival_persistence_runs.csv
+```
+
+The smoke baseline uses `relative_to_threshold` sequence input plus train-
+standardized scalar context. It uses validation NLL for early stopping and
+evaluates the external test split once after selecting the best epoch.
 
 ## Switch Evaluation
 
