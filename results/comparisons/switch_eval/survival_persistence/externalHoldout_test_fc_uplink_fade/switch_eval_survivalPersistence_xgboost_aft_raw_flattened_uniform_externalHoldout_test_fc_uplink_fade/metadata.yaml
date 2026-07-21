@@ -60,5 +60,5 @@ num_events: 56
 num_decisions: 900
 num_quality_excluded_predictions: 0
 config_path: configs/survival_persistence/switch_comparison.yaml
-config_fingerprint: 97da7ddf1da16c82f7b694834c93dfdd2ea6a54ebb7441b7e97c06f099053818
-created_at: '2026-07-21T08:00:39.961196+00:00'
+config_fingerprint: 93983a9eea60742e685f246d032d0e0a62f6b8b737d78f9e4cde3e8f95309679
+created_at: '2026-07-21T12:15:43.429827+00:00'

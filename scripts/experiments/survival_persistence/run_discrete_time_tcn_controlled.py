@@ -1210,12 +1210,15 @@ def write_xgboost_comparison(
     """Create a compact comparison table against frozen XGBoost-AFT if present."""
 
     xgb_run_id = config.get("xgboost_reference", {}).get("run_id")
+    selection_id = controlled_dir.parent.name
     rows = [
         {
             "model": "discrete_time_tcn",
             "input_representation": "selected_controlled",
+            "run_id": tcn_metrics.get("selected_run_id"),
             "test_ibs": tcn_metrics.get("test_integrated_brier_score"),
             "test_c_index": tcn_metrics.get("test_harrell_c_index"),
+            "test_nloglik": tcn_metrics.get("test_discrete_nll"),
             "test_brier_60s": tcn_metrics.get("test_brier_60s"),
             "test_brier_300s": tcn_metrics.get("test_brier_300s"),
             "test_brier_900s": tcn_metrics.get("test_brier_900s"),
@@ -1225,7 +1228,32 @@ def write_xgboost_comparison(
         }
     ]
     if xgb_run_id:
-        rows.append({"model": "xgboost_aft", "input_representation": "frozen_reference", "run_id": xgb_run_id})
+        xgb_row: dict[str, Any] = {
+            "model": "xgboost_aft",
+            "input_representation": "frozen_reference",
+            "run_id": xgb_run_id,
+        }
+        metrics_path = (
+            run_dir(selection_id=selection_id, run_id=str(xgb_run_id))
+            / "metrics"
+            / "metrics_summary.csv"
+        )
+        if metrics_path.exists():
+            metrics = pd.read_csv(metrics_path)
+            test_rows = metrics.loc[metrics["split"].eq("test")]
+            if not test_rows.empty:
+                test = test_rows.iloc[0]
+                xgb_row.update(
+                    {
+                        "test_ibs": test.get("ipcw_brier_mean"),
+                        "test_c_index": test.get("c_index"),
+                        "test_nloglik": test.get("aft_nloglik"),
+                        "test_num_samples": test.get("num_samples"),
+                        "test_num_events": test.get("num_events"),
+                        "metrics_path": relative_project_path(metrics_path),
+                    }
+                )
+        rows.append(xgb_row)
     pd.DataFrame(rows).to_csv(
         controlled_dir / "tables" / "model_comparison_xgboost_tcn.csv",
         index=False,

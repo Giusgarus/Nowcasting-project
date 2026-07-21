@@ -1,0 +1,148 @@
+task_name: survival_persistence
+model_name: discrete_time_tcn
+schema_version: 1
+dataset:
+  path: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade
+  sequence_representation: relative_to_threshold
+  use_scalar_context: true
+  sample_weighting: uniform
+binning:
+  strategy: train_quantile
+  include_open_ended: true
+  bin_edges_seconds:
+  - 0
+  - 15
+  - 30
+  - 45
+  - 60
+  - 90
+  - 120
+  - 180
+  - 240
+  - 300
+  - 420
+  - 600
+  - 900
+  - 1200
+  - 1800
+  - 2700
+  - 3600
+  - 5400
+  - 7200
+  num_bins: 18
+model:
+  context_length: 30
+  hidden_channels:
+  - 32
+  - 32
+  - 32
+  kernel_size: 3
+  dilations:
+  - 1
+  - 2
+  - 4
+  dropout: 0.15
+  activation: gelu
+  normalization: group_norm
+  pooling: last
+  scalar_hidden_dim: 32
+  num_bins: 19
+  input_channels: 1
+  scalar_context_dim: 18
+training:
+  batch_size: 128
+  max_epochs: 80
+  early_stopping_patience: 12
+  min_delta: 0.0
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  gradient_clip_norm: 1.0
+  lr_scheduler_factor: 0.5
+  lr_scheduler_patience: 5
+  mixed_precision: false
+  num_workers: 0
+  pin_memory: false
+  seed: 42
+prediction:
+  horizons_seconds:
+  - 30
+  - 60
+  - 120
+  - 180
+  - 300
+  - 600
+  - 900
+  - 1800
+  - 3600
+  - 7200
+evaluation:
+  calibration_horizons_seconds:
+  - 60
+  - 300
+  - 900
+  calibration_bins: 10
+device: auto
+seed: 42
+resolved_bin_spec:
+  strategy: train_quantile
+  include_open_ended: true
+  num_bins: 19
+  left_edges_seconds:
+  - 0.0
+  - 31.0
+  - 61.0
+  - 92.0
+  - 122.0
+  - 153.0
+  - 190.66666666666492
+  - 241.0
+  - 274.0
+  - 331.0
+  - 386.8888888888889
+  - 452.7777777777777
+  - 518.0
+  - 619.4444444444423
+  - 759.0
+  - 885.0
+  - 1098.0
+  - 1526.6666666666665
+  - 3203.0
+  right_edges_seconds:
+  - 31.0
+  - 61.0
+  - 92.0
+  - 122.0
+  - 153.0
+  - 190.66666666666492
+  - 241.0
+  - 274.0
+  - 331.0
+  - 386.8888888888889
+  - 452.7777777777777
+  - 518.0
+  - 619.4444444444423
+  - 759.0
+  - 885.0
+  - 1098.0
+  - 1526.6666666666665
+  - 3203.0
+  - inf
+  finite_right_edges_seconds:
+  - 31.0
+  - 61.0
+  - 92.0
+  - 122.0
+  - 153.0
+  - 190.66666666666492
+  - 241.0
+  - 274.0
+  - 331.0
+  - 386.8888888888889
+  - 452.7777777777777
+  - 518.0
+  - 619.4444444444423
+  - 759.0
+  - 885.0
+  - 1098.0
+  - 1526.6666666666665
+  - 3203.0

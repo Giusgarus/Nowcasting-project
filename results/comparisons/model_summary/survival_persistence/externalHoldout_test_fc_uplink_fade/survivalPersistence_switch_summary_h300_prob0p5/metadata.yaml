@@ -8,4 +8,5 @@ survival_probability_threshold: 0.5
 require_current_signal_above_threshold: true
 method_ids:
 - survivalPersistence_xgboost_aft_raw_flattened_uniform_externalHoldout_test_fc_uplink_fade
-created_at: '2026-07-21T08:00:39.968668+00:00'
+- survivalPersistence_discrete_time_tcn_relative_current_plus_scalar_uniform_externalHoldout_test_fc_uplink_fade__controlled_stage_e_seed_stability_small_seed42_seed42
+created_at: '2026-07-21T12:15:49.029464+00:00'

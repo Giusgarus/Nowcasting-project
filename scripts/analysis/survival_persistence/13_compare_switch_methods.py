@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import sys
 from datetime import datetime, timezone
@@ -11,6 +12,8 @@ from pathlib import Path
 import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
+os.environ.setdefault("MPLCONFIGDIR", str(PROJECT_ROOT / ".matplotlib-cache"))
+os.environ.setdefault("XDG_CACHE_HOME", str(PROJECT_ROOT / ".matplotlib-cache"))
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.switching.comparison import compute_model_vs_perfect_metrics  # noqa: E402
@@ -185,7 +188,17 @@ def main() -> None:
         comparison_id = make_comparison_id(run_id)
         method_run_dir = run_dir(selection_id=selection_id, run_id=run_id)
         run_metadata = load_yaml_config(method_run_dir / "metadata.yaml")
-        if project_path(run_metadata["dataset_path"]) != dataset_path:
+        method_dataset_path = run_metadata.get("dataset_path")
+        config_resolved_path = method_run_dir / "config_resolved.yaml"
+        if method_dataset_path is None and config_resolved_path.exists():
+            run_config = load_yaml_config(config_resolved_path)
+            method_dataset_path = run_config.get("dataset", {}).get("path")
+        method_dataset_path = method.get("dataset_path", method_dataset_path)
+        if method_dataset_path is None:
+            raise RuntimeError(
+                f"Run {run_id} does not expose dataset_path in metadata or config."
+            )
+        if project_path(method_dataset_path) != dataset_path:
             raise RuntimeError(
                 f"Run {run_id} was not produced for dataset {dataset_path}."
             )
@@ -194,7 +207,16 @@ def main() -> None:
                 f"Configured selection_id={selection_id} does not match dataset metadata."
             )
 
-        predictions_path = method_run_dir / "predictions/test_predictions.parquet"
+        predictions_path = project_path(
+            method.get(
+                "predictions_path",
+                method_run_dir / "predictions/test_predictions.parquet",
+            )
+        )
+        if not predictions_path.exists():
+            raise FileNotFoundError(
+                f"Missing saved test predictions for {run_id}: {predictions_path}"
+            )
         predictions = pd.read_parquet(predictions_path)
         valid_window_ids = set(test_metadata["global_window_id"].astype(str))
         prediction_window_ids = set(predictions["global_window_id"].astype(str))

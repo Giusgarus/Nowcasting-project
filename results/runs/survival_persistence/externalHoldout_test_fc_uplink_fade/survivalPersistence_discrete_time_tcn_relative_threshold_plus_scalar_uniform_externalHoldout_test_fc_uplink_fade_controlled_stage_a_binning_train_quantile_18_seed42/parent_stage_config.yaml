@@ -1,0 +1,81 @@
+task_name: survival_persistence
+model_name: discrete_time_tcn
+schema_version: 1
+dataset:
+  path: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade
+  sequence_representation: relative_to_threshold
+  use_scalar_context: true
+  sample_weighting: uniform
+binning:
+  strategy: hybrid
+  include_open_ended: true
+  bin_edges_seconds:
+  - 0
+  - 15
+  - 30
+  - 45
+  - 60
+  - 90
+  - 120
+  - 180
+  - 240
+  - 300
+  - 420
+  - 600
+  - 900
+  - 1200
+  - 1800
+  - 2700
+  - 3600
+  - 5400
+  - 7200
+model:
+  context_length: 30
+  hidden_channels:
+  - 32
+  - 32
+  - 32
+  kernel_size: 3
+  dilations:
+  - 1
+  - 2
+  - 4
+  dropout: 0.15
+  activation: gelu
+  normalization: group_norm
+  pooling: last
+  scalar_hidden_dim: 32
+training:
+  batch_size: 128
+  max_epochs: 80
+  early_stopping_patience: 12
+  min_delta: 0.0
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  gradient_clip_norm: 1.0
+  lr_scheduler_factor: 0.5
+  lr_scheduler_patience: 5
+  mixed_precision: false
+  num_workers: 0
+  pin_memory: false
+  seed: 42
+prediction:
+  horizons_seconds:
+  - 30
+  - 60
+  - 120
+  - 180
+  - 300
+  - 600
+  - 900
+  - 1800
+  - 3600
+  - 7200
+evaluation:
+  calibration_horizons_seconds:
+  - 60
+  - 300
+  - 900
+  calibration_bins: 10
+device: auto
+seed: 42

@@ -1,0 +1,117 @@
+stage: stage_d_architecture
+selected_experiment_id: small
+selected_run_id: survivalPersistence_discrete_time_tcn_relative_current_plus_scalar_uniform_externalHoldout_test_fc_uplink_fade__controlled_stage_d_architecture_small_seed42
+primary_metric: validation_integrated_brier_score
+primary_metric_mode: min
+primary_metric_value: 0.10908353293481184
+validation_metrics:
+  validation_discrete_nll: 2.4576478355614713
+  validation_integrated_brier_score: 0.10908353293481184
+  validation_harrell_c_index: 0.5389484712117038
+  validation_ipcw_c_index: .nan
+  validation_num_comparable_pairs: 293991
+  undefined_median_fraction: 0.0
+  validation_calibration_error_60s: 0.017632463535576626
+  validation_calibration_error_300s: 0.09825153410041011
+  validation_calibration_error_900s: 0.21764439930227078
+  validation_brier_30s: 0.013430773182321915
+  validation_brier_60s: 0.034399732539535495
+  validation_brier_120s: 0.07095746826873638
+  validation_brier_180s: 0.10313340023773879
+  validation_brier_300s: 0.16087929912690496
+  validation_brier_600s: 0.2664972825883856
+  validation_brier_900s: 0.2823829733662595
+  validation_brier_1800s: 0.15915439392022884
+  validation_brier_3600s: 5.622299854297341e-09
+  validation_brier_7200s: 4.957068335803758e-10
+  validation_activation_brier_300s: 0.20856280843321373
+  validation_event_balanced_brier_300s: 0.21375659625559243
+  parameter_count: 19575
+  effective_receptive_field_samples: 29
+  best_epoch: 15
+  runtime_seconds: 37.119728080928326
+  device: cuda:0
+selected_config:
+  task_name: survival_persistence
+  model_name: discrete_time_tcn
+  schema_version: 1
+  dataset:
+    path: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade
+    sequence_representation: relative_to_current
+    use_scalar_context: true
+    sample_weighting: uniform
+  binning:
+    strategy: hybrid
+    include_open_ended: true
+    bin_edges_seconds:
+    - 0
+    - 15
+    - 30
+    - 45
+    - 60
+    - 90
+    - 120
+    - 180
+    - 240
+    - 300
+    - 420
+    - 600
+    - 900
+    - 1200
+    - 1800
+    - 2700
+    - 3600
+    - 5400
+    - 7200
+  model:
+    context_length: 30
+    hidden_channels:
+    - 32
+    - 32
+    - 32
+    kernel_size: 3
+    dilations:
+    - 1
+    - 2
+    - 4
+    dropout: 0.15
+    activation: gelu
+    normalization: group_norm
+    pooling: last
+    scalar_hidden_dim: 32
+  training:
+    batch_size: 128
+    max_epochs: 80
+    early_stopping_patience: 12
+    min_delta: 0.0
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    gradient_clip_norm: 1.0
+    lr_scheduler_factor: 0.5
+    lr_scheduler_patience: 5
+    mixed_precision: false
+    num_workers: 0
+    pin_memory: false
+    seed: 42
+  prediction:
+    horizons_seconds:
+    - 30
+    - 60
+    - 120
+    - 180
+    - 300
+    - 600
+    - 900
+    - 1800
+    - 3600
+    - 7200
+  evaluation:
+    calibration_horizons_seconds:
+    - 60
+    - 300
+    - 900
+    calibration_bins: 10
+  device: auto
+  seed: 42
+selection_rationale: Selected by validation-only validation_integrated_brier_score
+  (min); no external-test metric is included in this record.

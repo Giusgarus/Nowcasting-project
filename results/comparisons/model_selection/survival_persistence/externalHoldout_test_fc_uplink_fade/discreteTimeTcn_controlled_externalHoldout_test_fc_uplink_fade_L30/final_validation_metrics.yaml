@@ -1,0 +1,26 @@
+selected_run_id: survivalPersistence_discrete_time_tcn_relative_current_plus_scalar_uniform_externalHoldout_test_fc_uplink_fade__controlled_stage_e_seed_stability_small_seed42_seed42
+primary_metric: validation_integrated_brier_score
+primary_metric_value: 0.10908353249925226
+secondary_metrics:
+  validation_discrete_nll: 2.457647874989867
+  validation_integrated_brier_score: 0.10908353249925226
+  validation_harrell_c_index: 0.5389484712117038
+  validation_ipcw_c_index: .nan
+  validation_num_comparable_pairs: 293991
+  undefined_median_fraction: 0.0
+  validation_calibration_error_60s: 0.017632464462035115
+  validation_calibration_error_300s: 0.09825153603428842
+  validation_calibration_error_900s: 0.21764439621105736
+  validation_brier_30s: 0.013430773281689378
+  validation_brier_60s: 0.034399732573846195
+  validation_brier_120s: 0.07095746768765647
+  validation_brier_180s: 0.10313339904108046
+  validation_brier_300s: 0.1608793004653002
+  validation_brier_600s: 0.2664972804148196
+  validation_brier_900s: 0.2823829721171474
+  validation_brier_1800s: 0.15915439329297595
+  validation_brier_3600s: 5.622300203356185e-09
+  validation_brier_7200s: 4.957068616722328e-10
+  validation_activation_brier_300s: 0.20856283391973918
+  validation_event_balanced_brier_300s: 0.21375660712633615
+  runtime_seconds: 36.22322430089116
