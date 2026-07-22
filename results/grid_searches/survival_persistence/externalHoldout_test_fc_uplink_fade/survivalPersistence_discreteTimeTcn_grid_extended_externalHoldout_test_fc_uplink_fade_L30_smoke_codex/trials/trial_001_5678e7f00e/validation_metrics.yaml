@@ -1,0 +1,52 @@
+validation_discrete_nll: 2.5499100943868473
+validation_integrated_brier_score: 0.11565823327296407
+validation_harrell_c_index: 0.5718236272538956
+validation_ipcw_c_index: .nan
+validation_num_comparable_pairs: 293991
+undefined_median_fraction: 0.0
+validation_calibration_error_60s: 0.02211123608851383
+validation_calibration_error_300s: 0.14385944707711393
+validation_calibration_error_900s: 0.25309473495819085
+validation_brier_30s: 0.013772075617584327
+validation_brier_60s: 0.03514593594182931
+validation_brier_120s: 0.07341492824963229
+validation_brier_180s: 0.10643370934009566
+validation_brier_300s: 0.17264053653754682
+validation_brier_600s: 0.28881901761811507
+validation_brier_900s: 0.30316996580560324
+validation_brier_1800s: 0.16318615462261954
+validation_brier_3600s: 8.312718199099115e-09
+validation_brier_7200s: 6.838962156217636e-10
+validation_activation_brier_300s: 0.21140779679259
+validation_event_balanced_brier_300s: 0.19143120211590603
+trial_id: trial_001_5678e7f00e
+trial_index: 1
+parameters:
+  model.hidden_channels:
+  - 32
+  - 32
+  - 32
+  model.kernel_size: 3
+  model.dilations:
+  - 1
+  - 2
+  - 4
+  model.dropout: 0.05
+  training.learning_rate: 0.0005
+  training.weight_decay: 0.0
+  training.batch_size: 128
+feature_set: relative_current_plus_scalar
+sample_weighting: uniform
+device: cpu
+trial_fingerprint: fa421554539965741be92a183c0a0eaa0f7ef32b385cc40b9e1a1491c9f27e45
+status: complete
+reused_existing: false
+seed: 42
+number_of_bins: 19
+parameter_count: 19575
+effective_receptive_field_samples: 29
+best_epoch: 24
+runtime_seconds: 59.73406370799057
+checkpoint_path: results/grid_searches/survival_persistence/externalHoldout_test_fc_uplink_fade/survivalPersistence_discreteTimeTcn_grid_extended_externalHoldout_test_fc_uplink_fade_L30_smoke_codex/trials/trial_001_5678e7f00e/best_model.pt
+adapter_fingerprint: 2870b74e5f823836cedca5daf4e4a1e9dc9c4935fdb4aa035b7703a747fb2c47
+bin_edges_fingerprint: 62721c36e69615eb7237307044457bdcda0f835d2110fa071903ca04467d716b

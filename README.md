@@ -519,6 +519,18 @@ PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/
   --stage all
 ```
 
+Run the extended discrete-time TCN grid:
+
+```bash
+PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn_grid_search.py \
+  --config configs/survival_persistence/models/discrete_time_tcn_grid_search.yaml
+```
+
+The grid currently expands to 1620 validation trials using range specs for the
+numeric hyperparameters. It keeps the controlled winner's input representation,
+weighting, and binning fixed, then evaluates the external test split only for
+the selected checkpoint.
+
 Build Perfect Switch and switch metrics:
 
 ```bash

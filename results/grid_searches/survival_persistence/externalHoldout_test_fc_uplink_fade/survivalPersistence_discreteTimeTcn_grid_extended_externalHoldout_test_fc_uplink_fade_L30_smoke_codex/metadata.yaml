@@ -1,0 +1,14 @@
+task_name: survival_persistence
+model_name: discrete_time_tcn_grid_search
+search_id: survivalPersistence_discreteTimeTcn_grid_extended_externalHoldout_test_fc_uplink_fade_L30__smoke_codex
+config_path: configs/survival_persistence/models/discrete_time_tcn_grid_search.yaml
+config_fingerprint: c537ccb9721f54bc62fa9f3bed3c3a2c1252ab72fd4e09af0352d297b43a5292
+selection_id: externalHoldout_test_fc_uplink_fade
+dataset_path: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade
+dataset_fingerprint_train_validation: f5444a1b2381b4e60c3e473d5a2543478e0ac18b921f732dda4aac2ce75da115
+num_trials: 1620
+num_executed_trials: 1
+devices:
+- cpu
+skip_finalize: true
+created_at: '2026-07-22T09:04:15.130102+00:00'

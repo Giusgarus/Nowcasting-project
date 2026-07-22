@@ -448,11 +448,12 @@ def train_model(
                 "epoch_runtime_seconds": time.perf_counter() - epoch_start,
             }
         )
-        print(
-            f"epoch={epoch:03d} train_nll={train_loss:.6f} "
-            f"val_nll={val_loss:.6f} best={best_val:.6f}",
-            flush=True,
-        )
+        if bool(training.get("verbose", True)):
+            print(
+                f"epoch={epoch:03d} train_nll={train_loss:.6f} "
+                f"val_nll={val_loss:.6f} best={best_val:.6f}",
+                flush=True,
+            )
         if stale_epochs >= int(training["early_stopping_patience"]):
             break
     return pd.DataFrame(rows)

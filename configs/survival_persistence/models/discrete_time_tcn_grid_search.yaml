@@ -1,0 +1,151 @@
+task_name: survival_persistence
+model_name: discrete_time_tcn_grid_search
+search_id: survivalPersistence_discreteTimeTcn_grid_extended_externalHoldout_test_fc_uplink_fade_L30
+schema_version: 1
+
+dataset:
+  path: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade
+
+search:
+  selection_metric: validation_integrated_brier_score
+  selection_mode: min
+  max_trials: 2000
+  save_trial_predictions: false
+  save_trial_checkpoints: true
+
+parallel:
+  enabled: true
+  cuda_device_ids: auto
+  max_workers: auto
+
+base:
+  task_name: survival_persistence
+  model_name: discrete_time_tcn
+  schema_version: 1
+
+  dataset:
+    path: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade
+    sequence_representation: relative_to_current
+    use_scalar_context: true
+    sample_weighting: uniform
+
+  binning:
+    strategy: hybrid
+    include_open_ended: true
+    bin_edges_seconds:
+      - 0
+      - 15
+      - 30
+      - 45
+      - 60
+      - 90
+      - 120
+      - 180
+      - 240
+      - 300
+      - 420
+      - 600
+      - 900
+      - 1200
+      - 1800
+      - 2700
+      - 3600
+      - 5400
+      - 7200
+
+  model:
+    context_length: 30
+    hidden_channels:
+      - 32
+      - 32
+      - 32
+    kernel_size: 3
+    dilations:
+      - 1
+      - 2
+      - 4
+    dropout: 0.15
+    activation: gelu
+    normalization: group_norm
+    pooling: last
+    scalar_hidden_dim: 32
+
+  training:
+    batch_size: 128
+    max_epochs: 80
+    early_stopping_patience: 12
+    min_delta: 0.0
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    gradient_clip_norm: 1.0
+    lr_scheduler_factor: 0.5
+    lr_scheduler_patience: 5
+    mixed_precision: false
+    num_workers: 0
+    pin_memory: false
+    verbose: false
+    seed: 42
+
+  prediction:
+    horizons_seconds:
+      - 30
+      - 60
+      - 120
+      - 180
+      - 300
+      - 600
+      - 900
+      - 1800
+      - 3600
+      - 7200
+
+  evaluation:
+    calibration_horizons_seconds:
+      - 60
+      - 300
+      - 900
+    calibration_bins: 10
+
+  device: auto
+  seed: 42
+
+parameter_grid:
+  model.hidden_channels:
+    - [32, 32, 32]
+    - [32, 64, 64]
+    - [64, 64, 64]
+    - [32, 32, 64, 64]
+    - [64, 64, 128]
+  model.kernel_size:
+    start: 3
+    stop: 5
+    step: 2
+  model.dilations:
+    - [1, 2, 4]
+    - [1, 2, 4, 8]
+    - [1, 2, 4, 8, 16]
+  model.dropout:
+    start: 0.05
+    stop: 0.25
+    step: 0.10
+  training.learning_rate:
+    start: 0.0005
+    stop: 0.0015
+    step: 0.0005
+  training.weight_decay:
+    start: 0.0
+    stop: 0.0002
+    step: 0.0001
+  training.batch_size:
+    start: 128
+    stop: 256
+    step: 128
+
+final_training:
+  publish_best_run: true
+  evaluate_external_test: true
+
+output:
+  overwrite: true
+
+seed: 42

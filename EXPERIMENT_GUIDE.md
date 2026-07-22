@@ -962,6 +962,41 @@ PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/
 Detach with `Ctrl-b`, then `d`. Stages A-E use validation only; `final_test`
 loads the external test split only after `final_selection_record.yaml` exists.
 
+Run the extended discrete-time TCN grid after the controlled run has identified
+the fixed methodological choices:
+
+```bash
+mkdir -p logs/survival_persistence
+
+PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn_grid_search.py \
+  --config configs/survival_persistence/models/discrete_time_tcn_grid_search.yaml \
+  --max-trials 1 \
+  --skip-finalize \
+  --search-suffix smoke \
+  2>&1 | tee logs/survival_persistence/discrete_time_tcn_grid_search_smoke.log
+
+PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn_grid_search.py \
+  --config configs/survival_persistence/models/discrete_time_tcn_grid_search.yaml \
+  2>&1 | tee logs/survival_persistence/discrete_time_tcn_grid_search.log
+```
+
+The current TCN grid has 1620 trials. It keeps
+`relative_to_current + scalar_context`, `uniform` weighting, and the selected
+hybrid binning fixed, then searches TCN architecture and optimizer
+hyperparameters. Numeric grid entries use inclusive `start` / `stop` / `step`
+range specs. Use `--finalize-existing` if all trial rows are already present
+and only best-run publication/test evaluation is needed.
+
+Server `tmux` command:
+
+```bash
+tmux new -s survival_tcn_grid
+mkdir -p logs/survival_persistence
+PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn_grid_search.py \
+  --config configs/survival_persistence/models/discrete_time_tcn_grid_search.yaml \
+  2>&1 | tee logs/survival_persistence/discrete_time_tcn_grid_search.log
+```
+
 Build survival Perfect Switch and switch metrics from saved predictions:
 
 ```bash

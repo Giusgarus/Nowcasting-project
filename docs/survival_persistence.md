@@ -459,6 +459,80 @@ runner saves stage comparison tables, selected-stage YAML files, seed-stability
 tables, `final_selection_record.yaml`, and final test metrics only after the
 selection has been frozen.
 
+## Extended Discrete-Time TCN Grid
+
+After the controlled protocol has fixed the methodological choices, the
+extended grid keeps these choices fixed:
+
+```text
+sequence_representation = relative_to_current
+use_scalar_context = true
+sample_weighting = uniform
+binning = hybrid operational bins from the controlled winner
+seed = 42 during grid trials
+```
+
+It searches only model/training hyperparameters:
+
+```text
+hidden_channels
+kernel_size
+dilations
+dropout
+learning_rate
+weight_decay
+batch_size
+```
+
+Numeric parameters use inclusive `start` / `stop` / `step` range specs in:
+
+```text
+configs/survival_persistence/models/discrete_time_tcn_grid_search.yaml
+```
+
+The current extended grid expands to `1620` validation trials. The trial phase
+loads only train and validation splits and selects by validation Integrated
+Brier Score. The external test split is evaluated only once for the selected
+checkpoint.
+
+Smoke test one trial:
+
+```bash
+PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn_grid_search.py \
+  --config configs/survival_persistence/models/discrete_time_tcn_grid_search.yaml \
+  --max-trials 1 \
+  --skip-finalize \
+  --search-suffix smoke \
+  2>&1 | tee logs/survival_persistence/discrete_time_tcn_grid_search_smoke.log
+```
+
+Run the full grid:
+
+```bash
+PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn_grid_search.py \
+  --config configs/survival_persistence/models/discrete_time_tcn_grid_search.yaml \
+  2>&1 | tee logs/survival_persistence/discrete_time_tcn_grid_search.log
+```
+
+The runner distributes independent trials across all available CUDA GPUs. If a
+completed grid needs only best-run publication after a crash, use:
+
+```bash
+PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn_grid_search.py \
+  --config configs/survival_persistence/models/discrete_time_tcn_grid_search.yaml \
+  --finalize-existing \
+  2>&1 | tee logs/survival_persistence/discrete_time_tcn_grid_search_finalize.log
+```
+
+Outputs:
+
+```text
+results/grid_searches/survival_persistence/<selection_id>/<search_id>/
+results/comparisons/model_selection/survival_persistence/<selection_id>/<search_id>/
+results/runs/survival_persistence/<selection_id>/<best_run_id>/
+models/survival_persistence/discrete_time_tcn/<best_run_id>/
+```
+
 ## Switch Evaluation
 
 The survival model does not directly output a binary switch. The current

@@ -1,0 +1,9 @@
+task_name: survival_persistence
+model_id: discrete_time_tcn
+trial_id: trial_001_5678e7f00e
+status: complete
+selection_scope: validation_only
+test_usage: not_loaded_or_evaluated
+trial_fingerprint: fa421554539965741be92a183c0a0eaa0f7ef32b385cc40b9e1a1491c9f27e45
+checkpoint_path: results/grid_searches/survival_persistence/externalHoldout_test_fc_uplink_fade/survivalPersistence_discreteTimeTcn_grid_extended_externalHoldout_test_fc_uplink_fade_L30_smoke_codex/trials/trial_001_5678e7f00e/best_model.pt
+created_at: '2026-07-22T09:04:15.125274+00:00'
