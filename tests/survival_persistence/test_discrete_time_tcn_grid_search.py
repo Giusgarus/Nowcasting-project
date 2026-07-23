@@ -6,6 +6,7 @@ from scripts.experiments.survival_persistence.run_discrete_time_tcn_grid_search 
     build_trial_config,
     build_tcn_run_index_row,
     completed_trial_is_valid,
+    parameter_set_is_valid,
     validate_config,
 )
 from src.tasks.survival_persistence.utils.paths import RUN_INDEX_COLUMNS
@@ -22,7 +23,22 @@ CONFIG_PATH = (
 def test_grid_config_expands_to_expected_trial_count() -> None:
     config = load_yaml_config(CONFIG_PATH)
 
-    assert validate_config(config) == 1620
+    assert validate_config(config) == 1512
+
+
+def test_parameter_set_filter_rejects_too_few_dilations() -> None:
+    assert not parameter_set_is_valid(
+        {
+            "model.hidden_channels": [32, 32, 64, 64],
+            "model.dilations": [1, 2, 4],
+        }
+    )
+    assert parameter_set_is_valid(
+        {
+            "model.hidden_channels": [32, 32, 64, 64],
+            "model.dilations": [1, 2, 4, 8],
+        }
+    )
 
 
 def test_build_trial_config_applies_flat_overrides() -> None:

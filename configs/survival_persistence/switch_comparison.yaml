@@ -13,14 +13,13 @@ methods:
     variant: raw_flattened
     mode: trained
     run_id: survivalPersistence_xgboost_aft_raw_flattened_uniform_externalHoldout_test_fc_uplink_fade
-  - name: Discrete-Time TCN Controlled
+  - name: Discrete-Time TCN Grid Best
     model_family: tcn
     model_id: discrete_time_tcn
     architecture: discrete_time_tcn
     variant: relative_current_plus_scalar
-    mode: controlled_selection
-    run_id: survivalPersistence_discrete_time_tcn_relative_current_plus_scalar_uniform_externalHoldout_test_fc_uplink_fade__controlled_stage_e_seed_stability_small_seed42_seed42
-    predictions_path: results/comparisons/model_selection/survival_persistence/externalHoldout_test_fc_uplink_fade/discreteTimeTcn_controlled_externalHoldout_test_fc_uplink_fade_L30/final_test/predictions/test_predictions.parquet
+    mode: grid_search_best
+    run_id: survivalPersistence_discrete_time_tcn_relative_current_plus_scalar_uniform_externalHoldout_test_fc_uplink_fade__grid_extended_best
 
 conversion:
   survival_horizon_seconds: 300.0

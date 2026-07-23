@@ -1256,7 +1256,7 @@ def write_xgboost_comparison(
                 )
         rows.append(xgb_row)
     pd.DataFrame(rows).to_csv(
-        controlled_dir / "tables" / "model_comparison_xgboost_tcn.csv",
+        controlled_dir / "tables" / "controlled_xgboost_reference_comparison.csv",
         index=False,
     )
 

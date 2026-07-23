@@ -118,8 +118,28 @@ def build_trial_config(config: dict[str, Any], parameters: dict[str, Any]) -> di
     return trial_config
 
 
+def parameter_set_is_valid(parameters: dict[str, Any]) -> bool:
+    """Return true when one parameter set can instantiate the TCN model."""
+
+    hidden_channels = parameters.get("model.hidden_channels")
+    dilations = parameters.get("model.dilations")
+    if hidden_channels is None or dilations is None:
+        return True
+    return len(dilations) >= len(hidden_channels)
+
+
+def valid_parameter_sets(config: dict[str, Any]) -> list[dict[str, Any]]:
+    """Expand the grid and drop parameter combinations invalid for this TCN."""
+
+    return [
+        parameters
+        for parameters in expand_parameter_grid(config["parameter_grid"])
+        if parameter_set_is_valid(parameters)
+    ]
+
+
 def validate_config(config: dict[str, Any]) -> int:
-    """Validate grid config and return the full Cartesian trial count."""
+    """Validate grid config and return the executable trial count."""
 
     if config.get("task_name") != TASK_NAME:
         raise ValueError(f"Config task_name must be {TASK_NAME}.")
@@ -134,13 +154,13 @@ def validate_config(config: dict[str, Any]) -> int:
         raise ValueError("selection_metric must be validation_integrated_brier_score.")
     if search.get("selection_mode") != "min":
         raise ValueError("selection_mode must be min.")
-    trials = expand_parameter_grid(config["parameter_grid"])
+    trials = valid_parameter_sets(config)
     max_trials = int(search["max_trials"])
     if len(trials) > max_trials:
         raise ValueError(
             f"Configured survival TCN grid has {len(trials)} trials, exceeding "
             f"search.max_trials={max_trials}. Increase the safety limit explicitly; "
-            "no combinations were skipped."
+            "invalid TCN parameter combinations were already filtered."
         )
     return len(trials)
 
@@ -620,7 +640,7 @@ def main() -> None:
         shutil.rmtree(search_dir)
     search_dir.mkdir(parents=True, exist_ok=True)
     tables_dir.mkdir(parents=True, exist_ok=True)
-    parameter_sets = expand_parameter_grid(config["parameter_grid"])[:effective_trials]
+    parameter_sets = valid_parameter_sets(config)[:effective_trials]
     jobs = build_jobs(
         config=config,
         dataset_dir=dataset_dir,

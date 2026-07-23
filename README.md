@@ -531,6 +531,12 @@ numeric hyperparameters. It keeps the controlled winner's input representation,
 weighting, and binning fixed, then evaluates the external test split only for
 the selected checkpoint.
 
+The clean XGBoost-AFT versus TCN grid-best survival comparison is saved under:
+
+```text
+results/comparisons/model_selection/survival_persistence/<selection_id>/survivalPersistence_model_comparison_<selection_id>/tables/model_comparison_xgboost_tcn.csv
+```
+
 Build Perfect Switch and switch metrics:
 
 ```bash

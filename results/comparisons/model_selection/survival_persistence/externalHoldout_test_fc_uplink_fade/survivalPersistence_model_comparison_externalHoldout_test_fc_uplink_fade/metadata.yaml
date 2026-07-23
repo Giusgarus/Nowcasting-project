@@ -1,0 +1,17 @@
+comparison_id: survivalPersistence_model_comparison_externalHoldout_test_fc_uplink_fade
+comparison_type: model_selection
+task_name: survival_persistence
+selection_id: externalHoldout_test_fc_uplink_fade
+description: Clean survival model comparison between the selected XGBoost-AFT baseline and the discrete-time TCN grid-search best run.
+models:
+  - run_id: survivalPersistence_xgboost_aft_raw_flattened_uniform_externalHoldout_test_fc_uplink_fade
+    model_family: xgboost
+    model_id: xgboost_aft
+    role: frozen_reference
+  - run_id: survivalPersistence_discrete_time_tcn_relative_current_plus_scalar_uniform_externalHoldout_test_fc_uplink_fade__grid_extended_best
+    model_family: tcn
+    model_id: discrete_time_tcn
+    role: grid_extended_best
+tables:
+  model_comparison: tables/model_comparison_xgboost_tcn.csv
+created_at: '2026-07-23T14:40:00+00:00'

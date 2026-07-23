@@ -997,6 +997,13 @@ PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/
   2>&1 | tee logs/survival_persistence/discrete_time_tcn_grid_search.log
 ```
 
+The task-level survival model comparison between XGBoost-AFT and the TCN
+grid-best run is kept separate from the controlled-validation folder:
+
+```text
+results/comparisons/model_selection/survival_persistence/<selection_id>/survivalPersistence_model_comparison_<selection_id>/tables/model_comparison_xgboost_tcn.csv
+```
+
 Build survival Perfect Switch and switch metrics from saved predictions:
 
 ```bash

@@ -199,6 +199,7 @@ models/*
 results/**/figures/
 results/**/predictions/
 results/**/checkpoints/
+results/**/trials/
 results/**/validation_histories/
 results/**/*.parquet
 results/**/*.pt

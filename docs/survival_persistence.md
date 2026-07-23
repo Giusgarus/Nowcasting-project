@@ -533,6 +533,13 @@ results/runs/survival_persistence/<selection_id>/<best_run_id>/
 models/survival_persistence/discrete_time_tcn/<best_run_id>/
 ```
 
+The general survival model comparison is not stored inside the controlled TCN
+selection folder. Use:
+
+```text
+results/comparisons/model_selection/survival_persistence/<selection_id>/survivalPersistence_model_comparison_<selection_id>/tables/model_comparison_xgboost_tcn.csv
+```
+
 ## Switch Evaluation
 
 The survival model does not directly output a binary switch. The current
