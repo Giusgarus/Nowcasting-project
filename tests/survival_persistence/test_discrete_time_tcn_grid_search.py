@@ -4,9 +4,11 @@ from pathlib import Path
 
 from scripts.experiments.survival_persistence.run_discrete_time_tcn_grid_search import (
     build_trial_config,
+    build_tcn_run_index_row,
     completed_trial_is_valid,
     validate_config,
 )
+from src.tasks.survival_persistence.utils.paths import RUN_INDEX_COLUMNS
 from src.utils.config import load_yaml_config
 
 
@@ -62,3 +64,28 @@ def test_completed_trial_reuse_requires_checkpoint_and_fingerprint(tmp_path: Pat
 
     assert completed_trial_is_valid(trial_dir, "abc")
     assert not completed_trial_is_valid(trial_dir, "other")
+
+
+def test_tcn_run_index_row_matches_survival_index_schema(tmp_path: Path) -> None:
+    row = build_tcn_run_index_row(
+        run_id="run",
+        feature_set="relative_current_plus_scalar",
+        sample_weighting="uniform",
+        selection_id="selection",
+        dataset_dir=tmp_path / "dataset",
+        best_epoch=7,
+        validation_metrics={
+            "validation_discrete_nll": 1.2,
+            "validation_harrell_c_index": 0.6,
+            "validation_integrated_brier_score": 0.1,
+        },
+        test_metrics={
+            "test_harrell_c_index": 0.55,
+            "test_integrated_brier_score": 0.12,
+        },
+        created_at="2026-01-01T00:00:00+00:00",
+    )
+
+    assert set(RUN_INDEX_COLUMNS).issubset(row)
+    assert row["best_val_aft_nloglik"] != row["best_val_aft_nloglik"]
+    assert row["best_val_discrete_nll"] == 1.2

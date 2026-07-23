@@ -387,6 +387,41 @@ def metrics_summary_frame(
     return pd.DataFrame(rows)
 
 
+def build_tcn_run_index_row(
+    *,
+    run_id: str,
+    feature_set: str,
+    sample_weighting: str,
+    selection_id: str,
+    dataset_dir: Path,
+    best_epoch: int,
+    validation_metrics: dict[str, Any],
+    test_metrics: dict[str, Any],
+    created_at: str,
+) -> dict[str, Any]:
+    """Return a complete survival run-index row for a discrete-time TCN run."""
+
+    return {
+        "run_id": run_id,
+        "task_name": TASK_NAME,
+        "model_family": "tcn",
+        "model_id": MODEL_ID_DISCRETE_TIME_TCN,
+        "feature_set": feature_set,
+        "sample_weighting": sample_weighting,
+        "selection_id": selection_id,
+        "dataset_path": relative_project_path(dataset_dir),
+        "best_iteration": int(best_epoch),
+        "best_val_aft_nloglik": np.nan,
+        "best_val_discrete_nll": validation_metrics.get("validation_discrete_nll"),
+        "val_c_index": validation_metrics.get("validation_harrell_c_index"),
+        "val_ipcw_brier_mean": validation_metrics.get("validation_integrated_brier_score"),
+        "test_c_index": test_metrics.get("test_harrell_c_index"),
+        "test_ipcw_brier_mean": test_metrics.get("test_integrated_brier_score"),
+        "created_at": created_at,
+        "status": "complete",
+    }
+
+
 def finalize_best_run(
     *,
     config: dict[str, Any],
@@ -510,26 +545,17 @@ def finalize_best_run(
     save_yaml(checkpoint_dir / "training_metadata.yaml", metadata_out)
     upsert_index_row(
         run_index_path(),
-        {
-            "run_id": run_id,
-            "task_name": TASK_NAME,
-            "model_family": "tcn",
-            "model_id": MODEL_ID_DISCRETE_TIME_TCN,
-            "feature_set": feature_set,
-            "sample_weighting": sample_weighting,
-            "selection_id": selection_id,
-            "dataset_path": relative_project_path(dataset_dir),
-            "best_iteration": int(best_trial["best_epoch"]),
-            "best_val_discrete_nll": split_metrics["validation"].get("validation_discrete_nll"),
-            "val_c_index": split_metrics["validation"].get("validation_harrell_c_index"),
-            "val_ipcw_brier_mean": split_metrics["validation"].get(
-                "validation_integrated_brier_score"
-            ),
-            "test_c_index": split_metrics["test"].get("test_harrell_c_index"),
-            "test_ipcw_brier_mean": split_metrics["test"].get("test_integrated_brier_score"),
-            "created_at": created_at,
-            "status": "complete",
-        },
+        build_tcn_run_index_row(
+            run_id=run_id,
+            feature_set=feature_set,
+            sample_weighting=sample_weighting,
+            selection_id=selection_id,
+            dataset_dir=dataset_dir,
+            best_epoch=int(best_trial["best_epoch"]),
+            validation_metrics=split_metrics["validation"],
+            test_metrics=split_metrics["test"],
+            created_at=created_at,
+        ),
         id_column="run_id",
         columns=RUN_INDEX_COLUMNS,
     )
