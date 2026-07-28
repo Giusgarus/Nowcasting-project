@@ -198,8 +198,8 @@ segment ends.
 
 Implemented scope:
 
-- dataset builder, XGBoost-AFT baseline, and discrete-time TCN smoke baseline;
-- XGBoost-AFT validation grid search;
+- dataset builder, XGBoost-AFT baseline/grid search, and discrete-time TCN
+  controlled/grid-search baseline;
 - observed and right-censored continuous-time labels;
 - train-only scalar-context standardization;
 - event-balanced sample weights;
@@ -504,7 +504,7 @@ PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/
   --config configs/survival_persistence/models/xgboost_aft_grid_search.yaml
 ```
 
-Run the discrete-time TCN smoke baseline:
+Optionally run the discrete-time TCN smoke runner:
 
 ```bash
 conda run -n Nowcasting env PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn.py \
@@ -672,6 +672,7 @@ Canonical task code lives under:
 src/tasks/autoregressive/
 src/tasks/current_level_persistence/
 src/tasks/long_fade_detection/
+src/tasks/survival_persistence/
 ```
 
 New code and documentation should use the task-scoped modules and directories.

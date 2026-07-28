@@ -1,0 +1,238 @@
+task_name: survival_persistence
+schema_version: 1
+config_path: configs/survival_persistence/dataset_threshold10_L30_external_holdout.yaml
+config_fingerprint: 638fd82dd0f210108292c2de01869c313fdbe8ac015aa81a1ae8aa67c2ab366a
+selection_id: externalHoldout_test_fc_uplink_fade
+context_length: 30
+sampling_time_seconds: 30
+event_definition:
+  threshold_on: 10.0
+  threshold_off: 10.0
+  threshold_on_operator: '>='
+  threshold_off_operator: <
+  recovery_window_seconds: 300.0
+  recovery_required_fraction: 0.8
+  recovery_fraction_mode: sample_fraction
+  minimum_recovery_observations: 2
+  abort_candidate_recovery_on_threshold_on_crossing: true
+  state_machine: NORMAL -> ACTIVE_FADE on threshold_on; ACTIVE_FADE -> CANDIDATE_RECOVERY
+    on threshold_off; recovery is observed only when the configured future recovery
+    window satisfies the required sample fraction; otherwise the event remains active
+    or is censored at segment end.
+target_definition: R_t = event_end_time - t, where event_end_time is the start of
+  the stable recovery interval, not the later confirmation timestamp.
+canonical_labels:
+- y_time_seconds
+- y_event_observed
+- y_lower_bound_seconds
+- y_upper_bound_seconds
+model_independent_dataset: true
+suggested_discretization:
+  edges_seconds:
+  - 30
+  - 60
+  - 120
+  - 180
+  - 300
+  - 600
+  - 900
+  - 1800
+  - 3600
+  - 7200
+input_representations:
+- X_raw
+- X_relative_to_threshold
+- X_relative_to_current
+- scalar_context_features
+scalar_context_feature_names:
+- current_signal
+- signal_minus_threshold
+- window_mean
+- window_std
+- window_min
+- window_max
+- window_range
+- last_slope
+- recent_slope_3
+- recent_slope_5
+- recent_mean_5
+- recent_std_5
+- elapsed_since_event_start_seconds
+- elapsed_event_samples
+- current_above_threshold
+- time_since_last_above_threshold_seconds
+- consecutive_below_threshold_samples
+- fraction_above_threshold_recent_window
+scalar_context_scaler:
+  feature_names:
+  - current_signal
+  - signal_minus_threshold
+  - window_mean
+  - window_std
+  - window_min
+  - window_max
+  - window_range
+  - last_slope
+  - recent_slope_3
+  - recent_slope_5
+  - recent_mean_5
+  - recent_std_5
+  - elapsed_since_event_start_seconds
+  - elapsed_event_samples
+  - current_above_threshold
+  - time_since_last_above_threshold_seconds
+  - consecutive_below_threshold_samples
+  - fraction_above_threshold_recent_window
+  mean:
+  - 13.825621604919434
+  - 3.8256218433380127
+  - 9.668869972229004
+  - 3.9941914081573486
+  - 4.697050094604492
+  - 18.229034423828125
+  - 13.531983375549316
+  - 0.18930016458034515
+  - 0.4551764130592346
+  - 1.1709659099578857
+  - 13.299283027648926
+  - 2.0740017890930176
+  - 483.2920837402344
+  - 16.893001556396484
+  - 0.8218623399734497
+  - 14.219202041625977
+  - 0.4667437970638275
+  - 0.8290823101997375
+  std:
+  - 7.010034084320068
+  - 7.010034084320068
+  - 4.955633163452148
+  - 2.83540940284729
+  - 3.271799325942993
+  - 8.886665344238281
+  - 8.590907096862793
+  - 3.579230546951294
+  - 4.466569900512695
+  - 6.243851184844971
+  - 6.549463748931885
+  - 2.0048820972442627
+  - 537.2844848632812
+  - 17.64358901977539
+  - 0.38262858986854553
+  - 39.85469436645508
+  - 1.308056116104126
+  - 0.280874103307724
+  observed_std:
+  - 7.010034084320068
+  - 7.010034084320068
+  - 4.955633163452148
+  - 2.83540940284729
+  - 3.271799325942993
+  - 8.886665344238281
+  - 8.590907096862793
+  - 3.579230546951294
+  - 4.466569900512695
+  - 6.243851184844971
+  - 6.549463748931885
+  - 2.0048820972442627
+  - 537.2844848632812
+  - 17.64358901977539
+  - 0.38262858986854553
+  - 39.85469436645508
+  - 1.308056116104126
+  - 0.280874103307724
+  fitted_on: train
+  standardized: true
+event_balanced_weight: 1 / event_sample_count; sums to one per event
+external_test_dataset: fc-uplink-fade.csv
+development_datasets:
+- DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
+- DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv
+- UPLINK-FADE_Fucino_GX4_AprJun2021.csv
+- UPLINK-FADE_Fucino_GX5_AprJun2021.csv
+- dati_meteo_beacon.csv
+- fc-downlink-fade.csv
+- uplink_beacon_data_fucino_GX4.csv
+source_datasets:
+- DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
+- DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv
+- UPLINK-FADE_Fucino_GX4_AprJun2021.csv
+- UPLINK-FADE_Fucino_GX5_AprJun2021.csv
+- dati_meteo_beacon.csv
+- fc-downlink-fade.csv
+- fc-uplink-fade.csv
+- uplink_beacon_data_fucino_GX4.csv
+source_files:
+  full_signal: data/interim/clean_signal/all_signal_clean.parquet
+small_gap_imputation:
+  enabled: true
+  expected_seconds: 30.0
+  max_gap_seconds: 90.0
+  max_missing_run: 2
+  method: linear_time
+  summary: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade/small_gap_imputation_summary.csv
+split:
+  mode: external_holdout_by_dataset
+  external_test_dataset: fc-uplink-fade.csv
+  development_event_split:
+    train_fraction: 0.85
+    validation_fraction: 0.15
+    min_events_for_validation_split: 3
+splits:
+  train:
+    n_samples: 1729
+    n_events: 117
+    n_observed_samples: 1729
+    n_censored_samples: 0
+    datasets:
+    - DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
+    - DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv
+    - UPLINK-FADE_Fucino_GX4_AprJun2021.csv
+    - UPLINK-FADE_Fucino_GX5_AprJun2021.csv
+    - dati_meteo_beacon.csv
+    - fc-downlink-fade.csv
+    - uplink_beacon_data_fucino_GX4.csv
+  val:
+    n_samples: 729
+    n_events: 23
+    n_observed_samples: 723
+    n_censored_samples: 6
+    datasets:
+    - DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv
+    - UPLINK-FADE_Fucino_GX4_AprJun2021.csv
+    - UPLINK-FADE_Fucino_GX5_AprJun2021.csv
+    - dati_meteo_beacon.csv
+    - fc-downlink-fade.csv
+    - uplink_beacon_data_fucino_GX4.csv
+  test:
+    n_samples: 921
+    n_events: 55
+    n_observed_samples: 851
+    n_censored_samples: 70
+    datasets:
+    - fc-uplink-fade.csv
+diagnostics:
+  num_detected_events: 195
+  num_events_without_samples: 0
+  num_context_exclusions: 0
+  num_non_positive_target_exclusions: 0
+output_files:
+  small_gap_imputation_summary: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade/small_gap_imputation_summary.csv
+  train_npz: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade/train.npz
+  train_metadata: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade/train_metadata.parquet
+  val_npz: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade/val.npz
+  val_metadata: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade/val_metadata.parquet
+  test_npz: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade/test.npz
+  test_metadata: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade/test_metadata.parquet
+  external_holdout_split_plan: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade/external_holdout_split_plan.csv
+  event_summary: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade/event_summary.csv
+  split_summary: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade/split_summary.csv
+  censoring_summary: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade/censoring_summary.csv
+  confirmation_delay_summary: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade/confirmation_delay_summary.csv
+  dataset_metadata: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade/dataset_metadata.yaml
+num_train_windows: 1729
+num_val_windows: 729
+num_test_windows: 921
+num_events_total: 195
+num_observed_events: 192
+num_censored_events: 3
+created_at: '2026-07-28T10:55:53.186110+00:00'

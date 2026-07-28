@@ -398,8 +398,8 @@ autoregressive branch, independently within each event:
 ```text
 raw decision
   -> ensure_min_island_length(..., switch_time=10)
-  -> hold while the observed Signal remains above 10
-  -> model_switch_min_time
+  -> hold while the observed Signal remains >= threshold
+  -> model_switch
 ```
 
 Compute the task-scoped Perfect Switch and model comparisons with:

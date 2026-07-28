@@ -155,8 +155,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-AGENTS.md
-
 # pytype static type analyzer
 .pytype/
 
@@ -242,3 +240,25 @@ data/processed/current_level_persistence/**
 !data/processed/current_level_persistence/**/split_summary.csv
 !data/processed/current_level_persistence/**/censoring_summary.csv
 !data/processed/current_level_persistence/**/external_holdout_split_plan.csv
+
+!data/processed/long_fade_detection/
+data/processed/long_fade_detection/**
+!data/processed/long_fade_detection/**/
+!data/processed/long_fade_detection/**/dataset_metadata.yaml
+!data/processed/long_fade_detection/**/test_metadata.parquet
+!data/processed/long_fade_detection/**/split_summary.csv
+!data/processed/long_fade_detection/**/event_summary.csv
+!data/processed/long_fade_detection/**/external_holdout_split_plan.csv
+!data/processed/long_fade_detection/**/small_gap_imputation_summary.csv
+
+!data/processed/survival_persistence/
+data/processed/survival_persistence/**
+!data/processed/survival_persistence/**/
+!data/processed/survival_persistence/**/dataset_metadata.yaml
+!data/processed/survival_persistence/**/test_metadata.parquet
+!data/processed/survival_persistence/**/split_summary.csv
+!data/processed/survival_persistence/**/event_summary.csv
+!data/processed/survival_persistence/**/censoring_summary.csv
+!data/processed/survival_persistence/**/confirmation_delay_summary.csv
+!data/processed/survival_persistence/**/external_holdout_split_plan.csv
+!data/processed/survival_persistence/**/small_gap_imputation_summary.csv

@@ -557,7 +557,7 @@ the raw decision is formed, the shared switch post-processing is applied:
 raw switch
   -> min-island rule
   -> stateful hold while the true signal remains >= threshold
-  -> model_switch_min_time
+  -> model_switch
 ```
 
 The Perfect Switch reference is task-scoped and uses the same shared reference

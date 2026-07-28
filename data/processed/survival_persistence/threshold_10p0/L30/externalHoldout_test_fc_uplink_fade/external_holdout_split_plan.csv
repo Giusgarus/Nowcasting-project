@@ -1,0 +1,9 @@
+dataset_name,role,num_events,num_train_events,num_val_events,num_test_events,num_train_windows,num_val_windows,num_test_windows,policy
+fc-uplink-fade.csv,external_test,55,0,0,55,0,0,921,use_full_dataset
+DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv,development,5,4,1,0,92,22,0,chronological_train_validation
+DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv,development,1,1,0,0,1,0,0,put_all_in_train
+UPLINK-FADE_Fucino_GX4_AprJun2021.csv,development,8,6,2,0,54,99,0,chronological_train_validation
+UPLINK-FADE_Fucino_GX5_AprJun2021.csv,development,8,6,2,0,57,3,0,chronological_train_validation
+dati_meteo_beacon.csv,development,20,17,3,0,203,201,0,chronological_train_validation
+fc-downlink-fade.csv,development,18,15,3,0,171,43,0,chronological_train_validation
+uplink_beacon_data_fucino_GX4.csv,development,80,68,12,0,1151,361,0,chronological_train_validation

@@ -1,0 +1,9 @@
+dataset_name,dataset_id,num_original_rows,num_output_rows,num_inserted_rows,num_imputed_gaps,max_original_gap_seconds,max_imputed_gap_seconds,max_inserted_run
+uplink_beacon_data_fucino_GX4.csv,dataset_008,12070,12070,0,0,2243795.0,,0
+dati_meteo_beacon.csv,dataset_005,3905,3905,0,0,6377004.0,,0
+fc-downlink-fade.csv,dataset_006,3794,3794,0,0,2257379.0,,0
+UPLINK-FADE_Fucino_GX4_AprJun2021.csv,dataset_003,2885,2885,0,0,2110228.0,,0
+UPLINK-FADE_Fucino_GX5_AprJun2021.csv,dataset_004,2525,2525,0,0,3323598.0,,0
+DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv,dataset_001,1803,1803,0,0,3280365.0,,0
+DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv,dataset_002,364,364,0,0,36.0,,0
+fc-uplink-fade.csv,dataset_007,8961,8961,0,0,2257255.0,,0

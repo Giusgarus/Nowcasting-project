@@ -107,6 +107,53 @@ def _first_row(path: Path) -> dict[str, Any]:
     return frame.iloc[0].to_dict()
 
 
+def _optional_yaml(path: Path) -> dict[str, Any]:
+    """Read an optional YAML file and return an empty dict when missing."""
+
+    if not path.exists():
+        return {}
+    data = load_yaml_config(path)
+    if not isinstance(data, dict):
+        return {}
+    return data
+
+
+def _first_available(*values: Any) -> Any:
+    """Return the first non-null value from several metadata sources."""
+
+    for value in values:
+        if value is None:
+            continue
+        if pd.isna(value):
+            continue
+        return value
+    return None
+
+
+def _forecast_parameter_value(
+    column: str,
+    metrics: dict[str, Any],
+    run_metadata: dict[str, Any],
+    model_config: dict[str, Any],
+) -> Any:
+    """Resolve one forecast summary parameter from metrics and metadata files."""
+
+    final_training = run_metadata.get("final_training", {})
+    derived = {
+        "final_training_epochs": final_training.get("epochs"),
+        "final_retrained_on_full_development": final_training.get(
+            "retrain_on_full_development"
+        ),
+        "teacher_forcing_ratio": run_metadata.get("teacher_forcing_ratio_training"),
+    }
+    return _first_available(
+        metrics.get(column),
+        derived.get(column),
+        run_metadata.get(column),
+        model_config.get(column),
+    )
+
+
 def _method_name_lookup(config: dict[str, Any], selection_id: str) -> dict[str, str]:
     """Map run IDs to readable method names from the switch-comparison config."""
 
@@ -165,7 +212,15 @@ def _build_forecast_rows(
         kind="stable",
     ).iterrows():
         run_id = str(run["run_id"])
-        metrics = _first_row(resolve_run_dir(run_id) / "metrics" / "metrics_summary.csv")
+        run_dir = resolve_run_dir(run_id)
+        metrics = _first_row(run_dir / "metrics" / "metrics_summary.csv")
+        run_metadata = _optional_yaml(run_dir / "metadata.yaml")
+        model_path = run.get("model_path")
+        model_config = (
+            _optional_yaml(PROJECT_ROOT / str(model_path) / "model_config.yaml")
+            if pd.notna(model_path)
+            else {}
+        )
         label = _run_label(run, method_names)
         base = {
             "method": label,
@@ -187,7 +242,9 @@ def _build_forecast_rows(
             "num_val_windows": metrics.get("num_val_windows"),
         }
         for column in FORECAST_PARAMETER_COLUMNS:
-            validation_row[column] = metrics.get(column)
+            validation_row[column] = _forecast_parameter_value(
+                column, metrics, run_metadata, model_config
+            )
         validation_rows.append(validation_row)
 
         test_row = {
@@ -197,7 +254,9 @@ def _build_forecast_rows(
             "num_test_windows": metrics.get("num_test_windows"),
         }
         for column in FORECAST_PARAMETER_COLUMNS:
-            test_row[column] = metrics.get(column)
+            test_row[column] = _forecast_parameter_value(
+                column, metrics, run_metadata, model_config
+            )
         test_rows.append(test_row)
 
     return validation_rows, test_rows

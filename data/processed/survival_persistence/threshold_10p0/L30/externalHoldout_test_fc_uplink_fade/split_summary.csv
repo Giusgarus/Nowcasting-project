@@ -1,0 +1,4 @@
+split,num_samples,num_events,num_observed_samples,num_censored_samples,num_observed_events,num_censored_events,min_y_time_seconds,median_y_time_seconds,max_y_time_seconds
+train,1729,117,1729,0,117,0,26.0,335.0,3264.0
+validation,729,23,723,6,22,1,8.0,884.0,2959.0
+test,921,55,851,70,53,2,25.0,360.0,3209.0

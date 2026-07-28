@@ -25,8 +25,8 @@ for its dataset and model commands.
 The first-stage `long_fade_detection` binary task is documented in
 `docs/long_fade_detection.md`.
 The `survival_persistence` task currently includes the model-independent
-dataset pipeline, XGBoost-AFT baseline/grid, and a discrete-time TCN smoke
-baseline; see
+dataset pipeline, XGBoost-AFT baseline/grid, discrete-time TCN controlled
+selection/grid search, and switch evaluation; see
 `docs/survival_persistence.md`.
 
 ## 1. Environment And Verification
@@ -562,7 +562,7 @@ At each `input_end_time`, the model switch is activated only when at least the
 configured number of future horizon predictions satisfies the threshold
 condition. With `prediction_length: 10` and
 `required_points_above_threshold: 10`, this means all 10 predicted future
-points must be above the 10.0 signal threshold before minimum-island
+points must meet or exceed the 10.0 signal threshold before minimum-island
 post-processing is applied.
 
 Run:
@@ -921,7 +921,7 @@ PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/
   2>&1 | tee logs/survival_persistence/xgboost_aft_grid_search_smoke.log
 ```
 
-Run the discrete-time TCN smoke baseline:
+Optionally run the discrete-time TCN smoke runner:
 
 ```bash
 conda run -n Nowcasting env PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn.py \
@@ -1017,7 +1017,7 @@ conda run -n Nowcasting env PYTHONPATH=. python scripts/analysis/survival_persis
 The current conversion rule is:
 
 ```text
-model_switch_raw(t) = 1 if S(300s | X_t) >= 0.5 and Signal(t) > 10.0
+model_switch_raw(t) = 1 if S(300s | X_t) >= 0.5 and Signal(t) >= 10.0
 ```
 
 The shared switch post-processing is then applied. Event plots use a display-only
