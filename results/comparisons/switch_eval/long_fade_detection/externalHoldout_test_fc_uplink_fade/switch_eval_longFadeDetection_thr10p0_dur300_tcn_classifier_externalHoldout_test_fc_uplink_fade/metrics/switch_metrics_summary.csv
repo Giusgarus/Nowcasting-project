@@ -1,2 +1,2 @@
 method,split,num_points,num_perfect_positive,num_model_positive_raw,num_model_positive,points_changed_by_min_island,sample_interval_seconds,active_duration_seconds,precision,recall,f1,intersection_over_union,balanced_accuracy,false_positive_rate,false_negative_rate,true_positives,true_negatives,false_positives,false_negatives,decision_rule
-TCN Classifier,test,2569,467,657,875,218,30.0,26250.0,0.5337142857142857,1.0,0.6959761549925484,0.5337142857142857,0.9029495718363463,0.19410085632730734,0.0,467,1694,408,0,predicted_long_fade_probability_threshold
+TCN Classifier,test,2569,481,669,890,221,30.0,26700.0,0.5404494382022472,1.0,0.701677607585704,0.5404494382022472,0.9020593869731801,0.19588122605363983,0.0,481,1679,409,0,predicted_long_fade_probability_threshold

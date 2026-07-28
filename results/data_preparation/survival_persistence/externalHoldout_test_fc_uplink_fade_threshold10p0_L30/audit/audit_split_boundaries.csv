@@ -1,4 +1,4 @@
 split,datasets,num_events,num_samples,num_observed_events,num_censored_events,first_event_start_time,last_event_start_time
-train,DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv;DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv;UPLINK-FADE_Fucino_GX4_AprJun2021.csv;UPLINK-FADE_Fucino_GX5_AprJun2021.csv;dati_meteo_beacon.csv;fc-downlink-fade.csv;uplink_beacon_data_fucino_GX4.csv,117,1655,117,0,2020-08-01 15:45:33,2021-07-16 16:52:28
-validation,DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv;UPLINK-FADE_Fucino_GX4_AprJun2021.csv;UPLINK-FADE_Fucino_GX5_AprJun2021.csv;dati_meteo_beacon.csv;fc-downlink-fade.csv;uplink_beacon_data_fucino_GX4.csv,24,774,23,1,2020-10-07 06:56:57,2021-07-18 12:43:00
-test,fc-uplink-fade.csv,56,900,54,2,2020-08-01 16:09:10,2020-11-16 21:44:02
+train,DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv;DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv;UPLINK-FADE_Fucino_GX4_AprJun2021.csv;UPLINK-FADE_Fucino_GX5_AprJun2021.csv;dati_meteo_beacon.csv;fc-downlink-fade.csv;uplink_beacon_data_fucino_GX4.csv,117,1729,117,0,2020-08-01 15:45:33,2021-07-16 16:52:28
+validation,DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv;UPLINK-FADE_Fucino_GX4_AprJun2021.csv;UPLINK-FADE_Fucino_GX5_AprJun2021.csv;dati_meteo_beacon.csv;fc-downlink-fade.csv;uplink_beacon_data_fucino_GX4.csv,23,729,22,1,2020-10-07 06:56:57,2021-07-18 12:43:00
+test,fc-uplink-fade.csv,55,921,53,2,2020-08-01 16:09:10,2020-11-16 21:44:02

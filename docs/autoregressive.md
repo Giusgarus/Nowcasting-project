@@ -356,13 +356,13 @@ conversion:
   prediction_aggregation: horizon_threshold_count
   required_points_above_threshold: 10
   threshold: 10.0
-  condition: greater_than
+  condition: greater_than_or_equal
 ```
 
 With `prediction_length = 10`, this means:
 
 ```text
-switch(t) = 1 if all 10 predicted future points are above 10.0
+switch(t) = 1 if all 10 predicted future points are >= 10.0
 ```
 
 The configured switch post-processing is then applied. Switch comparisons use

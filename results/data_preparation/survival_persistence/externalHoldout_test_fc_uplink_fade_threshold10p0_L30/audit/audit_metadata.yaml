@@ -2,7 +2,7 @@ task_name: survival_persistence
 config_path: configs/survival_persistence/dataset_threshold10_L30_external_holdout.yaml
 dataset_dir: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade
 audit_dir: results/data_preparation/survival_persistence/externalHoldout_test_fc_uplink_fade_threshold10p0_L30/audit
-dataset_config_fingerprint: 0b3d213ef5a1661b3f4829af3bae53ac034ab5d0bd04fb48479091bf2fcd450a
+dataset_config_fingerprint: 638fd82dd0f210108292c2de01869c313fdbe8ac015aa81a1ae8aa67c2ab366a
 recovery_window_semantics:
   interval: '[candidate_recovery_start, candidate_recovery_start + recovery_window_seconds]'
   left_endpoint: inclusive

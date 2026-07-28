@@ -88,18 +88,18 @@ splits:
     - fc-downlink-fade.csv
     - uplink_beacon_data_fucino_GX4.csv
   test:
-    n_samples: 7693
+    n_samples: 7692
     n_events: 24
     datasets:
     - fc-uplink-fade.csv
 target_statistics_seconds:
   train:
-    mean: 11200.816613940198
+    mean: 11202.656750688846
     median: 334.0
     min: 25.0
     max: 5250276.0
     p10: 31.0
-    p90: 14640.3
+    p90: 14641.599999999999
   val:
     mean: 6073.933722384327
     median: 275.0
@@ -108,12 +108,12 @@ target_statistics_seconds:
     p10: 31.0
     p90: 10658.60000000002
   test:
-    mean: 2547.0869621734046
+    mean: 2547.4248569942797
     median: 154.0
     min: 17.0
     max: 294976.0
     p10: 29.0
-    p90: 6384.800000000006
+    p90: 6387.900000000017
 source_files:
   event_windows: data/interim/event_windows/threshold_10p0/all_event_windows.parquet
   event_quality: data/interim/event_windows/threshold_10p0/event_window_quality.parquet
@@ -141,8 +141,8 @@ output_files:
   dataset_metadata: data/processed/current_level_persistence/delta_0p5/L30/externalHoldout_test_fc_uplink_fade/dataset_metadata.yaml
 num_train_windows: 19598
 num_val_windows: 4798
-num_test_windows: 7693
+num_test_windows: 7692
 num_censored_windows: 815
 num_events_total: 100
 num_datasets_total: 8
-created_at: '2026-07-17T09:04:20.380015+00:00'
+created_at: '2026-07-28T10:55:57.925751+00:00'

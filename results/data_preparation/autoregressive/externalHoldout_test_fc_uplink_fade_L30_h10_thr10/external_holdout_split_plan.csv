@@ -1,5 +1,5 @@
 dataset_name,role,num_events,num_train_events,num_val_events,num_test_events,num_train_windows,num_val_windows,num_test_windows,policy
-fc-uplink-fade.csv,external_test,24,0,0,24,0,0,7709,use_full_dataset
+fc-uplink-fade.csv,external_test,24,0,0,24,0,0,7708,use_full_dataset
 uplink_beacon_data_fucino_GX4.csv,development,34,28,6,0,8848,1896,0,chronological_train_validation
 dati_meteo_beacon.csv,development,11,9,2,0,2844,632,0,chronological_train_validation
 fc-downlink-fade.csv,development,10,8,2,0,2573,644,0,chronological_train_validation

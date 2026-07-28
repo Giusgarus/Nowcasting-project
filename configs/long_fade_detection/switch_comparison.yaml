@@ -30,7 +30,7 @@ methods:
 conversion:
   probability_threshold: 0.5
   signal_threshold: 10.0
-  signal_condition: greater_than
+  signal_condition: greater_than_or_equal
   require_current_signal_above_threshold: true
   switch_time_samples: 10
   apply_min_island_length: true

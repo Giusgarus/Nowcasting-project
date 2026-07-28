@@ -44,7 +44,7 @@ def test_ensure_min_island_length_handles_multiple_original_islands() -> None:
     assert adjusted[0] == 0
 
 
-def test_legacy_persistent_threshold_requires_switch_time_plus_one_points() -> None:
+def test_persistent_threshold_requires_switch_time_plus_one_points() -> None:
     signal = [0.0, 11.0, 11.0, 11.0, 0.0, 12.0, 12.0]
 
     switch = detect_persistent_threshold_switch(
@@ -56,7 +56,7 @@ def test_legacy_persistent_threshold_requires_switch_time_plus_one_points() -> N
     np.testing.assert_array_equal(switch, [0, 1, 1, 1, 0, 0, 0])
 
 
-def test_perfect_switch_matches_legacy_persistent_threshold_rule() -> None:
+def test_perfect_switch_matches_inclusive_persistent_threshold_rule() -> None:
     frame = pd.DataFrame(
         {
             "event_id": "event_a",
@@ -76,16 +76,16 @@ def test_perfect_switch_matches_legacy_persistent_threshold_rule() -> None:
     )
 
     np.testing.assert_array_equal(
-        processed["perfect_switch_raw"], [0, 1, 1, 1, 0, 0, 0]
+        processed["perfect_switch_raw"], [1, 1, 1, 1, 0, 0, 0]
     )
-    np.testing.assert_array_equal(processed["perfect_switch"], [0, 1, 1, 1, 0, 0, 0])
+    np.testing.assert_array_equal(processed["perfect_switch"], [1, 1, 1, 1, 0, 0, 0])
     np.testing.assert_array_equal(
         processed["perfect_switch_min_time"], processed["perfect_switch"]
     )
     np.testing.assert_array_equal(
-        processed["perfect_switch_adjusted"], [0, 1, 1, 0, 0, 1, 1]
+        processed["perfect_switch_adjusted"], [1, 1, 0, 0, 0, 1, 1]
     )
-    np.testing.assert_array_equal(processed["outage_mask"], [0, 1, 1, 1, 0, 1, 1])
+    np.testing.assert_array_equal(processed["outage_mask"], [1, 1, 1, 1, 0, 1, 1])
     np.testing.assert_array_equal(
         raw_only["perfect_switch"], raw_only["perfect_switch_raw"]
     )
@@ -119,8 +119,8 @@ def test_generic_signal_to_switch_rule_is_model_agnostic() -> None:
         switch_time=2,
     )
 
-    np.testing.assert_array_equal(raw, [0, 1, 0, 1])
-    np.testing.assert_array_equal(processed, [0, 1, 1, 1])
+    np.testing.assert_array_equal(raw, [1, 1, 0, 1])
+    np.testing.assert_array_equal(processed, [1, 1, 0, 1])
     np.testing.assert_array_equal(model_raw, raw)
     np.testing.assert_array_equal(model_processed, processed)
 

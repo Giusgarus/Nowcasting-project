@@ -67,7 +67,7 @@ def test_threshold_balance_counts_above_and_below_points() -> None:
     empty_row = summary.loc[summary["dataset_name"].eq("no_events.csv")].iloc[0]
     global_row = summary.loc[summary["scope"].eq("global")].iloc[0]
 
-    assert dataset_row["points_above_threshold"] == 2
-    assert dataset_row["points_below_or_equal_threshold"] == 2
+    assert dataset_row["points_at_or_above_threshold"] == 3
+    assert dataset_row["points_below_threshold"] == 1
     assert empty_row["total_points"] == 0
     assert global_row["total_points"] == 4

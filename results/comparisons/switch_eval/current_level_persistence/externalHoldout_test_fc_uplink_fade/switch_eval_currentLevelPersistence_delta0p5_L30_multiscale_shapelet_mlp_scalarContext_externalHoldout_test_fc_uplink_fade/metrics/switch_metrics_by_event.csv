@@ -5,12 +5,12 @@ Shapelet MLP Scalar Context,dataset_007_event_00003,test,329,71,0,0,0,31.0,0.0,0
 Shapelet MLP Scalar Context,dataset_007_event_00004,test,324,39,0,0,0,30.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,1.0,0,285,0,39,predicted_duration_threshold
 Shapelet MLP Scalar Context,dataset_007_event_00005,test,307,0,0,0,0,31.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.0,0,307,0,0,predicted_duration_threshold
 Shapelet MLP Scalar Context,dataset_007_event_00006,test,297,12,0,0,0,30.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,1.0,0,285,0,12,predicted_duration_threshold
-Shapelet MLP Scalar Context,dataset_007_event_00007,test,257,145,0,0,0,30.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,1.0,0,112,0,145,predicted_duration_threshold
+Shapelet MLP Scalar Context,dataset_007_event_00007,test,257,146,0,0,0,30.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,1.0,0,111,0,146,predicted_duration_threshold
 Shapelet MLP Scalar Context,dataset_007_event_00009,test,331,28,0,0,0,30.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,1.0,0,303,0,28,predicted_duration_threshold
-Shapelet MLP Scalar Context,dataset_007_event_00010,test,332,0,0,0,0,30.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.0,0,332,0,0,predicted_duration_threshold
+Shapelet MLP Scalar Context,dataset_007_event_00010,test,331,12,0,0,0,30.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,1.0,0,319,0,12,predicted_duration_threshold
 Shapelet MLP Scalar Context,dataset_007_event_00011,test,328,0,0,0,0,32.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.0,0,328,0,0,predicted_duration_threshold
 Shapelet MLP Scalar Context,dataset_007_event_00012,test,332,0,0,0,0,32.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.0,0,332,0,0,predicted_duration_threshold
-Shapelet MLP Scalar Context,dataset_007_event_00013,test,332,13,0,0,0,28.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,1.0,0,319,0,13,predicted_duration_threshold
+Shapelet MLP Scalar Context,dataset_007_event_00013,test,332,14,0,0,0,28.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,1.0,0,318,0,14,predicted_duration_threshold
 Shapelet MLP Scalar Context,dataset_007_event_00014,test,277,0,0,0,0,30.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,0.0,0,277,0,0,predicted_duration_threshold
 Shapelet MLP Scalar Context,dataset_007_event_00015,test,267,23,0,0,0,30.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,1.0,0,244,0,23,predicted_duration_threshold
 Shapelet MLP Scalar Context,dataset_007_event_00016,test,332,41,0,0,0,29.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,1.0,0,291,0,41,predicted_duration_threshold

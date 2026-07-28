@@ -90,3 +90,7 @@ parameters:
   min_child_weight: 3
   reg_lambda: 1.0
 created_at: '2026-07-08T09:24:56.189779+00:00'
+prediction_refresh:
+  refreshed_at: '2026-07-28T11:58:53.824191+00:00'
+  reason: dataset rebuilt; predictions refreshed without retraining
+  dataset_build_fingerprint: 48846d9b2de88149342392c1fc4ef52c7065926c9e838d7c4f75b59a9bddb385

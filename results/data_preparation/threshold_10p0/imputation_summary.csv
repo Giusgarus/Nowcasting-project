@@ -1,0 +1,9 @@
+dataset_name,num_events_with_imputation,num_imputed_points,pct_imputed_points,max_consecutive_imputed_points,num_warning_events_due_to_imputation,num_unusable_events_due_to_missing_or_gaps
+DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv,1,2,0.11092623405435387,2,0,0
+DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv,0,0,0.0,0,0,0
+UPLINK-FADE_Fucino_GX4_AprJun2021.csv,1,2,0.06932409012131716,2,0,0
+UPLINK-FADE_Fucino_GX5_AprJun2021.csv,2,6,0.2376237623762376,2,0,0
+dati_meteo_beacon.csv,0,0,0.0,0,0,0
+fc-downlink-fade.csv,0,0,0.0,0,0,0
+fc-uplink-fade.csv,1,10,0.11159468809284678,1,0,1
+uplink_beacon_data_fucino_GX4.csv,0,0,0.0,0,0,0

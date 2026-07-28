@@ -1,6 +1,6 @@
 split,censoring_reason,num_samples,num_events
-train,observed,1655,117
-validation,observed,768,23
+train,observed,1729,117
+validation,observed,723,22
 validation,insufficient_recovery_window_before_segment_end,6,1
-test,observed,830,54
+test,observed,851,53
 test,segment_ended_before_recovery,70,2

@@ -87,12 +87,27 @@ def build_summary() -> pd.DataFrame:
             "model_id": run.get("model_id"),
             "run_id": run.get("run_id"),
             "best_epoch": run.get("best_epoch"),
-            "best_val_mae_seconds": run.get("best_val_mae_seconds"),
-            "best_val_rmse_seconds": run.get("best_val_rmse_seconds"),
+            "best_val_mae_seconds": metrics.get(
+                "val_mae_seconds",
+                run.get("best_val_mae_seconds"),
+            ),
+            "best_val_rmse_seconds": metrics.get(
+                "val_rmse_seconds",
+                run.get("best_val_rmse_seconds"),
+            ),
             "best_val_median_ae_seconds": metrics.get("val_median_ae_seconds"),
-            "test_mae_seconds": run.get("test_mae_seconds"),
-            "test_rmse_seconds": run.get("test_rmse_seconds"),
-            "test_median_ae_seconds": run.get("test_median_ae_seconds"),
+            "test_mae_seconds": metrics.get(
+                "test_mae_seconds",
+                run.get("test_mae_seconds"),
+            ),
+            "test_rmse_seconds": metrics.get(
+                "test_rmse_seconds",
+                run.get("test_rmse_seconds"),
+            ),
+            "test_median_ae_seconds": metrics.get(
+                "test_median_ae_seconds",
+                run.get("test_median_ae_seconds"),
+            ),
             "test_mae_minutes": metrics.get("test_mae_minutes"),
             "test_rmse_minutes": metrics.get("test_rmse_minutes"),
             "test_median_ae_minutes": metrics.get("test_median_ae_minutes"),

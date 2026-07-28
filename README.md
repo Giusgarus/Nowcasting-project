@@ -221,7 +221,7 @@ its own decision timestamp, then applies the shared post-processing:
 ```text
 model_switch_raw
   -> min-island extension to switch_time samples
-  -> hold switch active while the observed Signal remains above threshold
+  -> hold switch active while the observed Signal remains >= threshold
   -> model_switch
 ```
 
@@ -233,20 +233,20 @@ Current configured rules:
 
 - **Autoregressive forecasting**:
   `model_switch_raw(t) = 1` when at least
-  `required_points_above_threshold` predicted horizon values exceed the signal
+  `required_points_above_threshold` predicted horizon values meet or exceed the signal
   threshold. In the canonical `L30_h10_thr10` setup this means all 10 predicted
-  future points must be greater than `10.0`.
+  future points must be `>= 10.0`.
 - **Current-level persistence**:
   `model_switch_raw(t) = 1` when the predicted remaining persistence duration
   is at least `300` seconds and, when configured, the current observed signal is
-  greater than `10.0`.
+  `>= 10.0`.
 - **Long-fade detection**:
   `model_switch_raw(t) = 1` when `P(long_fade | X_t) >= 0.5` and, when
-  configured, the current observed signal is greater than `10.0`.
+  configured, the current observed signal is `>= 10.0`.
 - **Survival persistence**:
   `model_switch_raw(t) = 1` when the predicted survival probability at the
   300-second horizon satisfies `S(300s | X_t) >= 0.5` and, when configured, the
-  current observed signal is greater than `10.0`.
+  current observed signal is `>= 10.0`.
 
 Switch metrics are computed on each task's native decision timestamps.
 Display-only event plots for long-fade and survival may be widened to a

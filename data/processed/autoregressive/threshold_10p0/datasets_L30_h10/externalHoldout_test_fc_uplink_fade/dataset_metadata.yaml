@@ -39,10 +39,10 @@ output_files:
   normalization_summary: results/data_preparation/autoregressive/externalHoldout_test_fc_uplink_fade_L30_h10_thr10/normalization_summary.csv
   external_holdout_split_plan: results/data_preparation/autoregressive/externalHoldout_test_fc_uplink_fade_L30_h10_thr10/external_holdout_split_plan.csv
   dataset_metadata: data/processed/autoregressive/threshold_10p0/datasets_L30_h10/externalHoldout_test_fc_uplink_fade/dataset_metadata.yaml
-num_windows_total: 31904
+num_windows_total: 31903
 num_train_windows: 19412
 num_val_windows: 4783
-num_test_windows: 7709
+num_test_windows: 7708
 num_events_total: 100
 num_train_events: 61
 num_val_events: 15
@@ -52,7 +52,7 @@ num_development_datasets: 7
 ranking_metric: num_valid_autoregressive_windows
 ranking_table: results/data_preparation/autoregressive/externalHoldout_test_fc_uplink_fade_L30_h10_thr10/selected_dataset_ranking.csv
 chosen_dataset: null
-created_at: '2026-07-08T08:42:39.695070+00:00'
+created_at: '2026-07-28T10:52:37.670308+00:00'
 test_type: external_holdout
 heldout_test_dataset: fc-uplink-fade.csv
 external_test_dataset: fc-uplink-fade.csv
@@ -90,41 +90,41 @@ num_windows_by_dataset:
   UPLINK-FADE_Fucino_GX5_AprJun2021.csv: 2252
   dati_meteo_beacon.csv: 3476
   fc-downlink-fade.csv: 3217
-  fc-uplink-fade.csv: 7709
+  fc-uplink-fade.csv: 7708
   uplink_beacon_data_fucino_GX4.csv: 10744
 split_by_dataset:
   DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv:
-    test: 0
     train: 1287
     validation: 321
-  DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv:
     test: 0
+  DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv:
     train: 325
     validation: 0
-  UPLINK-FADE_Fucino_GX4_AprJun2021.csv:
     test: 0
+  UPLINK-FADE_Fucino_GX4_AprJun2021.csv:
     train: 1931
     validation: 642
-  UPLINK-FADE_Fucino_GX5_AprJun2021.csv:
     test: 0
+  UPLINK-FADE_Fucino_GX5_AprJun2021.csv:
     train: 1604
     validation: 648
-  dati_meteo_beacon.csv:
     test: 0
+  dati_meteo_beacon.csv:
     train: 2844
     validation: 632
-  fc-downlink-fade.csv:
     test: 0
+  fc-downlink-fade.csv:
     train: 2573
     validation: 644
+    test: 0
   fc-uplink-fade.csv:
-    test: 7709
     train: 0
     validation: 0
+    test: 7708
   uplink_beacon_data_fucino_GX4.csv:
-    test: 0
     train: 8848
     validation: 1896
+    test: 0
 external_holdout_split_plan:
 - dataset_name: fc-uplink-fade.csv
   role: external_test
@@ -134,7 +134,7 @@ external_holdout_split_plan:
   num_test_events: 24
   num_train_windows: 0
   num_val_windows: 0
-  num_test_windows: 7709
+  num_test_windows: 7708
   policy: use_full_dataset
 - dataset_name: uplink_beacon_data_fucino_GX4.csv
   role: development

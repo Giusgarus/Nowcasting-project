@@ -1,2 +1,2 @@
 dataset_name,mae,rmse,num_windows,num_events
-fc-uplink-fade.csv,1.4665440050091512,3.3646858395388755,7709,24
+fc-uplink-fade.csv,1.4649912563154213,3.362727406858203,7708,24

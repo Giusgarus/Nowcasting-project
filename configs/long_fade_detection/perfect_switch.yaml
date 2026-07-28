@@ -7,7 +7,7 @@ data:
 
 switch:
   threshold: 10.0
-  condition: greater_than
+  condition: greater_than_or_equal
   switch_time: 10
   apply_min_island_length: true
 

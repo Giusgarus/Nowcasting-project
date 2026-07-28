@@ -1,2 +1,2 @@
-architecture,variant,validation_mae_raw,validation_rmse_raw,test_mae,test_rmse,best_epoch,final_training_epochs,final_retrained_on_full_development,best_val_loss,patch_len,stride,d_model,n_heads,num_layers,dropout,learning_rate,weight_decay,num_train_windows,num_val_windows,num_test_windows
-patchtst,raw,1.9198666114564935,5.526201874228703,1.5155808725013395,3.0881097098628754,35,35,True,30.538907714102425,10,2,128,4,3,0.1,0.001,0.0,19412,4783,7709
+architecture,variant,validation_mae_raw,validation_rmse_raw,test_mae,test_rmse,num_train_windows,num_val_windows,num_test_windows,refreshed_without_retraining
+patchtst,raw,1.599848939214208,4.090087377629757,1.515176095928732,3.087849781019314,19412,4783,7708,True

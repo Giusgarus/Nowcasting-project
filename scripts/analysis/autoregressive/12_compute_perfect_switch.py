@@ -75,7 +75,7 @@ PLOT_TYPES_SKIPPED = [
     "Model-derived switch comparisons: skipped because model-derived switches are not part of this step.",
 ]
 PERFECT_SWITCH_RULE = (
-    "Per event, perfect_switch_raw marks only runs where Signal_prepared > threshold "
+    "Per event, perfect_switch_raw marks only runs where Signal_prepared >= threshold "
     "for switch_time + 1 consecutive points. perfect_switch then applies the legacy "
     "right-only ensure_min_island_length function."
 )
@@ -413,7 +413,7 @@ print(f"Selection ID: {selection_id}")
 print(f"Test events: {int(summary_row['num_events']):,}")
 print(f"Test windows: {int(summary_row['num_windows']):,}")
 print(
-    f"Perfect Switch raw: Signal_true > {threshold:g} for "
+    f"Perfect Switch raw: Signal_true >= {threshold:g} for "
     f"{switch_time + 1} consecutive points"
 )
 print(f"Minimum island length: {switch_time} samples, extended only to the right")

@@ -143,7 +143,7 @@ def summarize_event_dataset(
         windows = event_windows.loc[event_windows["dataset_name"].eq(dataset_name)]
         quality = event_quality.loc[event_quality["dataset_name"].eq(dataset_name)]
         indices = window_index.loc[window_index["dataset_name"].eq(dataset_name)]
-        above = windows["Signal_prepared"].gt(signal_threshold)
+        above = windows["Signal_prepared"].ge(signal_threshold)
         rows.append(
             {
                 "dataset_name": dataset_name,
@@ -153,10 +153,10 @@ def summarize_event_dataset(
                 "num_warning_events": int(quality["quality_flag"].eq("warning").sum()),
                 "num_unusable_events": int(quality["quality_flag"].eq("unusable").sum()),
                 "total_points_in_event_windows": len(windows),
-                "points_above_threshold": int(above.sum()),
-                "points_below_or_equal_threshold": int((~above).sum()),
-                "pct_above_threshold": float(above.mean() * 100) if len(above) else 0.0,
-                "pct_below_or_equal_threshold": float((~above).mean() * 100)
+                "points_at_or_above_threshold": int(above.sum()),
+                "points_below_threshold": int((~above).sum()),
+                "pct_at_or_above_threshold": float(above.mean() * 100) if len(above) else 0.0,
+                "pct_below_threshold": float((~above).mean() * 100)
                 if len(above)
                 else 0.0,
                 "num_imputed_points": int(windows["is_imputed"].sum()),
@@ -177,16 +177,16 @@ def _threshold_row(
     frame: pd.DataFrame,
     signal_threshold: float,
 ) -> dict[str, object]:
-    above = frame["Signal_prepared"].gt(signal_threshold)
+    above = frame["Signal_prepared"].ge(signal_threshold)
     return {
         "scope": scope,
         "dataset_name": dataset_name,
         "signal_threshold": signal_threshold,
         "total_points": len(frame),
-        "points_above_threshold": int(above.sum()),
-        "points_below_or_equal_threshold": int((~above).sum()),
-        "pct_above_threshold": float(above.mean() * 100) if len(above) else 0.0,
-        "pct_below_or_equal_threshold": float((~above).mean() * 100)
+        "points_at_or_above_threshold": int(above.sum()),
+        "points_below_threshold": int((~above).sum()),
+        "pct_at_or_above_threshold": float(above.mean() * 100) if len(above) else 0.0,
+        "pct_below_threshold": float((~above).mean() * 100)
         if len(above)
         else 0.0,
     }

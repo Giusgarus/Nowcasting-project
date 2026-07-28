@@ -64,6 +64,22 @@ def test_single_crossing_creates_centered_event_window() -> None:
     assert events.loc[0, "window_end"] == pd.Timestamp("2026-01-01 13:30:00")
 
 
+def test_inclusive_threshold_condition_counts_equal_threshold() -> None:
+    clean = _clean_signal(["2026-01-01 12:00:00"], [10.0])
+
+    events = detect_candidate_fade_events(
+        clean,
+        signal_threshold=10.0,
+        condition="greater_than_or_equal",
+        grouping_hours=3.0,
+        window_pre_hours=1.5,
+        window_post_hours=1.5,
+    )
+
+    assert len(events) == 1
+    assert events.loc[0, "first_crossing_signal"] == 10.0
+
+
 def test_event_split_is_chronological_per_dataset() -> None:
     events = pd.DataFrame(
         {

@@ -1,4 +1,4 @@
 check,passed,max_abs_difference
-train_mean_matches_saved_scaler,True,9.5367431640625e-07
-train_std_matches_saved_scaler_observed_std,True,6.103515625e-05
+train_mean_matches_saved_scaler,True,4.76837158203125e-07
+train_std_matches_saved_scaler_observed_std,True,4.76837158203125e-07
 scalar_feature_names_match_npz,True,0.0

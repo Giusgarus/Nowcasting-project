@@ -6,7 +6,7 @@ from typing import Any, Literal
 import numpy as np
 import pandas as pd
 
-EventCondition = Literal["greater_than"]
+EventCondition = Literal["greater_than", "greater_than_or_equal", "greater_or_equal"]
 EVENT_QUALITY_COLUMNS = [
     "event_id",
     "dataset_id",
@@ -29,9 +29,9 @@ EVENT_QUALITY_COLUMNS = [
     "num_gaps_above_300s",
     "num_missing_signal",
     "num_duplicate_timestamps",
-    "num_points_above_threshold",
-    "num_points_below_or_equal_threshold",
-    "pct_points_above_threshold",
+    "num_points_at_or_above_threshold",
+    "num_points_below_threshold",
+    "pct_points_at_or_above_threshold",
     "max_signal",
     "mean_signal",
     "std_signal",
@@ -62,8 +62,10 @@ def detect_candidate_fade_events(
 ) -> pd.DataFrame:
     """Detect threshold crossings grouped relative to each event's first crossing."""
 
-    if condition != "greater_than":
-        raise ValueError("Only condition='greater_than' is currently supported.")
+    if condition not in {"greater_than", "greater_than_or_equal", "greater_or_equal"}:
+        raise ValueError(
+            "Only condition='greater_than' or 'greater_than_or_equal' is currently supported."
+        )
     if grouping_hours <= 0 or window_pre_hours < 0 or window_post_hours < 0:
         raise ValueError("Event grouping and window durations must be valid.")
 
@@ -88,7 +90,11 @@ def detect_candidate_fade_events(
     if clean_signal.empty:
         return pd.DataFrame(columns=columns)
 
-    crossings = clean_signal.loc[clean_signal["Signal"].gt(signal_threshold)].sort_values(
+    if condition == "greater_than":
+        crossing_mask = clean_signal["Signal"].gt(signal_threshold)
+    else:
+        crossing_mask = clean_signal["Signal"].ge(signal_threshold)
+    crossings = clean_signal.loc[crossing_mask].sort_values(
         "Time",
         kind="stable",
     )
@@ -377,7 +383,7 @@ def _quality_row(
     elif num_imputed and quality_flag == "usable":
         reasons.append("small_gap_imputed")
 
-    above = prepared["Signal_prepared"].gt(signal_threshold)
+    above = prepared["Signal_prepared"].ge(signal_threshold)
     return {
         "event_id": event.event_id,
         "dataset_id": event.dataset_id,
@@ -402,9 +408,9 @@ def _quality_row(
         "num_gaps_above_300s": int((differences > 300).sum()),
         "num_missing_signal": inferred_missing,
         "num_duplicate_timestamps": int(times.duplicated().sum()),
-        "num_points_above_threshold": int(above.sum()),
-        "num_points_below_or_equal_threshold": int((~above).sum()),
-        "pct_points_above_threshold": float(above.mean() * 100),
+        "num_points_at_or_above_threshold": int(above.sum()),
+        "num_points_below_threshold": int((~above).sum()),
+        "pct_points_at_or_above_threshold": float(above.mean() * 100),
         "max_signal": float(prepared["Signal_prepared"].max()),
         "mean_signal": float(prepared["Signal_prepared"].mean()),
         "std_signal": float(prepared["Signal_prepared"].std()),
@@ -438,9 +444,9 @@ def _empty_quality_row(event: Any, expected_samples: int) -> dict[str, Any]:
         "num_gaps_above_300s": 0,
         "num_missing_signal": expected_samples,
         "num_duplicate_timestamps": 0,
-        "num_points_above_threshold": 0,
-        "num_points_below_or_equal_threshold": 0,
-        "pct_points_above_threshold": 0.0,
+        "num_points_at_or_above_threshold": 0,
+        "num_points_below_threshold": 0,
+        "pct_points_at_or_above_threshold": 0.0,
         "max_signal": np.nan,
         "mean_signal": np.nan,
         "std_signal": np.nan,

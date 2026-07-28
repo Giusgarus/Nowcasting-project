@@ -225,12 +225,21 @@ def main() -> None:
         method_run_dir = run_dir(run_id)
         run_metadata = load_yaml_config(method_run_dir / "metadata.yaml")
         run_dataset_metadata = run_metadata.get("dataset_metadata", {})
-        if run_dataset_metadata.get("config_fingerprint") != dataset_metadata.get(
-            "config_fingerprint"
-        ):
+        current_dataset_fingerprint = dataset_metadata.get("config_fingerprint")
+        refresh_metadata = run_metadata.get("prediction_refresh", {})
+        trained_on_current_dataset = (
+            run_dataset_metadata.get("config_fingerprint")
+            == current_dataset_fingerprint
+        )
+        refreshed_on_current_dataset = (
+            refresh_metadata.get("dataset_config_fingerprint")
+            == current_dataset_fingerprint
+        )
+        if not trained_on_current_dataset and not refreshed_on_current_dataset:
             raise RuntimeError(
-                f"Run {run_id} was not trained on the current dataset build. "
-                "Rerun the grid search before computing switch comparisons."
+                f"Run {run_id} has neither training nor refreshed predictions "
+                "for the current dataset build. Rerun the grid search or refresh "
+                "predictions before computing switch comparisons."
             )
         predictions_path = method_run_dir / "predictions/test_predictions.parquet"
         predictions = pd.read_parquet(predictions_path)

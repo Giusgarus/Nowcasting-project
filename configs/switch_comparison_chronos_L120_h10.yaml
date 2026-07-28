@@ -10,7 +10,7 @@ methods:
 conversion:
   prediction_aggregation: horizon_threshold_count
   threshold: 10.0
-  condition: greater_than
+  condition: greater_than_or_equal
   required_points_above_threshold: 10
   switch_time: 10
   apply_min_island_length: true

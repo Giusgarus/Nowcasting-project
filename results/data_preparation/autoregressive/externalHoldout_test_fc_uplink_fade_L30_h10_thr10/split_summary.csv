@@ -16,7 +16,7 @@ validation,dataset_004,UPLINK-FADE_Fucino_GX5_AprJun2021.csv,648,2,648,0,0
 validation,dataset_001,DOWNLINK-FADE_Fucino_GX4_MarJun2021.csv,321,1,321,0,0
 validation,dataset_002,DOWNLINK-FADE_Fucino_GX5_AprJun2021.csv,0,0,0,0,0
 test,dataset_008,uplink_beacon_data_fucino_GX4.csv,0,0,0,0,0
-test,dataset_007,fc-uplink-fade.csv,7709,24,7709,0,0
+test,dataset_007,fc-uplink-fade.csv,7708,24,7708,0,0
 test,dataset_005,dati_meteo_beacon.csv,0,0,0,0,0
 test,dataset_006,fc-downlink-fade.csv,0,0,0,0,0
 test,dataset_003,UPLINK-FADE_Fucino_GX4_AprJun2021.csv,0,0,0,0,0

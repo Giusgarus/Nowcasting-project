@@ -1,2 +1,2 @@
 label,count,min,p10,p25,median,p75,p90,p95,max
-observed_event_duration_seconds,194,8.0,31.0,98.75,300.0,549.0,1183.6000000000004,1781.3499999999992,3203.0
+observed_event_duration_seconds,192,8.0,31.0,120.0,301.5,577.5,1187.2,1793.4499999999987,3264.0

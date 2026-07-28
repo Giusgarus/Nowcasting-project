@@ -1,2 +1,2 @@
 num_events,all_sample_counts_match,all_weight_sums_close_to_one,min_event_sample_count,median_event_sample_count,max_event_sample_count,min_event_balanced_weight,median_event_balanced_weight,max_event_balanced_weight,single_sample_events
-197,True,True,1,10.0,105,0.009523809523809525,0.1,1.0,27
+195,True,True,1,10.0,107,0.009345794392523364,0.1,1.0,24

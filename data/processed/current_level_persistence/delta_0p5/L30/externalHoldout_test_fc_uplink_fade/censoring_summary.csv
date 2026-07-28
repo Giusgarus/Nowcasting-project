@@ -1,4 +1,4 @@
 split,num_observed_targets,num_censored_targets,num_candidate_windows,pct_censored
 train,19598,424,20022,2.1176705623813805
 validation,4798,135,4933,2.736671396715994
-test,7693,256,7949,3.220530884387973
+test,7692,256,7948,3.2209360845495723

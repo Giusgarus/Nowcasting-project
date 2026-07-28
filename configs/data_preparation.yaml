@@ -22,7 +22,7 @@ sampling:
 
 candidate_events:
   signal_threshold: 10.0
-  condition: greater_than
+  condition: greater_than_or_equal
   grouping_hours: 3.0
   window_pre_hours: 1.5
   window_post_hours: 1.5

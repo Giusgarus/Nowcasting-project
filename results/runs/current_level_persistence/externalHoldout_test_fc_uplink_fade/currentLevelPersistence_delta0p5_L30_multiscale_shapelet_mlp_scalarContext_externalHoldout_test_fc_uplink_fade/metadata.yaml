@@ -69,3 +69,7 @@ scalar_context_scaler:
   - 2.3682050704956055
   - 4.074522018432617
   - 0.9427729845046997
+prediction_refresh:
+  refreshed_at: '2026-07-28T11:58:50.738303+00:00'
+  reason: dataset rebuilt; predictions refreshed without retraining
+  dataset_build_fingerprint: 48846d9b2de88149342392c1fc4ef52c7065926c9e838d7c4f75b59a9bddb385

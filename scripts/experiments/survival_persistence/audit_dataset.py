@@ -75,8 +75,8 @@ def recovery_config_from_yaml(config: dict[str, Any]) -> StableRecoveryConfig:
     return StableRecoveryConfig(
         threshold_on=float(event["threshold_on"]),
         threshold_off=float(event["threshold_off"]),
-        threshold_on_operator=str(event.get("threshold_on_operator", ">")),  # type: ignore[arg-type]
-        threshold_off_operator=str(event.get("threshold_off_operator", "<=")),  # type: ignore[arg-type]
+        threshold_on_operator=str(event.get("threshold_on_operator", ">=")),  # type: ignore[arg-type]
+        threshold_off_operator=str(event.get("threshold_off_operator", "<")),  # type: ignore[arg-type]
         recovery_window_seconds=float(event["recovery_window_seconds"]),
         recovery_required_fraction=float(event["recovery_required_fraction"]),
         recovery_fraction_mode=str(event.get("recovery_fraction_mode", "sample_fraction")),  # type: ignore[arg-type]

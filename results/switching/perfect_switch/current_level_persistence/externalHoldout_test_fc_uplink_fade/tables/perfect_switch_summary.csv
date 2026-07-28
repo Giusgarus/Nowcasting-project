@@ -1,2 +1,2 @@
 selection_folder,split,threshold,switch_time,num_events,num_windows,num_points,num_positive_raw,num_positive_after_min_island,num_points_changed_by_min_island,positive_rate_raw,positive_rate_after_min_island,raw_vs_postprocessed_agreement,num_islands_raw,num_islands_after_min_island
-externalHoldout_test_fc_uplink_fade,test,10.0,10,24,7693,8645,455,455,0,0.05263157894736842,0.05263157894736842,1.0,17,17
+externalHoldout_test_fc_uplink_fade,test,10.0,10,24,7692,8644,469,469,0,0.0542572882924572,0.0542572882924572,1.0,18,18

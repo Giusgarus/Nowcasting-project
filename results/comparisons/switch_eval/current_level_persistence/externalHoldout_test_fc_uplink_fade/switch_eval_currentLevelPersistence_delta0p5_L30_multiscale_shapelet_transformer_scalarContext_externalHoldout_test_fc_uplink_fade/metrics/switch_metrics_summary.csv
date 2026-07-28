@@ -1,2 +1,2 @@
 method,split,num_points,num_perfect_positive,num_model_positive_raw,num_model_positive,points_changed_by_min_island,sample_interval_seconds,active_duration_seconds,precision,recall,f1,intersection_over_union,balanced_accuracy,false_positive_rate,false_negative_rate,true_positives,true_negatives,false_positives,false_negatives,decision_rule
-Shapelet Transformer Scalar Context,test,7693,447,0,0,0,30.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,1.0,0,7246,0,447,predicted_duration_threshold
+Shapelet Transformer Scalar Context,test,7692,461,0,0,0,30.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,1.0,0,7231,0,461,predicted_duration_threshold

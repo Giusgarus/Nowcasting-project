@@ -4,8 +4,8 @@ schema_version: 1
 event_definition:
   threshold_on: 10.0
   threshold_off: 10.0
-  threshold_on_operator: ">"
-  threshold_off_operator: "<="
+  threshold_on_operator: ">="
+  threshold_off_operator: "<"
   recovery_window_seconds: 300
   recovery_required_fraction: 0.8
   recovery_fraction_mode: sample_fraction

@@ -2,23 +2,23 @@
 
 Config: `configs/survival_persistence/dataset_threshold10_L30_external_holdout.yaml`
 Dataset: `data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade`
-Config fingerprint: `0b3d213ef5a1661b3f4829af3bae53ac034ab5d0bd04fb48479091bf2fcd450a`
+Config fingerprint: `638fd82dd0f210108292c2de01869c313fdbe8ac015aa81a1ae8aa67c2ab366a`
 
 ## Event Counts
 
 | split | number_of_events | number_observed | number_censored | censoring_rate |
 | --- | --- | --- | --- | --- |
 | train | 117 | 117 | 0 | 0.0 |
-| validation | 24 | 23 | 1 | 0.041666666666666664 |
-| test | 56 | 54 | 2 | 0.03571428571428571 |
+| validation | 23 | 22 | 1 | 0.043478260869565216 |
+| test | 55 | 53 | 2 | 0.03636363636363636 |
 
 ## Sample Counts
 
 | split | number_of_samples | observed_target_samples | censored_target_samples | above_threshold_samples | below_threshold_internal_samples | pct_above_threshold_samples | pct_below_threshold_internal_samples |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| train | 1655 | 1655 | 0 | 1360 | 295 | 82.17522658610272 | 17.82477341389728 |
-| validation | 774 | 768 | 6 | 693 | 81 | 89.53488372093024 | 10.465116279069768 |
-| test | 900 | 830 | 70 | 761 | 139 | 84.55555555555556 | 15.444444444444445 |
+| train | 1729 | 1729 | 0 | 1421 | 308 | 82.18623481781377 | 17.813765182186234 |
+| validation | 729 | 723 | 6 | 666 | 63 | 91.35802469135803 | 8.641975308641975 |
+| test | 921 | 851 | 70 | 775 | 146 | 84.14766558089035 | 15.852334419109662 |
 
 ## Compatibility
 

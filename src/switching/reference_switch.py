@@ -25,12 +25,12 @@ def compute_perfect_switch_from_true_signal(
     *,
     signal_column: str = "Signal_prepared",
     threshold: float = 10.0,
-    condition: str = "greater_than",
+    condition: str = "greater_than_or_equal",
     switch_time: int = 10,
     apply_min_island_length: bool = True,
     group_columns: Sequence[str] = ("event_id",),
 ) -> pd.DataFrame:
-    """Compute the legacy persistent-threshold Perfect Switch per event."""
+    """Compute the persistent-threshold Perfect Switch per event."""
 
     required = ["Time", signal_column, *group_columns]
     _require_columns(event_windows, required, "event_windows")
@@ -55,8 +55,6 @@ def compute_perfect_switch_from_true_signal(
         else [np.arange(len(output))]
     )
     for indices in grouped_indices:
-        if condition != "greater_than":
-            raise ValueError("The legacy Perfect Switch supports condition='greater_than'.")
         outage_mask, _ = compute_switch_from_signal_values(
             output.loc[indices, "Signal_true"].to_numpy(),
             threshold=threshold,
@@ -68,6 +66,7 @@ def compute_perfect_switch_from_true_signal(
             output.loc[indices, "Signal_true"].to_numpy(),
             threshold=threshold,
             switch_time=switch_time,
+            condition=condition,
         )
         min_island_old = (
             ensure_min_island_length(raw, switch_time)
@@ -92,6 +91,7 @@ def compute_perfect_switch_from_true_signal(
     output["perfect_switch_adjusted"] = output["perfect_switch_adjusted"].astype("int8")
     output["perfect_switch"] = output["perfect_switch"].astype("int8")
     output["threshold"] = float(threshold)
+    output["condition"] = str(condition)
     output["switch_time"] = int(switch_time)
     return output
 
@@ -142,10 +142,19 @@ def align_perfect_switch_to_forecast_windows(
             "perfect_switch_min_time"
         ]
     if "outage_mask" not in timeseries:
-        timeseries["outage_mask"] = (
-            timeseries["Signal_true"].astype(float)
-            > timeseries["threshold"].astype(float)
-        ).astype("int8")
+        condition = (
+            str(timeseries["condition"].dropna().iloc[0])
+            if "condition" in timeseries and timeseries["condition"].notna().any()
+            else "greater_than_or_equal"
+        )
+        outage_mask, _ = compute_switch_from_signal_values(
+            timeseries["Signal_true"].to_numpy(dtype=float),
+            threshold=float(timeseries["threshold"].astype(float).iloc[0]),
+            condition=condition,
+            switch_time=1,
+            apply_min_island_length=False,
+        )
+        timeseries["outage_mask"] = outage_mask.astype("int8")
     if "perfect_switch_adjusted" not in timeseries:
         timeseries["perfect_switch_adjusted"] = timeseries["perfect_switch_min_time"]
 

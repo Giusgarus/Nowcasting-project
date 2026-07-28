@@ -31,14 +31,14 @@ CONFIRMED_RECOVERY
 An event starts when the activation condition is satisfied, for example:
 
 ```text
-Signal > threshold_on
+Signal >= threshold_on
 ```
 
 A candidate recovery starts when the recovery condition is satisfied, for
 example:
 
 ```text
-Signal <= threshold_off
+Signal < threshold_off
 ```
 
 The candidate recovery becomes confirmed only when the configured future
@@ -547,7 +547,7 @@ operational conversion uses the saved survival probability at the 300-second
 horizon:
 
 ```text
-model_switch_raw(t) = 1 if S(300s | X_t) >= 0.5 and Signal(t) > 10.0
+model_switch_raw(t) = 1 if S(300s | X_t) >= 0.5 and Signal(t) >= 10.0
 ```
 
 The threshold `0.5` is a fixed decision rule, not fitted on the test set. After
@@ -556,7 +556,7 @@ the raw decision is formed, the shared switch post-processing is applied:
 ```text
 raw switch
   -> min-island rule
-  -> stateful hold while the true signal remains above threshold
+  -> stateful hold while the true signal remains >= threshold
   -> model_switch_min_time
 ```
 

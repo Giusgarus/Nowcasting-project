@@ -34,7 +34,7 @@ event has the same event label.
 Events are grouped with the 3-hour convention:
 
 ```text
-first crossing above threshold starts an event
+first crossing at or above threshold starts an event
 further crossings within 3 hours from the first crossing stay in that event
 new event starts only when a crossing occurs more than 3 hours after that start
 ```
@@ -267,7 +267,7 @@ The long-fade classifiers output `P(long_fade)`. The current switch conversion
 uses:
 
 ```text
-model_switch_raw(t) = 1 if P(long_fade | X_t) >= 0.5 and Signal(t) > 10.0
+model_switch_raw(t) = 1 if P(long_fade | X_t) >= 0.5 and Signal(t) >= 10.0
 ```
 
 Then the shared min-island and stateful signal-above-threshold hold are applied.

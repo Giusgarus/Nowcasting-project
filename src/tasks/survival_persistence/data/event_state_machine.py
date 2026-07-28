@@ -22,8 +22,8 @@ class StableRecoveryConfig:
 
     threshold_on: float
     threshold_off: float
-    threshold_on_operator: ThresholdOperator = ">"
-    threshold_off_operator: ThresholdOperator = "<="
+    threshold_on_operator: ThresholdOperator = ">="
+    threshold_off_operator: ThresholdOperator = "<"
     recovery_window_seconds: float = 300.0
     recovery_required_fraction: float = 0.8
     recovery_fraction_mode: RecoveryFractionMode = "sample_fraction"
@@ -91,7 +91,7 @@ def validate_recovery_config(config: StableRecoveryConfig) -> None:
         raise ValueError(
             "Activation and recovery conditions overlap. Use non-overlapping "
             "thresholds/operators, for example threshold_on > threshold_off or "
-            "threshold_on_operator='>' with threshold_off_operator='<='."
+            "threshold_on_operator='>=' with threshold_off_operator='<'."
         )
 
 

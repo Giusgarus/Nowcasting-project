@@ -15,7 +15,7 @@ selection_id: externalHoldout_test_fc_uplink_fade
 split: test
 probability_threshold: 0.5
 signal_threshold: 10.0
-signal_condition: greater_than
+signal_condition: greater_than_or_equal
 require_current_signal_above_threshold: true
 switch_time_samples: 10
 apply_min_island_length: true
@@ -58,5 +58,5 @@ num_events: 25
 num_decisions: 2569
 num_quality_excluded_predictions: 0
 config_path: configs/long_fade_detection/switch_comparison.yaml
-config_fingerprint: b737d68d2f9a53fefea1e49d994a0a97758a9350908b065ac506de17f2491248
-created_at: '2026-07-17T07:43:07.218759+00:00'
+config_fingerprint: 85d31706a855d764d4d04cc43b03fa9f921a9213337b0fcdcafe8a48e2c048ad
+created_at: '2026-07-28T11:59:45.508262+00:00'

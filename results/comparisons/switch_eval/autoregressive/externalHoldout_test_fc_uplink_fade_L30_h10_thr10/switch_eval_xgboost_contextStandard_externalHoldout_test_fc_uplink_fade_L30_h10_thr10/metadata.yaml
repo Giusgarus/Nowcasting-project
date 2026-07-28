@@ -15,7 +15,7 @@ model_switch_rule: At every input_end_time t, count how many of the saved horizo
   if that count is at least required_points_above_threshold. The configured minimum-island
   post-processing is then applied to the decision-time switch series.
 threshold: 10.0
-condition: greater_than
+condition: greater_than_or_equal
 required_points_above_threshold: 10
 switch_time: 10
 input_files:
@@ -53,5 +53,5 @@ output_files:
 num_events: 24
 num_figures: 20
 config_path: configs/switch_comparison.yaml
-config_fingerprint: 436edf68a8335cf950fe3283bcecab9ddd79abe07b49e6afb4671e0472e74a91
-created_at: '2026-07-08T17:32:04.872661+00:00'
+config_fingerprint: 7baa3e62a363fab8f695e74d4bf6988cbd4757c05a56dc6cdaba37fc88a1266a
+created_at: '2026-07-28T11:57:32.370869+00:00'

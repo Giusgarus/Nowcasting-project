@@ -30,3 +30,6 @@ seed: 42
 teacher_forcing_ratio_training: 0.0
 teacher_forcing_evaluation: 0.0
 created_at: '2026-06-17T12:42:50.477611+00:00'
+prediction_refresh:
+  refreshed_at: '2026-07-28T11:17:35.775358+00:00'
+  reason: dataset rebuilt; predictions refreshed without retraining

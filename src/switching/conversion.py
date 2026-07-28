@@ -91,13 +91,31 @@ def hold_while_signal_above_threshold(
     return final.reshape(switch.shape)
 
 
+def _condition_operator(condition: str) -> np.ufunc:
+    """Return the vectorized comparison operator for a switch condition."""
+
+    conditions = {
+        "greater_than": np.greater,
+        "greater_than_or_equal": np.greater_equal,
+        "greater_or_equal": np.greater_equal,
+        "less_than": np.less,
+        "less_than_or_equal": np.less_equal,
+        "less_or_equal": np.less_equal,
+    }
+    if condition not in conditions:
+        supported = ", ".join(conditions)
+        raise ValueError(f"Unsupported switch condition '{condition}'. Supported: {supported}")
+    return conditions[condition]
+
+
 def detect_persistent_threshold_switch(
     signal_values: Sequence[float] | np.ndarray,
     *,
     threshold: float,
     switch_time: int,
+    condition: str = "greater_than_or_equal",
 ) -> np.ndarray:
-    """Reproduce the legacy Perfect Switch persistent-threshold detection."""
+    """Detect persistent threshold runs for the Perfect Switch reference."""
 
     if not isinstance(switch_time, (int, np.integer)) or switch_time < 1:
         raise ValueError("switch_time must be a positive integer.")
@@ -110,7 +128,7 @@ def detect_persistent_threshold_switch(
     if len(signal) < num_points_in_window:
         return switch
 
-    above_threshold = (signal > threshold).astype(np.int8)
+    above_threshold = _condition_operator(condition)(signal, threshold).astype(np.int8)
     cumulative = np.cumsum(above_threshold)
     rolling_sum = np.empty(len(signal) - num_points_in_window + 1, dtype=int)
     rolling_sum[0] = cumulative[num_points_in_window - 1]
@@ -127,7 +145,7 @@ def compute_switch_from_signal_values(
     signal_values: Sequence[float] | np.ndarray,
     *,
     threshold: float,
-    condition: str = "greater_than",
+    condition: str = "greater_than_or_equal",
     switch_time: int = 1,
     apply_min_island_length: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -137,17 +155,7 @@ def compute_switch_from_signal_values(
     if not np.all(np.isfinite(signal)):
         raise ValueError("Signal values must be finite.")
 
-    conditions = {
-        "greater_than": np.greater,
-        "greater_than_or_equal": np.greater_equal,
-        "less_than": np.less,
-        "less_than_or_equal": np.less_equal,
-    }
-    if condition not in conditions:
-        supported = ", ".join(conditions)
-        raise ValueError(f"Unsupported switch condition '{condition}'. Supported: {supported}")
-
-    raw_switch = conditions[condition](signal, threshold).astype(np.int8)
+    raw_switch = _condition_operator(condition)(signal, threshold).astype(np.int8)
     if not apply_min_island_length:
         return raw_switch, raw_switch.copy()
     return raw_switch, ensure_min_island_length(raw_switch, switch_time)
@@ -157,7 +165,7 @@ def compute_model_switch_from_predictions(
     predicted_signal_values: Sequence[float] | np.ndarray,
     *,
     threshold: float,
-    condition: str = "greater_than",
+    condition: str = "greater_than_or_equal",
     switch_time: int = 1,
     apply_min_island_length: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
