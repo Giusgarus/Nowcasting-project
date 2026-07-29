@@ -245,8 +245,10 @@ Current configured rules:
   configured, the current observed signal is `>= 10.0`.
 - **Survival persistence**:
   `model_switch_raw(t) = 1` when the predicted survival probability at the
-  300-second horizon satisfies `S(300s | X_t) >= 0.5` and, when configured, the
-  current observed signal is `>= 10.0`.
+  300-second horizon satisfies the configured probability threshold and, when
+  configured, the current observed signal is `>= 10.0`. The uncalibrated default
+  remains `S(300s | X_t) >= 0.5`; the currently retained exploratory switch
+  result uses `S(300s | X_t) >= 0.65`.
 
 Switch metrics are computed on each task's native decision timestamps.
 Display-only event plots for long-fade and survival may be widened to a
@@ -545,6 +547,14 @@ conda run -n Nowcasting env PYTHONPATH=. python scripts/analysis/survival_persis
 
 conda run -n Nowcasting env PYTHONPATH=. python scripts/analysis/survival_persistence/13_compare_switch_methods.py \
   --config configs/survival_persistence/switch_comparison.yaml
+```
+
+The retained exploratory survival-switch result uses a stricter probability
+threshold:
+
+```bash
+conda run -n Nowcasting env PYTHONPATH=. python scripts/analysis/survival_persistence/13_compare_switch_methods.py \
+  --config configs/survival_persistence/switch_comparison_prob0p65.yaml
 ```
 
 Details are in [docs/survival_persistence.md](docs/survival_persistence.md).

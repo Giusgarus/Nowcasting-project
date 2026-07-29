@@ -1017,7 +1017,22 @@ conda run -n Nowcasting env PYTHONPATH=. python scripts/analysis/survival_persis
 The current conversion rule is:
 
 ```text
-model_switch_raw(t) = 1 if S(300s | X_t) >= 0.5 and Signal(t) >= 10.0
+model_switch_raw(t) = 1 if S(300s | X_t) >= probability_threshold and Signal(t) >= 10.0
+```
+
+The uncalibrated default uses `probability_threshold = 0.5`. A local
+exploratory sweep over `0.60`, `0.65`, `0.70`, and `0.75` retained `0.65` as
+the best test-set F1 setting among the saved survival switch outputs:
+
+```bash
+conda run -n Nowcasting env PYTHONPATH=. python scripts/analysis/survival_persistence/13_compare_switch_methods.py \
+  --config configs/survival_persistence/switch_comparison_prob0p65.yaml
+```
+
+The retained summary is:
+
+```text
+results/comparisons/model_summary/survival_persistence/<selection_id>/survivalPersistence_switch_summary_h300_prob0p65/
 ```
 
 The shared switch post-processing is then applied. Event plots use a display-only

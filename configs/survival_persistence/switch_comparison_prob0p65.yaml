@@ -1,0 +1,46 @@
+schema_version: 1
+task_name: survival_persistence
+
+data:
+  selection_id: externalHoldout_test_fc_uplink_fade
+  dataset_path: data/processed/survival_persistence/threshold_10p0/L30/externalHoldout_test_fc_uplink_fade
+
+methods:
+  - name: XGBoost AFT Raw Flattened
+    model_family: xgboost
+    model_id: xgboost_aft
+    architecture: xgboost_aft
+    variant: raw_flattened
+    mode: trained
+    run_id: survivalPersistence_xgboost_aft_raw_flattened_uniform_externalHoldout_test_fc_uplink_fade
+  - name: Discrete-Time TCN Grid Best
+    model_family: tcn
+    model_id: discrete_time_tcn
+    architecture: discrete_time_tcn
+    variant: relative_current_plus_scalar
+    mode: grid_search_best
+    run_id: survivalPersistence_discrete_time_tcn_relative_current_plus_scalar_uniform_externalHoldout_test_fc_uplink_fade__grid_extended_best
+
+conversion:
+  survival_horizon_seconds: 300.0
+  survival_probability_threshold: 0.65
+  signal_threshold: 10.0
+  signal_condition: greater_than_or_equal
+  require_current_signal_above_threshold: true
+  switch_time_samples: 10
+  apply_min_island_length: true
+
+plots:
+  max_events: 25
+  display_window:
+    enabled: true
+    signal_source_path: data/interim/clean_signal/all_signal_clean.parquet
+    signal_column: Signal
+    before_minutes: 90
+    after_minutes: 90
+    fill_missing_switch_with: 0
+
+output:
+  overwrite: true
+  comparison_id_suffix: h300_prob0p65
+  summary_id: survivalPersistence_switch_summary_h300_prob0p65

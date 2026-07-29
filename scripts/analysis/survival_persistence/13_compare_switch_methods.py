@@ -40,6 +40,7 @@ from src.utils.results_paths import (  # noqa: E402
     get_results_index_dir,
     make_comparison_id,
     relative_project_path,
+    sanitize_id,
     upsert_index_row,
 )
 
@@ -169,6 +170,7 @@ def main() -> None:
     switch_time = int(conversion["switch_time_samples"])
     apply_min_island = bool(conversion["apply_min_island_length"])
     overwrite = bool(config["output"].get("overwrite", False))
+    comparison_id_suffix = str(config["output"].get("comparison_id_suffix", "")).strip()
     display_signal_source, display_config = load_display_signal_source(config)
 
     print("=== Survival-Persistence Switch Comparison ===")
@@ -186,6 +188,8 @@ def main() -> None:
     for method in config["methods"]:
         run_id = str(method["run_id"])
         comparison_id = make_comparison_id(run_id)
+        if comparison_id_suffix:
+            comparison_id = f"{comparison_id}_{sanitize_id(comparison_id_suffix)}"
         method_run_dir = run_dir(selection_id=selection_id, run_id=run_id)
         run_metadata = load_yaml_config(method_run_dir / "metadata.yaml")
         method_dataset_path = run_metadata.get("dataset_path")

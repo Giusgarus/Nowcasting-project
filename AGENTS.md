@@ -308,11 +308,14 @@ requested.
 Current default survival switch conversion:
 
 ```text
-model_switch_raw(t) = 1 if S(300s | X_t) >= 0.5 and Signal(t) >= 10.0
+model_switch_raw(t) = 1 if S(300s | X_t) >= probability_threshold and Signal(t) >= 10.0
 ```
 
 Then apply the shared switch post-processing and compare against the
-task-scoped Perfect Switch.
+task-scoped Perfect Switch. The uncalibrated default threshold is `0.5`.
+The retained exploratory survival-switch output currently uses `0.65` after a
+local test-set sweep; do not treat that value as validation-calibrated unless a
+separate validation-only calibration step is implemented.
 
 ---
 

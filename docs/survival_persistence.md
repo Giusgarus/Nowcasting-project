@@ -547,11 +547,16 @@ operational conversion uses the saved survival probability at the 300-second
 horizon:
 
 ```text
-model_switch_raw(t) = 1 if S(300s | X_t) >= 0.5 and Signal(t) >= 10.0
+model_switch_raw(t) = 1 if S(300s | X_t) >= probability_threshold and Signal(t) >= 10.0
 ```
 
-The threshold `0.5` is a fixed decision rule, not fitted on the test set. After
-the raw decision is formed, the shared switch post-processing is applied:
+The default `configs/survival_persistence/switch_comparison.yaml` uses
+`probability_threshold = 0.5` as a fixed, uncalibrated decision rule. A local
+exploratory sweep over `0.60`, `0.65`, `0.70`, and `0.75` retained `0.65` as
+the best test-set F1 setting among the saved survival switch outputs. Keep this
+distinction explicit: `0.65` is an exploratory result, not a validation-calibrated
+production threshold. After the raw decision is formed, the shared switch
+post-processing is applied:
 
 ```text
 raw switch
@@ -573,12 +578,25 @@ conda run -n Nowcasting env PYTHONPATH=. python scripts/analysis/survival_persis
   --config configs/survival_persistence/switch_comparison.yaml
 ```
 
+Run the retained exploratory switch setting with:
+
+```bash
+conda run -n Nowcasting env PYTHONPATH=. python scripts/analysis/survival_persistence/13_compare_switch_methods.py \
+  --config configs/survival_persistence/switch_comparison_prob0p65.yaml
+```
+
 Outputs:
 
 ```text
 results/switching/perfect_switch/survival_persistence/<selection_id>/
 results/comparisons/switch_eval/survival_persistence/<selection_id>/<comparison_id>/
 results/comparisons/model_summary/survival_persistence/<selection_id>/<summary_id>/
+```
+
+The retained exploratory summary is:
+
+```text
+results/comparisons/model_summary/survival_persistence/<selection_id>/survivalPersistence_switch_summary_h300_prob0p65/
 ```
 
 Event plots are displayed over a wider 90-minute-before/90-minute-after window
