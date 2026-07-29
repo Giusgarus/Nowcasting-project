@@ -813,7 +813,8 @@ def refresh_long_fade(device: torch.device, *, skip_xgboost: bool) -> list[str]:
     dataset_metadata = load_yaml_config(LONG_FADE_DATASET_DIR / "dataset_metadata.yaml")
     dataset_config_fingerprint = dataset_metadata.get("config_fingerprint")
     refreshed: list[str] = []
-    for run_path in sorted((PROJECT_ROOT / "results/runs/long_fade_detection").iterdir()):
+    run_root = PROJECT_ROOT / "results/runs/long_fade_detection"
+    for run_path in sorted(run_root.glob("*/*")):
         if not run_path.is_dir():
             continue
         run_id = run_path.name

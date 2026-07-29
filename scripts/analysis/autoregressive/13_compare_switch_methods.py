@@ -68,6 +68,10 @@ reference_id = f"perfect_switch_{selection_id}"
 datasets_index_path = get_results_index_dir() / "datasets.csv"
 datasets_index = pd.read_csv(datasets_index_path)
 dataset_rows = datasets_index.loc[datasets_index["selection_id"].eq(selection_id)]
+if "task_name" in dataset_rows.columns:
+    task_rows = dataset_rows.loc[dataset_rows["task_name"].astype(str).eq("autoregressive")]
+    if not task_rows.empty:
+        dataset_rows = task_rows
 if dataset_rows.empty:
     raise ValueError(f"Dataset index has no row for selection_id={selection_id}.")
 dataset_path = PROJECT_ROOT / str(dataset_rows.iloc[0]["dataset_path"])

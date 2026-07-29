@@ -36,6 +36,7 @@ from src.tasks.long_fade_detection.utils.paths import (  # noqa: E402
     make_selection_id,
     model_dir,
     run_dir,
+    selection_id_from_run_id,
 )
 from src.utils.config import load_yaml_config, save_yaml  # noqa: E402
 from src.utils.device import select_device  # noqa: E402
@@ -468,6 +469,7 @@ def save_outputs(
             "task_name": "long_fade_detection",
             "model_id": model_id,
             "run_id": run_id,
+            "selection_id": selection_id_from_run_id(run_id),
             "backend": backend,
             "results_path": relative_project_path(run_path),
             "model_path": relative_project_path(checkpoint_path),

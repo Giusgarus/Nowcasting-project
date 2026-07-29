@@ -30,7 +30,12 @@ from src.tasks.long_fade_detection.data.dataset import (  # noqa: E402
 )
 from src.tasks.long_fade_detection.utils.paths import make_selection_id  # noqa: E402
 from src.utils.config import config_fingerprint, load_yaml_config, save_yaml  # noqa: E402
-from src.utils.results_paths import relative_project_path  # noqa: E402
+from src.utils.results_paths import (  # noqa: E402
+    DATASET_INDEX_COLUMNS,
+    get_results_index_dir,
+    relative_project_path,
+    upsert_index_row,
+)
 
 DEFAULT_CONFIG_PATH = (
     PROJECT_ROOT
@@ -340,6 +345,26 @@ def main() -> None:
         **counts,
     }
     save_yaml(metadata_path, metadata)
+    upsert_index_row(
+        get_results_index_dir() / "datasets.csv",
+        {
+            "dataset_index_id": f"long_fade_detection::{selection_id}",
+            "task_name": "long_fade_detection",
+            "selection_id": selection_id,
+            "dataset_selection_mode": "external_holdout_long_fade_detection",
+            "selected_datasets": ";".join(available_datasets),
+            "threshold": threshold_db,
+            "context_length": context_length,
+            "prediction_length": "",
+            "dataset_path": relative_project_path(output_dir),
+            "num_train_windows": len(split_metadata["train"]),
+            "num_val_windows": len(split_metadata["validation"]),
+            "num_test_windows": len(split_metadata["test"]),
+            "created_at": metadata["created_at"],
+        },
+        id_column="dataset_index_id",
+        columns=DATASET_INDEX_COLUMNS,
+    )
 
     print("=== Compact summary ===")
     print(f"Selection ID: {selection_id}")

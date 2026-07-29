@@ -818,8 +818,8 @@ Implemented first-stage models:
 Main outputs:
 
 ```text
-results/runs/long_fade_detection/<run_id>/
-models/long_fade_detection/<run_id>/
+results/runs/long_fade_detection/<selection_id>/<run_id>/
+models/long_fade_detection/<model_id>/<run_id>/
 ```
 
 Build the initial comparison summary after runs finish:
@@ -1036,6 +1036,10 @@ results/index/switch_references.csv
 results/index/comparisons.csv
 results/index/survival_persistence_runs.csv
 ```
+
+`datasets.csv` is keyed by `dataset_index_id = <task>::<selection_id>`. This is
+intentional: current-level, long-fade, and survival can share the same
+`selection_id` while referring to different processed datasets.
 
 ## 18. Recommended Complete Campaign
 

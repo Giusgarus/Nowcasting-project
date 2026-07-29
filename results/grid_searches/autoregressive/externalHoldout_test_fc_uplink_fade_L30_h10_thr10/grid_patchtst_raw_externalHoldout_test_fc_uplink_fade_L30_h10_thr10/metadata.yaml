@@ -11,6 +11,6 @@ trial_worker_devices:
 - cuda:0
 - cuda:1
 - cuda:2
-config_path: configs/patchtst_grid_search.yaml
+config_path: configs/autoregressive/patchtst_grid_search.yaml
 config_fingerprint: f27a131fa385c563c404639c44c345edee190b4ab51a9a4a1eeb22cdf3a52898
 created_at: '2026-06-18T00:48:12.552146+00:00'

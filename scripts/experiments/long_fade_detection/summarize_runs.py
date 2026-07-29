@@ -64,7 +64,7 @@ def build_summary() -> pd.DataFrame:
     rows = []
     if not RUNS_ROOT.exists():
         return pd.DataFrame(columns=SUMMARY_COLUMNS)
-    for metrics_path in sorted(RUNS_ROOT.glob("*/metrics/metrics_summary.csv")):
+    for metrics_path in sorted(RUNS_ROOT.glob("*/*/metrics/metrics_summary.csv")):
         metrics = pd.read_csv(metrics_path).iloc[0].to_dict()
         run_dir = metrics_path.parents[1]
         metadata_path = run_dir / "metadata.yaml"

@@ -51,6 +51,8 @@ COMPARISON_INDEX_COLUMNS = [
     "created_at",
 ]
 DATASET_INDEX_COLUMNS = [
+    "dataset_index_id",
+    "task_name",
     "selection_id",
     "dataset_selection_mode",
     "selected_datasets",

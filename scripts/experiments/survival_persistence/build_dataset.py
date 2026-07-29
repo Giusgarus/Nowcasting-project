@@ -443,6 +443,8 @@ def main() -> None:
     upsert_index_row(
         get_results_index_dir() / "datasets.csv",
         {
+            "dataset_index_id": f"{TASK_NAME}::{selection_id}",
+            "task_name": TASK_NAME,
             "selection_id": selection_id,
             "dataset_selection_mode": "external_holdout_survival_persistence",
             "selected_datasets": ";".join(available_datasets),
@@ -455,7 +457,7 @@ def main() -> None:
             "num_test_windows": len(split_metadata["test"]),
             "created_at": dataset_metadata["created_at"],
         },
-        id_column="selection_id",
+        id_column="dataset_index_id",
         columns=DATASET_INDEX_COLUMNS,
     )
 

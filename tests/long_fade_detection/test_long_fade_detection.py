@@ -328,6 +328,9 @@ def test_long_fade_paths_do_not_touch_existing_task_folders() -> None:
         assert "long_fade_detection" in text
         assert "autoregressive" not in text
         assert "current_level_persistence" not in text
+    assert selection_id in str(run_dir(run_id))
+    assert selection_id in run_dir(run_id).name
+    assert "tcn_classifier" in str(model_dir(run_id))
 
 
 def test_long_fade_grid_config_expands_expected_trial_counts() -> None:

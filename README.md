@@ -647,6 +647,10 @@ results/index/current_level_persistence_runs.csv
 results/index/survival_persistence_runs.csv
 ```
 
+`results/index/datasets.csv` uses `dataset_index_id = <task>::<selection_id>`
+as its stable key, because different tasks can share the same external-holdout
+selection ID while producing different supervised datasets.
+
 The repository tracks lightweight CSV/YAML summaries and selected prediction
 files needed to regenerate comparisons. Heavy generated artifacts such as
 figures, trial checkpoints, validation histories, and most intermediate

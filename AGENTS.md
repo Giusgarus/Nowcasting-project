@@ -1148,9 +1148,9 @@ All generated artifacts must use stable IDs from `src/utils/results_paths.py`.
   `src/tasks/current_level_persistence/utils/` when the shared autoregressive
   ID structure does not apply.
 - Long-fade detection first-stage runs go under
-  `results/runs/long_fade_detection/<run_id>/`, checkpoints go under
-  `models/long_fade_detection/<run_id>/`, and processed datasets go under
-  `data/processed/long_fade_detection/`.
+  `results/runs/long_fade_detection/<selection_id>/<run_id>/`, checkpoints go
+  under `models/long_fade_detection/<model_id>/<run_id>/`, and processed
+  datasets go under `data/processed/long_fade_detection/`.
 - Long-fade detection should use task-local path helpers under
   `src/tasks/long_fade_detection/utils/` because its first-stage run IDs
   already encode threshold, duration, model, and external-holdout selection.

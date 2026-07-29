@@ -192,6 +192,9 @@ data/interim/*
 data/processed/*
 models/*
 
+# Local review notes
+reports/local_methodology_review_summary.md
+
 # Results: keep lightweight CSV/YAML summaries and indexes trackable.
 # Ignore heavy or easily regenerated result artifacts.
 results/**/figures/

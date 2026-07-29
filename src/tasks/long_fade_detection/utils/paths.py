@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from src.utils.paths import PROJECT_ROOT
@@ -48,6 +49,38 @@ def model_component(model_id: str) -> str:
     return mapping.get(model_id, sanitize_id(model_id))
 
 
+def base_run_id(run_id: str) -> str:
+    """Return the run ID without an optional ``__suffix`` component."""
+
+    return str(run_id).split("__", 1)[0]
+
+
+def selection_id_from_run_id(run_id: str) -> str:
+    """Extract the long-fade selection ID embedded in a run ID."""
+
+    match = re.search(r"(externalHoldout_test_[A-Za-z0-9_]+)$", base_run_id(run_id))
+    if not match:
+        raise ValueError(f"Cannot infer long-fade selection from {run_id!r}.")
+    return match.group(1)
+
+
+def model_id_from_run_id(run_id: str) -> str:
+    """Extract the canonical long-fade model ID embedded in a run ID."""
+
+    match = re.search(
+        r"^longFadeDetection_thr[^_]+_dur\d+_(.+)_externalHoldout_test_",
+        base_run_id(run_id),
+    )
+    if not match:
+        raise ValueError(f"Cannot infer long-fade model ID from {run_id!r}.")
+    reverse_mapping = {
+        "xgboost_lag_scalar": "xgboost_lag_scalar_classifier",
+        "tcn_classifier": "tcn_classifier",
+        "shapelet_convolution_classifier": "multiscale_shapelet_convolution_classifier",
+    }
+    return reverse_mapping.get(match.group(1), sanitize_id(match.group(1)))
+
+
 def make_run_id(
     *,
     threshold_db: float,
@@ -91,15 +124,28 @@ def processed_dataset_dir(
 
 
 def run_dir(run_id: str, root: Path = PROJECT_ROOT) -> Path:
-    """Return the model-output run directory."""
+    """Return the task- and selection-scoped run directory."""
 
-    return root / "results" / "runs" / TASK_NAME / sanitize_id(run_id)
+    return (
+        root
+        / "results"
+        / "runs"
+        / TASK_NAME
+        / selection_id_from_run_id(run_id)
+        / sanitize_id(run_id)
+    )
 
 
 def model_dir(run_id: str, root: Path = PROJECT_ROOT) -> Path:
-    """Return the model checkpoint directory."""
+    """Return the task- and model-scoped checkpoint directory."""
 
-    return root / "models" / TASK_NAME / sanitize_id(run_id)
+    return (
+        root
+        / "models"
+        / TASK_NAME
+        / model_id_from_run_id(run_id)
+        / sanitize_id(run_id)
+    )
 
 
 def grid_search_dir(

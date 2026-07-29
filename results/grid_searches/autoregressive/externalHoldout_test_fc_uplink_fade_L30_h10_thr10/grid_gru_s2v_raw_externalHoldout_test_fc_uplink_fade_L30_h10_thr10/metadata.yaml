@@ -21,7 +21,7 @@ trial_worker_devices:
 - cuda:0
 - cuda:1
 - cuda:2
-config_path: configs/gru_grid_search.yaml
+config_path: configs/autoregressive/gru_grid_search.yaml
 config_fingerprint: 8b72dfc80d9c05cf5560a57d1ca90b6e72e7d3c67ba906fa7eda73cf254448ba
 trials_path: results/grid_searches/grid_gru_s2v_raw_externalHoldout_test_fc_uplink_fade_L30_h10_thr10/trials.csv
 created_at: '2026-06-17T11:53:40.941569+00:00'

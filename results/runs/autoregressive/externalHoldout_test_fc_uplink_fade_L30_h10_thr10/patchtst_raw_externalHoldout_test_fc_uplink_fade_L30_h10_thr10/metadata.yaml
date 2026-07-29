@@ -6,7 +6,7 @@ metrics_in_raw_scale: true
 test_type: external_holdout
 external_test_dataset: fc-uplink-fade.csv
 selection_mode: external_holdout
-config_path: configs/patchtst_grid_search.yaml
+config_path: configs/autoregressive/patchtst_grid_search.yaml
 config_fingerprint: f27a131fa385c563c404639c44c345edee190b4ab51a9a4a1eeb22cdf3a52898
 grid_search_id: grid_patchtst_raw_externalHoldout_test_fc_uplink_fade_L30_h10_thr10
 best_trial_id: trial_431_c12474a58c

@@ -29,8 +29,13 @@ from src.utils.results_paths import (
     relative_project_path,
 )
 
-TASK_ROOT_NAMES = {TASK_AUTOREGRESSIVE, "current_level_persistence"}
-LEGACY_MODEL_FAMILIES = {"chronos", "gru", "patchtst"}
+TASK_ROOT_NAMES = {
+    TASK_AUTOREGRESSIVE,
+    "current_level_persistence",
+    "long_fade_detection",
+    "survival_persistence",
+}
+LEGACY_MODEL_FAMILIES = {"chronos", "gru", "patchtst", "xgboost", "mamba"}
 
 
 def parse_args() -> argparse.Namespace:

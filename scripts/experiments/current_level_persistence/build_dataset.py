@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,7 +31,12 @@ from src.tasks.current_level_persistence.data.dataset import (
 )
 from src.tasks.current_level_persistence.utils.paths import make_selection_id
 from src.utils.config import config_fingerprint, load_yaml_config, save_yaml
-from src.utils.results_paths import relative_project_path
+from src.utils.results_paths import (
+    DATASET_INDEX_COLUMNS,
+    get_results_index_dir,
+    relative_project_path,
+    upsert_index_row,
+)
 
 DEFAULT_CONFIG_PATH = (
     PROJECT_ROOT
@@ -84,6 +90,20 @@ def dataset_is_complete(output_dir: Path) -> bool:
     """Return true when all required dataset files already exist."""
 
     return all(path.exists() for path in required_output_paths(output_dir))
+
+
+def threshold_from_path(path: Path) -> float | str:
+    """Infer a threshold value from a ``threshold_<token>`` path component."""
+
+    for part in path.parts:
+        match = re.fullmatch(r"threshold_([0-9mp]+)", part)
+        if match:
+            token = match.group(1).replace("p", ".").replace("m", "-")
+            try:
+                return float(token)
+            except ValueError:
+                return ""
+    return ""
 
 
 def main() -> None:
@@ -339,6 +359,26 @@ def main() -> None:
         metadata_path
     )
     save_yaml(metadata_path, dataset_metadata)
+    upsert_index_row(
+        get_results_index_dir() / "datasets.csv",
+        {
+            "dataset_index_id": f"current_level_persistence::{selection_id}",
+            "task_name": "current_level_persistence",
+            "selection_id": selection_id,
+            "dataset_selection_mode": "external_holdout_current_level_persistence",
+            "selected_datasets": ";".join(available_datasets),
+            "threshold": threshold_from_path(event_windows_path),
+            "context_length": context_length,
+            "prediction_length": "",
+            "dataset_path": relative_project_path(output_dir),
+            "num_train_windows": len(split_metadata["train"]),
+            "num_val_windows": len(split_metadata["validation"]),
+            "num_test_windows": len(split_metadata["test"]),
+            "created_at": dataset_metadata["created_at"],
+        },
+        id_column="dataset_index_id",
+        columns=DATASET_INDEX_COLUMNS,
+    )
 
     print("=== Compact summary ===")
     print(f"Selection ID: {selection_id}")

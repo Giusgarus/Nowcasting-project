@@ -25,7 +25,7 @@ model_switch_rule: model_switch_raw(t)=1 when predicted P(long_fade) is at least
 input_files:
   perfect_switch_timeseries: results/switching/perfect_switch/long_fade_detection/externalHoldout_test_fc_uplink_fade/tables/perfect_switch_timeseries.parquet
   test_metadata: data/processed/long_fade_detection/threshold_10p0/min_duration_300s/L30/externalHoldout_test_fc_uplink_fade/test_metadata.parquet
-  predictions: results/runs/long_fade_detection/longFadeDetection_thr10p0_dur300_shapelet_convolution_classifier_externalHoldout_test_fc_uplink_fade/predictions/test_predictions.parquet
+  predictions: results/runs/long_fade_detection/externalHoldout_test_fc_uplink_fade/longFadeDetection_thr10p0_dur300_shapelet_convolution_classifier_externalHoldout_test_fc_uplink_fade/predictions/test_predictions.parquet
 output_files:
   comparison_timeseries: results/comparisons/switch_eval/long_fade_detection/externalHoldout_test_fc_uplink_fade/switch_eval_longFadeDetection_thr10p0_dur300_shapelet_convolution_classifier_externalHoldout_test_fc_uplink_fade/predictions/model_vs_perfect_switch.parquet
   figures:
@@ -59,4 +59,4 @@ num_decisions: 2569
 num_quality_excluded_predictions: 0
 config_path: configs/long_fade_detection/switch_comparison.yaml
 config_fingerprint: 85d31706a855d764d4d04cc43b03fa9f921a9213337b0fcdcafe8a48e2c048ad
-created_at: '2026-07-28T11:59:45.508262+00:00'
+created_at: '2026-07-29T11:57:05.590435+00:00'

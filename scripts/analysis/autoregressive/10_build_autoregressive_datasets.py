@@ -357,6 +357,8 @@ save_yaml(dataset_metadata_path, metadata)
 upsert_index_row(
     get_results_index_dir() / "datasets.csv",
     {
+        "dataset_index_id": f"autoregressive::{selection_id}",
+        "task_name": "autoregressive",
         "selection_id": selection_id,
         "dataset_selection_mode": selection["mode"],
         "selected_datasets": ";".join(selected_datasets),
@@ -369,7 +371,7 @@ upsert_index_row(
         "num_test_windows": len(split_metadata["test"]),
         "created_at": metadata["created_at"],
     },
-    id_column="selection_id",
+    id_column="dataset_index_id",
     columns=DATASET_INDEX_COLUMNS,
 )
 
