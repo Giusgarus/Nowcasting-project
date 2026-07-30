@@ -384,7 +384,7 @@ Switch decisions are derived at each current-level prediction timestamp:
 
 ```text
 model_switch_raw(t) = 1
-  if Signal_t > 10
+  if Signal_t >= 10.0
   and predicted_remaining_persistence_seconds(t) >= 300 seconds
 ```
 
@@ -416,3 +416,30 @@ Each model is stored in a separate comparison folder under
 `results/comparisons/switch_eval/current_level_persistence/`. Cross-model
 tables are stored under
 `results/comparisons/model_summary/current_level_persistence/`.
+
+## Diagnostic Plots
+
+After switch comparisons exist, run:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/16_plot_switch_diagnostics.py \
+  --config configs/switch_diagnostics.yaml
+```
+
+Current-level diagnostic figures are written under:
+
+```text
+results/comparisons/switch_diagnostics/current_level_persistence/<selection_id>/<method_id>/figures/
+```
+
+The main current-level plots are:
+
+- `event_timelines/`: true signal, Perfect Switch, raw duration-derived switch,
+  and final post-processed switch;
+- `task_specific/duration_predicted_vs_true.png`: true versus predicted
+  remaining persistence duration in minutes;
+- `task_specific/duration_absolute_error_distribution.png`: absolute duration
+  error distribution in minutes, clipped at p99 for readability.
+
+Cross-task figures are explained in
+[Switch Diagnostics And Cross-Task Plots](switch_diagnostics.md).

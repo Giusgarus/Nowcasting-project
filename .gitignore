@@ -195,6 +195,10 @@ models/*
 # Local review notes
 reports/local_methodology_review_summary.md
 
+# Local thesis/Overleaf working folder.
+# This folder is intentionally kept outside Git and outside README documentation.
+Master thesis/
+
 # Results: keep lightweight CSV/YAML summaries and indexes trackable.
 # Ignore heavy or easily regenerated result artifacts.
 results/**/figures/

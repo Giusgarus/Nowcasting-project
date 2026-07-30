@@ -603,3 +603,34 @@ Event plots are displayed over a wider 90-minute-before/90-minute-after window
 for visual comparability with other tasks. Switch values outside the native
 survival decision timestamps are displayed as zero only in the plot; switch
 metrics remain computed only on native survival decision timestamps.
+
+## Diagnostic Plots
+
+After switch comparisons exist, run:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/16_plot_switch_diagnostics.py \
+  --config configs/switch_diagnostics.yaml
+```
+
+Survival diagnostic figures are written under:
+
+```text
+results/comparisons/switch_diagnostics/survival_persistence/<selection_id>/<method_id>/figures/
+```
+
+The main survival plots are:
+
+- `event_timelines/`: true signal, Perfect Switch, raw survival-probability
+  switch, and final post-processed switch;
+- `task_specific/survival_probability_calibration.png`: calibration of
+  `S(300s | X_t)` against the known 300-second survival target where it is
+  observable;
+- `task_specific/survival_probability_distribution.png`: distribution of
+  predicted survival probabilities at the switch horizon;
+- `task_specific/survival_curves.png`: selected survival curves across saved
+  horizons. Curves should stay within `[0, 1]` and should not increase with the
+  horizon.
+
+Cross-task figures are explained in
+[Switch Diagnostics And Cross-Task Plots](switch_diagnostics.md).

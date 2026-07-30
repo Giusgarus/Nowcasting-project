@@ -1,0 +1,14 @@
+comparison_id: crossTask_switch_externalHoldout_test_fc_uplink_fade_referenceGrid
+comparison_type: cross_task_switch
+normalized_selection_id: externalHoldout_test_fc_uplink_fade
+reference_grid_path: results/switching/perfect_switch/autoregressive/externalHoldout_test_fc_uplink_fade_L30_h10_thr10/tables/perfect_switch_timeseries.parquet
+comparisons_index_path: results/index/comparisons.csv
+num_reference_points: 8644
+num_sources: 18
+denominators:
+- reference_grid_missing_as_zero
+- strict_common_timestamp_intersection
+missing_model_switch: 0
+config_path: configs/cross_task_switch_comparison.yaml
+config_fingerprint: 730a01b2aaf160b232bc63972b5f5b8de8170bdd4e04e553e488851cb2ea9da0
+created_at: '2026-07-29T12:39:46.531435+00:00'

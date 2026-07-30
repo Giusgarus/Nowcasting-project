@@ -41,6 +41,39 @@ The final evaluation should focus primarily on the quality of the derived switch
 
 ---
 
+## Thesis writing phase
+
+The experimental phase is now considered substantially complete unless the user
+explicitly requests new experiments, fixes, or reruns.
+
+The next major workstream is writing the master's thesis. Thesis work should be
+treated as a formal thesis-writing task, not as normal repository
+documentation. The thesis must be written in English. It should start from the
+operational problem, then cover technical and scientific background, data and
+preprocessing, task definitions, model families, experimental methodology,
+results, switch-decision evaluation, limitations, and conclusions.
+
+Use the local folder:
+
+```text
+Master thesis/
+```
+
+as the isolated Overleaf-export working directory when the user explicitly asks
+to create or edit thesis material. This folder is intentionally ignored by Git
+and must not be mentioned in `README.md`. Do not create thesis files before the
+user asks for specific thesis content or structure.
+
+Keep thesis prose separate from codebase documentation:
+
+- `README.md`, `docs/`, and `AGENTS.md` describe the repository and methods;
+- `Master thesis/` contains local thesis assets intended to be copied to
+  Overleaf;
+- generated experimental artifacts under `results/` should be referenced or
+  summarized, not blindly copied into the thesis folder.
+
+---
+
 ## Dataset policy
 
 This repository uses a strict signal-only policy.
@@ -1165,6 +1198,20 @@ All generated artifacts must use stable IDs from `src/utils/results_paths.py`.
   `results/comparisons/model_summary/<task_name>/<selection_id>/<comparison_id>/`.
 - Model-selection or architecture comparisons go under
   `results/comparisons/model_selection/<task_name>/<selection_id>/<comparison_id>/`.
+- Cross-task switch comparisons go under
+  `results/comparisons/cross_task_switch/<normalized_selection_id>/<comparison_id>/`
+  and must explicitly state the metric denominator. The primary operational
+  denominator should use a common Perfect Switch reference grid and document how
+  missing native task decisions are handled.
+- Switch diagnostic plots that explain existing switch comparisons go under
+  `results/comparisons/switch_diagnostics/<task_name>/<selection_id>/<method_id>/`
+  for intra-task diagnostics, while cross-task diagnostic figures should remain
+  inside the matching
+  `results/comparisons/cross_task_switch/<normalized_selection_id>/<comparison_id>/figures/`
+  folder.
+- Cross-task event timeline figures should be split into
+  `event_timelines/selected_methods/` for readable representative plots and
+  `event_timelines/all_methods/` for complete debugging plots.
 - Each model-vs-reference comparison folder must contain exactly one method/run
   evaluated against one reference; batch configurations may list multiple
   methods, but their outputs must remain separate.

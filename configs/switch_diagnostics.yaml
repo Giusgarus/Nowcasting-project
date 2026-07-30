@@ -1,0 +1,18 @@
+schema_version: 1
+diagnostics_type: switch_diagnostics
+
+cross_task:
+  config_path: configs/cross_task_switch_comparison.yaml
+
+output:
+  switch_diagnostics_root: results/comparisons/switch_diagnostics
+  overwrite: true
+
+plots:
+  max_events_per_method: 6
+  max_forecast_examples_per_method: 3
+  max_cross_task_events: 12
+  max_cross_task_timeline_methods: 8
+  plot_all_cross_task_timeline_methods: true
+  max_survival_curves: 12
+  probability_calibration_bins: 10

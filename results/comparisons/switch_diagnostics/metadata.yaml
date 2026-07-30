@@ -1,0 +1,9 @@
+diagnostics_type: switch_diagnostics
+config_path: configs/switch_diagnostics.yaml
+cross_task_config_path: configs/cross_task_switch_comparison.yaml
+config_fingerprint: 78ed760c6ae56210d80e9d2a9a7da085463d339b36bae0510aadd41bfdc77e7e
+num_sources: 18
+num_plots: 195
+switch_diagnostics_root: results/comparisons/switch_diagnostics
+cross_task_output_dir: results/comparisons/cross_task_switch/externalHoldout_test_fc_uplink_fade/crossTask_switch_externalHoldout_test_fc_uplink_fade_referenceGrid
+created_at: '2026-07-29T13:38:52.283083+00:00'

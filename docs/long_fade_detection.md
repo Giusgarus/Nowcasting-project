@@ -294,3 +294,31 @@ conda run -n Nowcasting env PYTHONPATH=. python scripts/analysis/long_fade_detec
 Event plots are displayed over a wider 90-minute-before/90-minute-after window.
 Switch values outside native long-fade decision timestamps are displayed as zero
 only in the plot; metrics remain computed only on native long-fade timestamps.
+
+## Diagnostic Plots
+
+After switch comparisons exist, run:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/16_plot_switch_diagnostics.py \
+  --config configs/switch_diagnostics.yaml
+```
+
+Long-fade diagnostic figures are written under:
+
+```text
+results/comparisons/switch_diagnostics/long_fade_detection/<selection_id>/<method_id>/figures/
+```
+
+The main long-fade plots are:
+
+- `event_timelines/`: true signal, Perfect Switch, raw probability-derived
+  switch, and final post-processed switch;
+- `task_specific/probability_calibration.png`: predicted `P(long_fade)` versus
+  observed long-fade frequency by probability bin;
+- `task_specific/probability_distribution.png`: distribution of predicted
+  long-fade probabilities, useful to see whether a classifier is saturated near
+  0, near 1, or around the decision threshold.
+
+Cross-task figures are explained in
+[Switch Diagnostics And Cross-Task Plots](switch_diagnostics.md).

@@ -1,0 +1,33 @@
+schema_version: 1
+comparison_type: cross_task_switch
+
+comparison:
+  comparison_id: crossTask_switch_externalHoldout_test_fc_uplink_fade_referenceGrid
+  normalized_selection_id: externalHoldout_test_fc_uplink_fade
+
+reference:
+  task_name: autoregressive
+  selection_id: externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+  perfect_switch_timeseries_path: results/switching/perfect_switch/autoregressive/externalHoldout_test_fc_uplink_fade_L30_h10_thr10/tables/perfect_switch_timeseries.parquet
+
+sources:
+  comparison_index_path: results/index/comparisons.csv
+  include:
+    - task_name: autoregressive
+      selection_id: externalHoldout_test_fc_uplink_fade_L30_h10_thr10
+    - task_name: current_level_persistence
+      selection_id: externalHoldout_test_fc_uplink_fade
+    - task_name: long_fade_detection
+      selection_id: externalHoldout_test_fc_uplink_fade
+    - task_name: survival_persistence
+      selection_id: externalHoldout_test_fc_uplink_fade
+
+evaluation:
+  missing_model_switch: 0
+  denominators:
+    - reference_grid_missing_as_zero
+    - strict_common_timestamp_intersection
+
+output:
+  results_root: results/comparisons/cross_task_switch
+  overwrite: true

@@ -278,7 +278,7 @@ def main() -> None:
         )
         output_paths = ensure_results_subdirs(
             output_dir,
-            ("metrics", "predictions", "figures", "tables"),
+            ("metrics", "predictions", "figures"),
         )
         comparison_path = (
             output_paths["predictions"] / "model_vs_perfect_switch.parquet"

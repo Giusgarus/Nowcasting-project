@@ -1039,7 +1039,82 @@ The shared switch post-processing is then applied. Event plots use a display-onl
 90-minute-before/90-minute-after window, while metrics remain computed on native
 survival decision timestamps.
 
-## 17. Central Result Indexes
+## 17. Cross-Task Switch Comparison
+
+After the task-specific switch comparisons have been generated, build the
+cross-task switch tables:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/15_compare_cross_task_switches.py \
+  --config configs/cross_task_switch_comparison.yaml
+```
+
+Main outputs:
+
+```text
+results/comparisons/cross_task_switch/<normalized_selection_id>/<comparison_id>/tables/cross_task_switch_metrics_reference_grid.csv
+results/comparisons/cross_task_switch/<normalized_selection_id>/<comparison_id>/tables/cross_task_switch_metrics_strict_intersection.csv
+results/comparisons/cross_task_switch/<normalized_selection_id>/<comparison_id>/tables/cross_task_method_coverage.csv
+```
+
+Use `cross_task_switch_metrics_reference_grid.csv` as the primary operational
+comparison because it evaluates all methods on the same Perfect Switch timeline
+and treats missing native method decisions as `0`. Use
+`cross_task_switch_metrics_strict_intersection.csv` only as a conditional
+diagnostic because it hides coverage differences between tasks.
+
+Generate the switch diagnostic figures:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/16_plot_switch_diagnostics.py \
+  --config configs/switch_diagnostics.yaml
+```
+
+This produces two navigable figure areas:
+
+```text
+results/comparisons/switch_diagnostics/<task>/<selection>/<method>/figures/
+results/comparisons/cross_task_switch/<selection>/<comparison>/figures/
+```
+
+The intra-task folders contain:
+
+- `event_timelines/`: one model at a time, with true signal, Perfect Switch,
+  raw model switch, and post-processed model switch;
+- autoregressive `task_specific/horizon_error.png`: MAE/RMSE by forecast step;
+- autoregressive `forecast_examples/`: past context, true future, and predicted
+  future in raw scale;
+- current-level duration scatter and absolute-error histograms;
+- long-fade probability calibration and probability distribution;
+- survival probability calibration, probability distribution, and selected
+  survival curves.
+
+The cross-task folder contains:
+
+- `global_metrics/`: F1, precision, recall, and balanced-accuracy bar charts;
+- `precision_recall/`: precision/recall scatter, with marker size proportional
+  to native decision coverage;
+- `coverage/`: native coverage on the common reference grid;
+- `raw_vs_postprocessed/`: raw positive switch counts versus final
+  post-processed positive switch counts;
+- `event_heatmaps/`: per-event F1 on the common reference grid;
+- `event_timelines/`: event-level cross-task timelines.
+
+Cross-task event timelines are split into:
+
+```text
+event_timelines/selected_methods/
+event_timelines/all_methods/
+```
+
+Use `selected_methods` for readable thesis figures and `all_methods` for full
+debugging. In these timelines, filled bands are final post-processed switches;
+black ticks are raw switch activations before post-processing.
+
+The plot-level reference is
+[Switch Diagnostics And Cross-Task Plots](docs/switch_diagnostics.md).
+
+## 18. Central Result Indexes
 
 Use these files to locate generated artifacts without scanning every folder:
 
@@ -1056,7 +1131,7 @@ results/index/survival_persistence_runs.csv
 intentional: current-level, long-fade, and survival can share the same
 `selection_id` while referring to different processed datasets.
 
-## 18. Recommended Complete Campaign
+## 19. Recommended Complete Campaign
 
 For a new raw-data or methodological configuration:
 
@@ -1079,8 +1154,10 @@ For a new raw-data or methodological configuration:
 15. For `survival_persistence`, build and audit the dataset, run the selected
     survival baselines, then build Perfect Switch and survival-probability
     switch comparisons.
+16. Run the cross-task switch comparison after the task-specific switch
+    comparison folders exist.
 
-## 19. Configuration Consistency Checklist
+## 20. Configuration Consistency Checklist
 
 Before running downstream stages, verify that these values refer to the same
 prepared dataset:

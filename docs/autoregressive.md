@@ -393,6 +393,33 @@ results/index/comparisons.csv
 Each comparison folder contains exactly one model/run compared with one
 reference. Batch configs may list multiple methods, but outputs stay separate.
 
+## Diagnostic Plots
+
+After switch comparisons exist, run:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/16_plot_switch_diagnostics.py \
+  --config configs/switch_diagnostics.yaml
+```
+
+Autoregressive diagnostic figures are written under:
+
+```text
+results/comparisons/switch_diagnostics/autoregressive/<selection_id>/<method_id>/figures/
+```
+
+The main autoregressive plots are:
+
+- `event_timelines/`: true signal, Perfect Switch, raw model switch, and
+  post-processed model switch for selected events;
+- `task_specific/horizon_error.png`: raw-scale MAE/RMSE by forecast horizon;
+- `forecast_examples/`: past context, true future, and predicted future for
+  selected windows.
+
+Cross-task figures, including selected-method and all-method event timelines,
+are explained in
+[Switch Diagnostics And Cross-Task Plots](switch_diagnostics.md).
+
 ## Cross-Model Summary Tables
 
 Command:

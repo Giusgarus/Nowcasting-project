@@ -46,6 +46,7 @@ Main documentation:
 
 - [Autoregressive Forecasting](docs/autoregressive.md)
 - [Experiment Execution Guide](EXPERIMENT_GUIDE.md)
+- [Switch Diagnostics And Cross-Task Plots](docs/switch_diagnostics.md)
 
 ### 2. Current-Level Persistence
 
@@ -125,7 +126,7 @@ Main documentation:
 - [Current-Level Persistence](docs/current_level_persistence.md)
 
 Current-level duration predictions are converted into switch decisions with a
-configured 300-second persistence threshold and the shared autoregressive
+configured 300-second persistence threshold and the shared switch
 post-processing pipeline.
 
 ### 3. Long-Fade Detection
@@ -211,6 +212,7 @@ DeepHit survival models are not implemented yet.
 Main documentation:
 
 - [Survival Persistence](docs/survival_persistence.md)
+- [Switch Diagnostics And Cross-Task Plots](docs/switch_diagnostics.md)
 
 ## Switch Decision Rules
 
@@ -255,6 +257,81 @@ Display-only event plots for long-fade and survival may be widened to a
 90-minute-before/90-minute-after view, with missing task decisions shown as
 zero outside the native decision segment. That plotting extension does not
 change the metric denominator.
+
+Cross-task switch comparisons are handled separately because tasks emit native
+decisions on different timestamp grids. The current comparison writes both:
+
+- `reference_grid_missing_as_zero`: all methods evaluated on the common
+  autoregressive Perfect Switch grid; missing method decisions are filled with
+  `0`, so coverage differences are penalized;
+- `strict_common_timestamp_intersection`: only timestamps where every included
+  method has a native decision; useful for conditional quality, but not for
+  operational coverage.
+
+Run:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/15_compare_cross_task_switches.py \
+  --config configs/cross_task_switch_comparison.yaml
+```
+
+Main output:
+
+```text
+results/comparisons/cross_task_switch/<normalized_selection_id>/<comparison_id>/tables/
+```
+
+Switch diagnostic plots are generated separately from the metric tables:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/16_plot_switch_diagnostics.py \
+  --config configs/switch_diagnostics.yaml
+```
+
+Navigation:
+
+```text
+results/comparisons/switch_diagnostics/
+  plot_manifest.csv
+  reports/switch_diagnostic_plot_navigation.md
+  <task>/<selection>/<method>/figures/
+
+results/comparisons/cross_task_switch/<selection>/<comparison>/figures/
+  global_metrics/
+  precision_recall/
+  coverage/
+  raw_vs_postprocessed/
+  event_heatmaps/
+  event_timelines/
+    selected_methods/
+    all_methods/
+```
+
+Plot interpretation:
+
+- `global_metrics/`: bar charts for F1, precision, recall, and balanced
+  accuracy. Use the reference-grid version for the main operational comparison.
+- `precision_recall/`: precision versus recall scatter; marker size encodes
+  native decision coverage.
+- `coverage/`: how much of the common reference grid each method covers, plus
+  how many Perfect-Switch-positive samples lack a native model decision.
+- `raw_vs_postprocessed/`: compares raw switch positives with final
+  post-processed positives. This is the first diagnostic to inspect when a
+  method appears too aggressive or too conservative.
+- `event_heatmaps/`: per-event F1, useful to see whether performance is stable
+  or dominated by a few events.
+- `event_timelines/selected_methods/`: readable event timelines with a limited
+  representative set of methods.
+- `event_timelines/all_methods/`: complete event timelines with every included
+  method.
+
+Intra-task folders contain method-specific event timelines plus task-specific
+diagnostics: autoregressive horizon errors and forecast examples,
+current-level duration scatter/error histograms, long-fade probability
+calibration/distribution, and survival calibration/distribution/curves.
+
+See [Switch Diagnostics And Cross-Task Plots](docs/switch_diagnostics.md) for a
+compact explanation of every plot type.
 
 ### Deferred Work
 
@@ -321,6 +398,7 @@ Task or area-specific tests can be run from the corresponding folders:
 conda run -n Nowcasting python -m pytest tests/autoregressive -q
 conda run -n Nowcasting python -m pytest tests/current_level_persistence -q
 conda run -n Nowcasting python -m pytest tests/long_fade_detection -q
+conda run -n Nowcasting python -m pytest tests/survival_persistence -q
 conda run -n Nowcasting python -m pytest tests/data -q
 conda run -n Nowcasting python -m pytest tests/switching -q
 conda run -n Nowcasting python -m pytest tests/tuning -q
@@ -591,11 +669,17 @@ configs/
 │   ├── dataset_threshold10_L30_external_holdout.yaml
 │   ├── perfect_switch.yaml
 │   ├── switch_comparison.yaml
+│   ├── switch_comparison_prob0p65.yaml
 │   └── models/
+│       ├── discrete_time_tcn_smoke.yaml
+│       ├── discrete_time_tcn_controlled.yaml
+│       ├── discrete_time_tcn_grid_search.yaml
 │       ├── xgboost_aft_grid_search.yaml
 │       └── xgboost_aft_scalar_context.yaml
 ├── data.yaml
 ├── data_preparation.yaml
+├── cross_task_switch_comparison.yaml
+├── switch_diagnostics.yaml
 ├── perfect_switch*.yaml
 └── switch_comparison*.yaml
 ```
@@ -692,6 +776,7 @@ src/tasks/survival_persistence/
 New code and documentation should use the task-scoped modules and directories.
 Compatibility namespaces under `src/datasets/` and
 `src/evaluation/forecast_metrics.py` exist only to keep older imports working.
+The shared switch and cross-task diagnostic code lives under `src/switching/`.
 
 The test suite is organized by area:
 

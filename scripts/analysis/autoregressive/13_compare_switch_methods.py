@@ -124,7 +124,7 @@ for method in config["methods"]:
     output_dir = get_comparison_dir(comparison_id)
     output_paths = ensure_results_subdirs(
         output_dir,
-        ("metrics", "predictions", "figures", "tables"),
+        ("metrics", "predictions", "figures"),
     )
     comparison_path = output_paths["predictions"] / "model_vs_perfect_switch.parquet"
     summary_path = output_paths["metrics"] / "switch_metrics_summary.csv"
