@@ -70,14 +70,22 @@ def plot_metric_bars(
     labels = [compact_method_label(row) for _, row in frame.iterrows()]
     colors = [TASK_COLORS.get(str(task), "gray") for task in frame["task_name"]]
 
-    figure, axes = plt.subplots(
-        1,
-        len(metric_columns),
-        figsize=(5.0 * len(metric_columns), max(6.0, 0.42 * len(frame))),
-        sharey=True,
-    )
-    if len(metric_columns) == 1:
-        axes = [axes]
+    if len(metric_columns) == 4:
+        figure, axes_grid = plt.subplots(
+            2,
+            2,
+            figsize=(15.0, max(9.0, 0.72 * len(frame))),
+            sharey=True,
+        )
+        axes = list(axes_grid.ravel())
+    else:
+        figure, axes_row = plt.subplots(
+            1,
+            len(metric_columns),
+            figsize=(5.0 * len(metric_columns), max(6.0, 0.42 * len(frame))),
+            sharey=True,
+        )
+        axes = [axes_row] if len(metric_columns) == 1 else list(axes_row)
     y_positions = np.arange(len(frame))
     for axis, metric in zip(axes, metric_columns, strict=True):
         values = frame[metric].astype(float).to_numpy()
@@ -85,8 +93,14 @@ def plot_metric_bars(
         axis.set_title(metric)
         axis.set_xlim(0.0, 1.05)
         axis.grid(axis="x", linestyle="--", alpha=0.4)
-    axes[0].set_yticks(y_positions)
-    axes[0].set_yticklabels(labels, fontsize=8)
+    for index, axis in enumerate(axes):
+        axis.set_yticks(y_positions)
+        if len(metric_columns) == 4 and index % 2 == 1:
+            axis.tick_params(axis="y", labelleft=False)
+        elif len(metric_columns) != 4 and index > 0:
+            axis.tick_params(axis="y", labelleft=False)
+        else:
+            axis.set_yticklabels(labels, fontsize=8)
     figure.suptitle(title, fontsize=13, fontweight="bold")
     figure.tight_layout()
     save_figure(figure, output_path)
