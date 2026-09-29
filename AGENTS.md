@@ -62,7 +62,11 @@ Master thesis/
 as the isolated Overleaf-export working directory when the user explicitly asks
 to create or edit thesis material. Track its LaTeX sources, bibliography,
 figures, plotting scripts, compilation configuration, and final
-`build/main.pdf` in Git. Compilation auxiliaries and temporary review renders
+`build/Giuseppe_Gabriele_russo_Master_thesis.pdf` and
+`build/Giuseppe_Gabriele_russo_Master_thesis_PDFA.pdf` in Git. Compile from
+`Master thesis/` with `latexmk -pdf main.tex`; the local configuration sets the
+output name and automatically creates the PDF/A-2b copy using Ghostscript.
+Compilation auxiliaries and temporary review renders
 remain ignored. Keep personal PhD application and presentation material local
 and excluded from Git. The thesis folder must not be mentioned in `README.md`.
 Do not create thesis files before the user asks for specific content or structure.

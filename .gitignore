@@ -185,6 +185,7 @@ cython_debug/
 .cursorindexingignore
 
 .DS_Store
+AGENTS.md
 
 # Project data and generated artifacts
 data/raw/*
@@ -204,11 +205,12 @@ reports/local_methodology_review_summary.md
 /tmp/
 /Master thesis/tmp/
 
-# Track thesis sources, figures, and only the final compiled PDF.
+# Track thesis sources, figures, and the two final compiled PDFs.
 # Reopen this folder because the generic build/ rule above ignores it.
 !/Master thesis/build/
 /Master thesis/build/*
-!/Master thesis/build/main.pdf
+!/Master thesis/build/Giuseppe_Gabriele_russo_Master_thesis.pdf
+!/Master thesis/build/Giuseppe_Gabriele_russo_Master_thesis_PDFA.pdf
 /Master thesis/**/*.aux
 /Master thesis/**/*.bbl
 /Master thesis/**/*.bcf
