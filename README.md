@@ -9,6 +9,31 @@ backup switch. Forecast and duration losses are useful diagnostics, but the
 main evaluation is the quality of the resulting switch behaviour against a
 model-independent reference.
 
+The implemented experimental campaign covers four tasks, from dataset
+construction and validation-only model selection to native test metrics,
+switch evaluation, and cross-task diagnostic plots. This README is the project
+map; [EXPERIMENT_GUIDE.md](EXPERIMENT_GUIDE.md) contains the detailed execution
+instructions.
+
+## End-to-End Workflow
+
+| Stage | Purpose | Entry points / outputs |
+| --- | --- | --- |
+| 1. Inspect raw signals | Check timestamps, sampling, gaps, and signal distributions | Analysis scripts `00`-`08`; `results/data_analysis/` |
+| 2. Prepare shared data | Clean signals, identify candidate events, and prepare event windows | `scripts/analysis/autoregressive/09_prepare_event_windows.py`; `data/interim/` |
+| 3. Build task datasets | Construct targets, contexts, split metadata, and censoring labels where applicable | Autoregressive script `10` and each other task's `build_dataset.py` |
+| 4. Select and evaluate models | Select on validation, then evaluate the selected model on external test data; Chronos is zero-shot | Task experiment runners; `models/`, `results/grid_searches/`, `results/runs/` |
+| 5. Evaluate switches | Construct Perfect Switch, convert predictions, apply shared post-processing, and compute metrics | Each task's analysis scripts `12` and `13` |
+| 6. Summarize within each task | Collect native model metrics and switch comparisons | Autoregressive script `14`, other tasks' `summarize_runs.py`, and switch-summary outputs |
+| 7. Compare across tasks | Align decisions on a common reference grid and report native coverage | `scripts/analysis/15_compare_cross_task_switches.py` |
+| 8. Inspect final plots | Generate intra-task diagnostics, event heatmaps, and selected/all-model timelines | `scripts/analysis/16_plot_switch_diagnostics.py` |
+
+Run commands from the repository root. Raw datasets and trained checkpoints
+are not supplied by a Git clone: provide raw files locally and build the
+required artifacts, or transfer compatible artifacts from the training machine.
+Shared preparation must precede all task dataset builders, including those
+outside the autoregressive branch.
+
 ## Implemented Scope
 
 ### 1. Autoregressive Forecasting
@@ -32,6 +57,13 @@ Implemented models:
 - PatchTST-style Transformer;
 - XGBoost tabular baseline, with one regressor per forecast horizon;
 - Chronos zero-shot.
+
+GRU, PatchTST, and XGBoost support raw and context-standardized variants.
+Context standardization uses only the current past input window; predictions
+are inverse-transformed before raw-scale evaluation. Chronos uses raw contexts
+by default and performs no training or validation-based tuning. A separate
+`L120_h10` Chronos configuration is available alongside the canonical `L30_h10`
+setup; these have distinct dataset and result identifiers.
 
 Implemented evaluation:
 
@@ -75,7 +107,7 @@ $$
 The uncensored regression target is the corresponding elapsed duration:
 
 $$
-T_t(\delta) = elapseds\_seconds(t, u_t(\delta))
+T_t(\delta) = \operatorname{elapsed\_seconds}(t, u_t(\delta))
 $$
 
 Thus, `delta` defines the required decrease below the current value before the
@@ -185,7 +217,7 @@ Main documentation:
 ### 4. Survival Persistence
 
 The `survival_persistence` task builds a model-independent continuous-time
-survival dataset for the remaining duration of the current grouped fade
+survival dataset for the remaining duration of the current state-machine fade
 episode:
 
 $$
@@ -196,6 +228,11 @@ where `R_t` is the remaining time until the beginning of stable recovery. The
 event definition uses a state machine with configurable activation and recovery
 thresholds, stable-recovery confirmation, and right-censoring at continuous
 segment ends.
+
+Unlike long-fade detection, this is not fixed three-hour grouping. The builder
+uses the full cleaned signal, with explicitly enabled small-gap imputation,
+and retains right-censored targets. Discrete-time bins are applied by model
+adapters, not baked into the canonical continuous-time dataset.
 
 Implemented scope:
 
@@ -231,6 +268,18 @@ The legacy adjusted switch columns are still saved for diagnostics, but the
 reported model-vs-Perfect metrics use the post-processed `model_switch` and
 `perfect_switch` columns.
 
+Minimum-island processing extends short runs of ones to the right; it does
+not remove them. Holding then prevents an active switch from dropping to zero
+while the current observed signal remains at or above the threshold.
+
+Perfect Switch is an offline oracle, not a learned or deployable predictor.
+It uses the true signal to mark persistent threshold runs: with
+`switch_time = 10`, the current implementation requires 11 consecutive
+above-or-equal-threshold samples (ten 30-second intervals), then applies the
+shared post-processing. Its construction is centralized in
+`src/switching/reference_switch.py`. Task-native grids differ, so identical
+reference logic does not imply identical task-native reference arrays or counts.
+
 Current configured rules:
 
 - **Autoregressive forecasting**:
@@ -252,6 +301,10 @@ Current configured rules:
   remains `S(300s | X_t) >= 0.5`; the currently retained exploratory switch
   result uses `S(300s | X_t) >= 0.65`.
 
+The retained survival threshold `0.65` was chosen during an exploratory
+test-set sweep. It is not validation-calibrated; comparisons using it must be
+reported as exploratory, not as an untouched-test estimate of a tuned policy.
+
 Switch metrics are computed on each task's native decision timestamps.
 Display-only event plots for long-fade and survival may be widened to a
 90-minute-before/90-minute-after view, with missing task decisions shown as
@@ -268,24 +321,13 @@ decisions on different timestamp grids. The current comparison writes both:
   method has a native decision; useful for conditional quality, but not for
   operational coverage.
 
-Run:
-
-```bash
-conda run -n Nowcasting python scripts/analysis/15_compare_cross_task_switches.py \
-  --config configs/cross_task_switch_comparison.yaml
-```
+Use script `15` for the comparison tables, then script `16` for diagnostic
+plots, as shown in [Final Cross-Task Comparison And Plots](#final-cross-task-comparison-and-plots).
 
 Main output:
 
 ```text
 results/comparisons/cross_task_switch/<normalized_selection_id>/<comparison_id>/tables/
-```
-
-Switch diagnostic plots are generated separately from the metric tables:
-
-```bash
-conda run -n Nowcasting python scripts/analysis/16_plot_switch_diagnostics.py \
-  --config configs/switch_diagnostics.yaml
 ```
 
 Navigation:
@@ -411,11 +453,23 @@ PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting python SCRIPT_PAT
 ```
 
 Device selection is centralized. PyTorch code uses CUDA when available, then
-Apple MPS when available, otherwise CPU. GRU, PatchTST, and current-level
-shapelet grid searches can schedule independent trials across multiple visible
-CUDA GPUs.
+Apple MPS when available, otherwise CPU. Parallel grid runners across all four
+tasks can distribute independent trials over visible CUDA GPUs when enabled in
+their configs; this is trial parallelism, not necessarily multi-GPU training of
+one model. XGBoost supports CUDA but not MPS, so it falls back to CPU on an
+MPS-only machine. Record and check the actual device in run metadata.
 
 ## Core Workflows
+
+The canonical split holds out `fc-uplink-fade.csv` as external test data.
+Development sources are split chronologically at event level into train and
+validation. The exact split policy belongs to each dataset config; task-specific
+event definitions mean that sample counts and event IDs are not interchangeable.
+
+Check `output.overwrite` and existing artifact paths before rerunning commands.
+Use dataset `--force` options only when intentionally replacing an existing
+build. Rebuilding a dataset does not automatically refresh saved predictions,
+metrics, or plots.
 
 ### Raw-Data Analysis
 
@@ -508,7 +562,7 @@ conda run -n Nowcasting python scripts/experiments/current_level_persistence/tra
   --config configs/current_level_persistence/shapelet_convolution_delta_0p5.yaml
 ```
 
-Or run the small validation-only grid search for all three variants:
+Or run the extended validation-only grid search for all three variants:
 
 ```bash
 PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
@@ -518,7 +572,8 @@ PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
 
 The grid currently evaluates 216 trials per model (648 total), selects winners using
 validation MAE in seconds, then evaluates the selected winner for each model on
-the test split.
+the test split. The configured finalization refits on train plus validation
+using the selected epoch count, without test-based early stopping.
 
 The current-level XGBoost grid uses scalar-context tabular features and selects
 one duration regressor with validation MAE in seconds:
@@ -528,6 +583,18 @@ PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting \
   python scripts/experiments/current_level_persistence/run_xgboost_grid_search.py \
   --config configs/current_level_persistence/xgboost_grid_search_delta_0p5.yaml
 ```
+
+Summarize native duration metrics, then build the reference and switch results:
+
+```bash
+conda run -n Nowcasting python scripts/experiments/current_level_persistence/summarize_runs.py
+conda run -n Nowcasting python scripts/analysis/current_level_persistence/12_compute_perfect_switch.py
+conda run -n Nowcasting python scripts/analysis/current_level_persistence/13_compare_switch_methods.py
+```
+
+The last command writes both per-model metrics and task-level switch/behavior
+comparison tables. It uses the four runs listed in
+`configs/current_level_persistence/switch_comparison.yaml`.
 
 Details are in
 [docs/current_level_persistence.md](docs/current_level_persistence.md).
@@ -570,8 +637,7 @@ Build and audit the survival dataset:
 
 ```bash
 conda run -n Nowcasting env PYTHONPATH=. python scripts/experiments/survival_persistence/build_dataset.py \
-  --config configs/survival_persistence/dataset_threshold10_L30_external_holdout.yaml \
-  --force
+  --config configs/survival_persistence/dataset_threshold10_L30_external_holdout.yaml
 
 conda run -n Nowcasting env PYTHONPATH=. python scripts/experiments/survival_persistence/audit_dataset.py \
   --config configs/survival_persistence/dataset_threshold10_L30_external_holdout.yaml
@@ -580,7 +646,8 @@ conda run -n Nowcasting env PYTHONPATH=. python scripts/experiments/survival_per
 Run the XGBoost-AFT grid search:
 
 ```bash
-PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_xgboost_aft_grid_search.py \
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting env PYTHONPATH=. \
+  python scripts/experiments/survival_persistence/run_xgboost_aft_grid_search.py \
   --config configs/survival_persistence/models/xgboost_aft_grid_search.yaml
 ```
 
@@ -591,10 +658,13 @@ conda run -n Nowcasting env PYTHONPATH=. python scripts/experiments/survival_per
   --config configs/survival_persistence/models/discrete_time_tcn_smoke.yaml
 ```
 
-Run the controlled validation-only TCN selection:
+The controlled validation-only TCN selection explores representation, weighting,
+and binning choices. It is a separate methodological stage, not a prerequisite
+to rerun when using the already configured extended grid:
 
 ```bash
-PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn_controlled.py \
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting env PYTHONPATH=. \
+  python scripts/experiments/survival_persistence/run_discrete_time_tcn_controlled.py \
   --config configs/survival_persistence/models/discrete_time_tcn_controlled.yaml \
   --stage all
 ```
@@ -602,14 +672,29 @@ PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/
 Run the extended discrete-time TCN grid:
 
 ```bash
-PYTHONUNBUFFERED=1 PYTHONPATH=. python scripts/experiments/survival_persistence/run_discrete_time_tcn_grid_search.py \
+PYTHONUNBUFFERED=1 conda run --no-capture-output -n Nowcasting env PYTHONPATH=. \
+  python scripts/experiments/survival_persistence/run_discrete_time_tcn_grid_search.py \
   --config configs/survival_persistence/models/discrete_time_tcn_grid_search.yaml
 ```
 
-The grid currently expands to 1620 validation trials using range specs for the
-numeric hyperparameters. It keeps the controlled winner's input representation,
+The configured grid contains 1620 combinations and currently executes 1512
+valid validation trials after filtering incompatible depth/dilation settings.
+It uses range specs for numeric hyperparameters and keeps the controlled winner's input representation,
 weighting, and binning fixed, then evaluates the external test split only for
 the selected checkpoint.
+
+Generate the native survival comparison after both final runs are available:
+
+```bash
+conda run -n Nowcasting python scripts/experiments/survival_persistence/summarize_runs.py
+```
+
+This summary currently targets the canonical XGBoost-AFT and TCN grid-best run
+IDs, rather than discovering arbitrary new experiments. It reports C-index,
+IPCW Brier metrics, calibration, and model-specific likelihood diagnostics;
+likelihood values from different survival model families are not directly
+comparable. Optional diagnostics requiring train predictions can be missing
+after a Git-only transfer.
 
 The clean XGBoost-AFT versus TCN grid-best survival comparison is saved under:
 
@@ -636,6 +721,31 @@ conda run -n Nowcasting env PYTHONPATH=. python scripts/analysis/survival_persis
 ```
 
 Details are in [docs/survival_persistence.md](docs/survival_persistence.md).
+
+### Final Cross-Task Comparison And Plots
+
+After completing each task's switch comparisons, run these final stages in order:
+
+```bash
+conda run -n Nowcasting python scripts/analysis/15_compare_cross_task_switches.py \
+  --config configs/cross_task_switch_comparison.yaml
+
+conda run -n Nowcasting python scripts/analysis/16_plot_switch_diagnostics.py \
+  --config configs/switch_diagnostics.yaml
+```
+
+Script `15` reads `results/index/comparisons.csv` and saved task-native switch
+timeseries; it does not train models or infer missing predictions. Script `16`
+adds plots from saved comparisons, run predictions, and task data. Diagnostics
+requiring unavailable optional predictions are skipped; no training is performed.
+Before comparing, verify that the source index selects the intended runs and
+survival probability setting, and that the prediction/dataset fingerprints agree.
+
+The final tables include `cross_task_switch_metrics_reference_grid.csv`,
+`cross_task_switch_metrics_strict_intersection.csv`,
+`cross_task_method_coverage.csv`, and `cross_task_method_manifest.csv`.
+Use the plot manifest and navigation report described under
+[Switch Decision Rules](#switch-decision-rules) to locate the final figures.
 
 ## Configuration Layout
 
@@ -723,6 +833,25 @@ Comparisons:
 results/comparisons/<comparison_type>/<task>/<selection_id>/<comparison_id>/
 ```
 
+Comparison types have distinct roles:
+
+| Folder | Contents |
+| --- | --- |
+| `model_selection/` | Validation-based selection summaries and selected-model comparisons; the survival native comparison also lives here |
+| `model_summary/` | Consolidated within-task native and switch result tables |
+| `switch_eval/` | One model versus Perfect Switch: point-wise metrics, global/event behavior metrics, aligned switches, and event plots |
+| `cross_task_switch/` | Common-grid and strict-intersection comparisons across tasks; omits the task level in its path |
+| `switch_diagnostics/` | Plot navigation and method-specific diagnostic figures; uses its own navigation layout shown above |
+
+For autoregressive summaries, start with `validation_forecast_comparison.csv`,
+`test_forecast_switch_comparison.csv`, and
+`global_switch_behavior_comparison.csv`. Other task summary runners produce
+`current_level_model_comparison_delta0p5.csv`,
+`long_fade_model_comparison.csv`, and `model_comparison_xgboost_tcn.csv`.
+The per-model switch folders contain `switch_metrics_summary.csv`,
+`switch_metrics_by_event.csv`, `global_switch_metrics.csv`, and
+`event_switch_metrics.csv`; switch islands are not the same as dataset events.
+
 Grid searches:
 
 ```text
@@ -745,10 +874,25 @@ results/index/survival_persistence_runs.csv
 as its stable key, because different tasks can share the same external-holdout
 selection ID while producing different supervised datasets.
 
-The repository tracks lightweight CSV/YAML summaries and selected prediction
-files needed to regenerate comparisons. Heavy generated artifacts such as
-figures, trial checkpoints, validation histories, and most intermediate
+The experimental artifact policy tracks lightweight CSV/YAML summaries and
+selected prediction files needed to regenerate comparisons. Heavy generated artifacts such as
+result figures, trial checkpoints, validation histories, and most intermediate
 Parquet files remain ignored.
+
+A Git clone is therefore not a complete experiment snapshot. In particular,
+task comparison predictions under `results/comparisons/**/predictions/`, raw
+data, model checkpoints, and most dataset arrays must be regenerated or
+transferred separately. Central indexes locate artifacts but do not contain
+their data. Do not assume that downloading the indexes is sufficient to rerun
+the final plots.
+
+When datasets are intentionally rebuilt, the maintenance utility
+`scripts/maintenance/refresh_predictions_without_retraining.py` can refresh
+supported canonical runs from existing checkpoints. It overwrites predictions
+and native metrics without fitting models or scalers. This requires compatible
+datasets and local model artifacts, and must be followed by regenerating the
+reference, switch comparisons, summaries, and final plots. It is not a
+substitute for retraining after a change to the modeling assumptions.
 
 ## Repository Layout
 
@@ -784,6 +928,7 @@ The test suite is organized by area:
 tests/autoregressive/
 tests/current_level_persistence/
 tests/long_fade_detection/
+tests/survival_persistence/
 tests/data/
 tests/evaluation/
 tests/switching/
@@ -801,3 +946,8 @@ tests/utils/
 - Do not use non-signal covariates.
 - Record run metadata, config fingerprints, selected device, metrics, and
   artifact paths.
+
+These are the rules for confirmatory experiments. The retained survival
+probability-threshold sweep is an explicitly documented exploratory exception;
+its `0.65` operating point still requires independent validation calibration
+before being presented as a selected deployment policy.
