@@ -107,7 +107,7 @@ $$
 The uncensored regression target is the corresponding elapsed duration:
 
 $$
-T_t(\delta) = \operatorname{elapsed\_seconds}(t, u_t(\delta))
+T_t(\delta) = elapsed\_seconds(t, u_t(\delta))
 $$
 
 Thus, `delta` defines the required decrease below the current value before the
