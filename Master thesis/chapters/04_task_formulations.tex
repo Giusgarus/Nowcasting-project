@@ -1,0 +1,1153 @@
+\chapter{Proposed Modeling Approaches}
+\label{chap:task-formulations}
+
+The modeling strategy is organized around four predictive formulations rather
+than around standalone architectures. All four approaches share the same
+operational objective: at decision time \(t_i\), use only the signal history
+available up to that time to decide whether the backup link should be activated.
+They differ in the intermediate quantity estimated before this final decision:
+the future signal trajectory, a local persistence duration, the probability of
+a long fade event, or a residual-duration survival function.
+
+\section{Overview of the Four Modeling Formulations}
+\label{sec:overview-modeling-formulations}
+
+The four formulations represent different levels of abstraction of the same
+nowcasting problem. Autoregressive forecasting retains the most detailed
+description of the future by predicting a trajectory. Current-level persistence
+reduces the future to the time for which the signal remains close to its current
+level. Long-fade detection formulates the problem as an event-level binary
+classification task. Survival persistence retains uncertainty about the time to
+recovery by estimating a residual-duration distribution while allowing for
+right-censored observations.
+
+This organization separates the predictive task from the architecture used to
+implement it. The following matrix summarizes the target, the model families
+used in the corresponding experiments, and the conversion that connects each
+native output to the common switch decision. The detailed definitions and
+assumptions are given in \cref{sec:autoregressive-formulation,sec:current-level-formulation,sec:long-fade-formulation,sec:survival-formulation}.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Overview of the four modeling formulations and their implemented
+  model families.}
+  \label{tab:modeling-formulation-matrix}
+  \vspace{0.45em}
+  \renewcommand{\arraystretch}{1.35}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.16\textwidth}
+    >{\raggedright\arraybackslash}p{0.21\textwidth}
+    >{\raggedright\arraybackslash}p{0.30\textwidth}
+    >{\raggedright\arraybackslash}p{0.18\textwidth}@{}}
+    \toprule
+    Formulation & Native output & Model families & Switch conversion \\
+    \midrule
+    Autoregressive forecasting (Sec.~\ref{sec:autoregressive-formulation})
+      & Future signal trajectory
+      & GRU sequence models \cite{cho2014learning,chung2014empirical};
+        PatchTST \cite{nie2023patchtst}; XGBoost \cite{chen2016xgboost};
+        Chronos \cite{ansari2024chronos}
+      & Forecast trajectory to switch \\
+    Current-level persistence (Sec.~\ref{sec:current-level-formulation})
+      & Local persistence duration
+      & Multiscale learnable-shapelet MLP, Transformer, and convolution
+        variants \cite{grabocka2014learning}; XGBoost \cite{chen2016xgboost}
+      & Duration threshold \\
+    Long-fade detection (Sec.~\ref{sec:long-fade-formulation})
+      & Probability of a long grouped fade event
+      & XGBoost lag-and-scalar classifier \cite{chen2016xgboost}; TCN
+        classifier \cite{bai2018tcn}; multiscale shapelet convolution
+        classifier \cite{grabocka2014learning}
+      & Probability threshold with signal gate \\
+    Survival persistence (Sec.~\ref{sec:survival-formulation})
+      & Residual-duration survival function
+      & XGBoost-AFT \cite{barnwal2022xgboostAft}; discrete-time causal TCN
+        \cite{gensheimer2019nnet,bai2018tcn}
+      & Survival probability at the operational horizon \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The next sections define the common prediction setting and then describe each
+formulation in detail. For each one, the input representation, target
+construction, model families, native metrics, and output-to-switch rule are
+specified before the formulations are compared in a common operational
+evaluation framework.
+
+\section{Common Prediction Setting}
+\label{sec:common-prediction-setting}
+
+After the common loading and preprocessing stage, each dataset is represented as
+an ordered univariate time series
+
+\[
+  \{(t_i, S_i)\}_{i=1}^{N},
+\]
+
+where \(t_i\) is the timestamp of the \(i\)-th observation and \(S_i\) is the
+corresponding signal value. The project deliberately uses a signal-only
+representation: no meteorological, orbital, station-side, or file-specific
+auxiliary variable is used as model input. This constraint makes the comparison
+between datasets and tasks consistent, because every model receives information
+derived from the same physical quantity.
+
+For a decision made at index \(i\), the generic past context of length \(L\) is
+
+\[
+  X_i = [S_{i-L+1}, \ldots, S_i].
+\]
+
+The last value \(S_i\) is the most recent observation available when the
+decision is made. All features used by the models must be observable at time
+\(t_i\): they can be functions of this past context, or task-specific
+elapsed-time and event-state quantities computed from past and current
+threshold crossings. Future samples may be used to construct supervised targets
+during dataset generation, but they are never allowed to enter \(X_i\) or any
+derived input feature.
+
+Different tasks apply different transformations to the same basic context. Some
+models use the raw window directly, some use a local context-standardized
+version, and some use relative representations such as \(X_i-S_i\) or
+\(X_i-\theta\), where \(\theta\) is the operational signal threshold. When
+scalar context features are used, they are computed only from the available
+signal history and online task state, and their standardization parameters are
+estimated on the training split only.
+
+The term scalar context is used in a precise sense throughout the chapter. It
+does not denote external covariates. It denotes past-only scalar summaries
+derived from the same signal window and, when the task is event-based, from the
+event state already observable at \(t_i\). The recurring signal summaries are
+trailing quantities:
+\[
+  \bar{S}_{i,L}
+  =
+  \frac{1}{L}\sum_{r=0}^{L-1} S_{i-r},
+  \qquad
+  \operatorname{sd}_{i,L}
+  =
+  \operatorname{std}(S_{i-L+1},\ldots,S_i),
+\]
+together with the window minimum, maximum, range, and finite differences
+\[
+  \Delta_i^{(q)} = S_i - S_{i-q+1},
+  \qquad q\in\{2,3,5\}.
+\]
+The short-window summaries \(\bar{S}_{i,5}\) and
+\(\operatorname{sd}_{i,5}\) are computed on the last five available samples of
+the context. These are rolling only in the trailing online sense: they are never
+centered around \(t_i\), and they never use samples after \(t_i\). When a model
+uses a tabular lag matrix, the lag columns are ordered from oldest to newest;
+\(\operatorname{lag}_{L-1}\) corresponds to \(S_{i-L+1}\) after the selected
+task transformation, and \(\operatorname{lag}_{0}\) corresponds to the current
+sample \(S_i\) after the same transformation.
+
+The output of a model at index \(i\) is denoted generically as \(z_i\). Depending
+on the task, \(z_i\) can be a future trajectory, a duration estimate, a binary
+event probability, or a survival curve. Each task therefore defines an explicit
+conversion rule
+
+\[
+  r_i = c(z_i, S_i),
+\]
+
+where \(r_i \in \{0,1\}\) is the raw model-derived switch before the shared
+post-processing defined in \cref{sec:shared-switch-post-processing}. The final
+evaluated switch is obtained only after applying that common policy. This
+separation keeps the task-specific predictive problem distinct from the common
+operational decision layer.
+
+\section{Autoregressive Forecasting}
+\label{sec:autoregressive-formulation}
+
+Autoregressive forecasting is the most direct formulation of the nowcasting
+problem considered in this work. Instead of predicting a binary switch or a
+duration variable directly, the model predicts the future signal trajectory over
+a short operational horizon. The switch decision is then derived from this
+forecasted trajectory. This formulation is useful because it preserves an
+interpretable intermediate output: before evaluating whether a method triggers a
+backup-link switch, one can inspect whether it predicts the local evolution of
+the signal correctly.
+
+This signal-forecasting view deliberately avoids building a fade definition
+into the predictive target. The model is not trained to decide whether an event
+is a fade, whether a fade will last longer than a fixed duration, or whether a
+particular threshold crossing belongs to an operationally relevant event. It is
+trained only to estimate future values of the measured signal. As a consequence,
+the autoregressive task does not require a threshold \(\theta\), an onset or
+recovery rule, an event-grouping rule, or a minimum fade duration in order to be
+defined. These quantities become necessary only later, when the predicted signal
+trajectory is converted into a switch decision and compared with reference
+switch policies. This is a key difference from the task formulations that
+follow, where the supervised target itself is a duration, event class, or
+survival quantity whose definition depends on a fade or recovery criterion.
+
+\subsection{Task Definition}
+
+For a valid decision index \(i\), the autoregressive input is the past signal
+window
+
+\[
+  X_i^{\text{AR}} = [S_{i-L+1}, \ldots, S_i] \in \mathbb{R}^{L},
+\]
+
+and the target is the future signal trajectory
+
+\[
+  Y_i^{\text{AR}} = [S_{i+1}, \ldots, S_{i+h}] \in \mathbb{R}^{h}.
+\]
+
+Both quantities are defined only from the signal and the forecasting horizon.
+A valid sample requires an observed context and a fully observed future horizon
+inside one continuous acquisition segment. In the experiments, the eligible
+decision indices are restricted to the candidate event windows built during data
+preparation. This is a sampling and evaluation-design choice: it focuses the
+training and comparison on operationally relevant periods, but it does not
+change the autoregressive target, which remains the future signal trajectory.
+
+In the main experimental configuration, \(L=30\) and \(h=10\). With the
+canonical sampling interval of approximately 30 seconds, the model therefore
+observes about 15 minutes of recent signal history and predicts about 5 minutes
+ahead. A longer-context Chronos diagnostic configuration with \(L=120\) is also
+kept separate from the main autoregressive comparison.
+
+The future trajectory is used only to construct the offline target. The model
+output is
+
+\[
+  \widehat{Y}_i^{\text{AR}}
+  =
+  [\widehat{S}_{i+1}, \ldots, \widehat{S}_{i+h}],
+\]
+
+and is converted back to the raw signal scale before forecast metrics or switch
+conversion are computed.
+
+\subsection{Tested Models}
+
+Four autoregressive model families are used. Their general modeling principles
+are introduced in \cref{chap:background}; this section only specifies how they
+are instantiated for the autoregressive task. For trainable neural models, the
+input tensor has shape \(N\times L\times 1\), where the last dimension is the
+single \texttt{Signal} channel. Two input variants are considered. In the raw
+variant, \(X_i^{\text{AR}}\) and \(Y_i^{\text{AR}}\) are used in their original
+scale. In the context-standardized variant, each context is normalized with
+statistics computed from the context itself, and the corresponding target is
+represented in the same local scale during training. Predictions from this
+variant are always inverse-transformed to raw signal units before forecast
+metrics or switch decisions are computed.
+
+This two-variant design is used for every trainable autoregressive model family
+in the experiments: GRU, PatchTST, and XGBoost. Chronos is evaluated separately
+as a raw zero-shot foundation-model baseline, because it performs its own
+internal scaling.
+
+For the context-standardized variant, the dataset stores
+\[
+  \mu_i=\frac{1}{L}\sum_{r=0}^{L-1}S_{i-r},
+  \qquad
+  s_{\mathrm{ctx},i}=\max\{\operatorname{std}(X_i^{\text{AR}}),\epsilon\}.
+\]
+Here \(s_{\mathrm{ctx},i}\) is the context standard deviation bounded below by
+\(\epsilon>0\) for numerical stability. No rolling statistics, slope features,
+scalar context vector, threshold mask, or event-position variable is appended to
+the autoregressive models. GRU, PatchTST, and Chronos receive only the ordered
+univariate sequence. The XGBoost autoregressive baseline receives the same values
+flattened into lag columns \(\operatorname{lag}_{L-1},\ldots,\operatorname{lag}_0\),
+but no additional summary features are added.
+
+\paragraph{GRU sequence models.}
+Two GRU variants with unidirectional encoders are evaluated. Unidirectionality
+is an architectural choice in these experiments; as discussed in
+\cref{sec:background-gru}, a bidirectional encoder restricted to the same past
+context would also respect the decision-time information boundary. Let
+\(\widetilde{X}_i\) denote the model input in either raw or
+context-standardized scale. The sequence-to-vector variant encodes the full
+past context with a unidirectional GRU,
+\[
+  (A_{i,1},\ldots,A_{i,L}), a_i
+  =
+  \operatorname{GRU}_{\mathrm{enc}}(\widetilde{X}_i),
+\]
+where \(a_i\) is the final hidden representation of the last recurrent layer.
+The complete future trajectory is then produced by one linear output head:
+\[
+  \widehat{Y}_i^{\text{AR}} = W_o a_i + b_o .
+\]
+This is a direct multiple-output forecaster. It shares the encoder across the
+context but does not generate the forecast recursively; all horizons are
+predicted from the same encoded state.
+
+The encoder-decoder variant uses the encoder hidden state to initialize a second
+GRU that runs over the future horizon. The decoder starts from the last observed
+input value and generates one value at a time:
+\[
+  d_{i,k}
+  =
+  \operatorname{GRU}_{\mathrm{dec}}(\xi_{i,k},d_{i,k-1}),
+  \qquad
+  \widehat{S}_{i+k}=W_d d_{i,k}+b_d .
+\]
+During training, the decoder input \(\xi_{i,k}\) can be either the previous
+prediction or the corresponding previous true target value according to the
+configured teacher-forcing ratio. During validation, testing, and switch
+conversion, teacher forcing is disabled, so future true values never enter the
+decoded trajectory.
+
+Both GRU variants are optimized with mean squared error over the \(h\)-step
+target,
+\[
+  \mathcal{L}_{\mathrm{AR}}
+  =
+  \frac{1}{Nh}
+  \sum_i\sum_{k=1}^{h}
+  \left(\widehat{S}_{i+k}-S_{i+k}\right)^2 ,
+\]
+computed in the training scale of the selected variant.
+
+\paragraph{PatchTST.}
+PatchTST receives the same univariate context, partitions it into local temporal
+patches, processes the resulting tokens with Transformer encoder blocks, and
+maps the encoded representation to the \(h\)-step forecast. In this formulation,
+PatchTST tests whether patch-level attention is useful for representing short
+fade rises, plateaus, and recoveries within the recent signal history. The
+implemented model is a deterministic PatchTST-style direct forecaster rather
+than a full NeuralForecast wrapper: it extracts complete patches from the
+single-channel signal context, applies a learned linear patch embedding and a
+learned positional embedding, encodes the patch sequence with a Transformer
+encoder, flattens the encoded tokens, and projects them to the full future
+signal trajectory. Channel independence is therefore satisfied trivially,
+because the task uses only the \texttt{Signal} input channel.
+
+More explicitly, for patch length \(P\) and stride \(s\), the input is unfolded
+into \(N_p\) complete patches \(p_{i,j}\in\mathbb{R}^{P}\). Each patch is mapped
+to a token
+\[
+  e_{i,j}=W_p p_{i,j}+b_p+r_j ,
+\]
+where \(r_j\) is a learned positional embedding. The Transformer encoder returns
+contextualized patch tokens \(H_i\), and the output head applies a direct
+multi-output projection:
+\[
+  \widehat{Y}_i^{\text{AR}}
+  =
+  W_o\operatorname{vec}(H_i)+b_o .
+\]
+The model is trained with the same trajectory MSE used for the GRU forecasters.
+Unlike the GRU encoder-decoder, it does not autoregress over the predicted
+future values; the whole horizon is produced in one forward pass.
+
+\paragraph{XGBoost autoregressive baseline.}
+The XGBoost baseline converts each context into a tabular lag vector
+\[
+  \phi_i^{\text{AR}}
+  =
+  [\widetilde{S}_{i-L+1},\ldots,\widetilde{S}_i],
+\]
+again using either the raw or context-standardized variant. It then trains one
+independent boosted-tree regressor for each forecast horizon:
+\[
+  \widehat{S}_{i+k}=F_k(\phi_i^{\text{AR}}),
+  \qquad k=1,\ldots,h .
+\]
+Each \(F_k\) is an XGBoost regressor with a squared-error regression objective.
+The horizon-specific regressors have separate parameters and random seeds, so
+the method does not impose a joint trajectory structure across the ten predicted
+future samples. Its purpose is to test whether a strong nonlinear learner over
+fixed lag features can compete with explicit sequence models for short-horizon
+signal prediction. Because the features are fixed lags, the baseline is causal
+by construction as long as \(\phi_i^{\text{AR}}\) is built only from the past
+context.
+
+\paragraph{Chronos foundation model: zero-shot forecasting.}
+Chronos is used only in zero-shot mode. The pretrained model receives a
+univariate context and returns sampled future trajectories
+\[
+  \widehat{Y}_{i}^{(b)}
+  \sim
+  p_{\mathrm{Chronos}}(Y_i\mid X_i),
+  \qquad b=1,\ldots,B .
+\]
+The deterministic trajectory used for MAE, RMSE, and switch conversion is the
+sample median at each horizon,
+\[
+  \widehat{S}_{i+k}
+  =
+  \operatorname{median}_{b=1,\ldots,B}
+  \widehat{S}_{i+k}^{(b)} .
+\]
+Prediction quantiles are also saved as distributional diagnostics, but the
+switch pipeline uses the median trajectory for consistency with the
+deterministic forecasters. No Chronos parameter is trained or fine-tuned, and no
+train or validation data are loaded to adapt the model. A main run uses
+\(L=30\), while an additional diagnostic run uses \(L=120\) to test whether a
+longer context improves the foundation-model forecast.
+
+\subsection{Switch Conversion}
+
+The autoregressive model does not output a switch directly, and the threshold
+used below is not a training label. It belongs to the downstream decision layer:
+after the future signal trajectory has been predicted, the forecast is converted
+into one raw switch decision at the prediction time \(t_i\). Let \(\theta\) be
+the operational signal threshold and let \(q\) be the configured minimum number
+of forecasted future samples that must exceed the threshold. The raw
+autoregressive switch is
+
+\[
+  r_i^{\text{AR}}
+  =
+  \mathbb{1}
+  \left[
+    \sum_{k=1}^{h}
+    \mathbb{1}\left(\widehat{S}_{i+k} \ge \theta\right)
+    \ge q
+  \right].
+\]
+
+In the main experiments, \(\theta=10.0\) dB and \(q=h=10\). Therefore the model
+switches at time \(t_i\) only if all ten predicted future signal values are at
+or above the operational threshold. This is a deliberately conservative rule:
+it requires the forecast to indicate persistence throughout the full prediction
+horizon before the backup-link decision is activated.
+
+Changing \(\theta\), \(q\), or the post-processing rule would change the
+operational interpretation of the same predicted trajectory, but it would not
+change the autoregressive supervised learning problem. This separation is useful
+when the desired fade definition is uncertain or may be revised, because the
+forecast remains a signal-level object rather than a model-specific fade label.
+
+After this raw decision is produced, the shared switch post-processing defined
+in \cref{sec:shared-switch-post-processing} is applied. The autoregressive
+models are therefore compared against the Perfect Switch using the same final
+decision layer as the other task formulations. Forecast MAE and RMSE remain
+useful diagnostics, but the operational comparison is based on the derived
+switch sequence.
+
+\section{Current-Level Persistence}
+\label{sec:current-level-formulation}
+
+Current-level persistence reformulates the problem as a duration regression
+task. Instead of predicting the future signal trajectory, the model estimates
+how long the signal will remain above a level defined relative to the current
+observation. This is not equivalent to forecasting the end of the whole fade
+event. It asks a local question: given the recent signal pattern and the current
+level \(S_i\), for how long does the signal persist above \(S_i-\delta\)?
+
+This formulation was included because the operational switch decision is
+ultimately related to persistence. A short threshold crossing may not justify
+switching to a backup link, while a signal condition expected to persist for
+several minutes may. Current-level persistence therefore compresses the future
+trajectory into a single scalar duration.
+
+\subsection{Task Definition}
+
+For a valid decision index \(i\), the raw context is again
+
+\[
+  X_i = [S_{i-L+1}, \ldots, S_i].
+\]
+
+The task-specific recovery level is defined as
+
+\[
+  \lambda_i = S_i - \delta,
+\]
+
+where \(\delta>0\) controls how far below the current value the signal is
+allowed to fall before the current-level persistence episode is considered to
+have ended. In the experiments, \(\delta=0.5\) dB. The target recovery index is
+
+\[
+  \tau_i =
+  \inf \left\{
+    j>i : S_j < \lambda_i
+  \right\},
+\]
+
+provided that such an index is observed before the end of the current
+acquisition segment. The observed remaining persistence duration is
+
+\[
+  D_i^{\text{CLP}} = t_{\tau_i} - t_i .
+\]
+
+If no recovery is observed before the acquisition segment ends, the candidate is
+right-censored. In the current duration-regression implementation these
+censored candidates are stored for diagnostics but excluded from ordinary
+supervised regression. They are not assigned an artificial finite duration,
+because doing so would bias the target downward.
+
+The primary sequence representation is relative to the current value:
+
+\[
+  X_i^{\text{rel-current}}
+  =
+  X_i - S_i
+  =
+  [S_{i-L+1}-S_i, \ldots, 0].
+\]
+
+This removes the absolute level from the sequence and emphasizes local shape:
+rising history, recovery history, recent oscillations, and short-term
+stability. Absolute level information is reintroduced through scalar context
+features computed from \(X_i\), such as the current signal, the recovery level,
+window summary statistics, recent slopes, and short-window moments. These
+features are standardized using training-split statistics only.
+
+In the implemented current-level dataset, the sequence input is the
+current-relative array, and the scalar vector is the scalar-context feature
+array. For one sample, the scalar vector is ordered as
+\[
+\begin{aligned}
+  s_i^{\text{CLP}} = [
+  &S_i,\ S_i-\delta,\ \bar{S}_{i,L},\
+  \operatorname{sd}_{i,L},\
+  \min(X_i),\ \max(X_i),\
+  \max(X_i)-\min(X_i),\\
+  &\Delta_i^{(2)},\ \Delta_i^{(3)},\ \Delta_i^{(5)},\
+  \bar{S}_{i,5},\ \operatorname{sd}_{i,5}
+  ] .
+\end{aligned}
+\]
+Thus the learnable sequence component sees only deviations from the current
+sample, while the scalar branch receives the absolute level, the recovery level
+\(S_i-\delta\), full-window trailing summaries, and short-window trailing
+summaries. No fade-threshold variable, event-duration variable, future recovery
+time, or target duration is included as an input feature.
+
+The regression target is log-compressed:
+
+\[
+  y_i^{\text{CLP}} = \log(1+D_i^{\text{CLP}}).
+\]
+
+Models are trained to predict \(y_i^{\text{CLP}}\). For evaluation and switch
+conversion, predictions are mapped back to seconds:
+
+\[
+  \widehat{D}_i^{\text{CLP}}
+  =
+  \exp(\widehat{y}_i^{\text{CLP}})-1 .
+\]
+
+The logarithmic target reduces the influence of very long persistence episodes
+while preserving the ordering of durations.
+
+\subsection{Tested Models}
+
+The current-level persistence branch uses learnable shapelet models and an
+XGBoost duration-regression baseline. Shapelet-based modeling is introduced in
+\cref{chap:background}; here the important point is that the learned shapelets
+operate on \(X_i^{\text{rel-current}}\), so they search for local patterns around
+the current signal level rather than around an absolute threshold.
+
+All current-level models are log-duration regressors. They predict
+\[
+  \widehat{y}_i^{\text{CLP}} = g_\vartheta(X_i^{\text{rel-current}},s_i),
+\]
+where \(s_i\) is the optional train-standardized scalar context. Neural
+shapelet models are trained with a smooth-\(L_1\) loss in log-duration space,
+\[
+  \ell(e_i)
+  =
+  \begin{cases}
+    \frac{1}{2}e_i^2, & |e_i|<1,\\
+    |e_i|-\frac{1}{2}, & |e_i|\ge 1,
+  \end{cases}
+  \qquad
+  e_i = \widehat{y}_i^{\text{CLP}}-y_i^{\text{CLP}} .
+\]
+This reduces the influence of extreme duration errors while preserving a
+quadratic region around small errors. XGBoost uses a squared-error objective on
+the same \(y_i^{\text{CLP}}\) target.
+
+When scalar context is enabled, each neural model receives a one-channel
+sequence
+\(X_i^{\text{rel-current}}\in\mathbb{R}^{L}\) and the standardized
+12-dimensional vector \(s_i^{\text{CLP}}\). The scalar vector is passed through
+a learned affine--ReLU--dropout embedding before concatenation with the
+shapelet representation. With \(L=30\), the XGBoost baseline receives a
+42-column table: 30 current-relative lags followed by the same 12 scalar
+features.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Current-level persistence models.}
+  \label{tab:current-level-models}
+  \renewcommand{\arraystretch}{1.25}
+  \setlength{\tabcolsep}{3pt}
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.24\textwidth}
+    >{\raggedright\arraybackslash}p{0.34\textwidth}
+    >{\raggedright\arraybackslash}p{0.32\textwidth}@{}}
+    \toprule
+    Model & Representation & Purpose \\
+    \midrule
+    Shapelet MLP \cite{grabocka2014learning}
+      & Minimum multiscale shapelet distances, optionally joined with scalar
+        context.
+      & Tests whether best-match local patterns are sufficient for duration
+        regression. \\
+    Shapelet Transformer \cite{grabocka2014learning,vaswani2017attention}
+      & The same minimum-distance vector interpreted as pattern-response
+        tokens.
+      & Tests interactions among learned pattern responses before regression. \\
+    Shapelet convolution \cite{grabocka2014learning}
+      & Full multiscale shapelet response maps over temporal positions.
+      & Preserves where a pattern occurs inside the context window. \\
+    XGBoost regressor \cite{chen2016xgboost}
+      & Flattened current-relative lags plus scalar context.
+      & Provides a non-neural tabular baseline for the same log-duration target. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+All predictions are evaluated after conversion back to seconds through
+\(\exp(\widehat{y}_i^{\text{CLP}})-1\).
+
+\subsection{Switch Conversion}
+
+The current-level models output a duration estimate, not a switch. Let
+\(T_{\min}\) be the operational minimum duration required to justify switching.
+The raw current-level switch is
+
+\[
+  r_i^{\text{CLP}}
+  =
+  \mathbb{1}
+  \left[
+    S_i \ge \theta
+    \ \land\
+    \widehat{D}_i^{\text{CLP}} \ge T_{\min}
+  \right].
+\]
+
+In the experiments, \(\theta=10.0\) dB and \(T_{\min}=300\) seconds. The signal
+gate \(S_i\ge\theta\) prevents a long predicted persistence around a
+non-critical level from triggering a backup-link switch. The duration condition
+then asks whether the current level is expected to remain persistent for at
+least the operational switch horizon. The shared post-processing policy is
+applied after this raw switch is produced.
+
+\section{Long-Fade Detection}
+\label{sec:long-fade-formulation}
+Long-fade detection is a binary event-classification formulation. It is closely
+related to current-level persistence because both approaches ask whether the
+current fade condition is likely to persist long enough to justify an
+operational switch. The difference is the target. Current-level persistence
+predicts a continuous duration relative to the current signal level
+\(S_i-\delta\). Long-fade detection instead predicts whether the grouped fade
+event to which the current timestamp belongs is a long event.
+
+\subsection{Task Definition}
+Let \(\theta\) be the fade threshold and let \(T_{\min}\) be the minimum event
+duration used to define an operationally relevant long fade. In the experiments,
+\(\theta=10.0\) dB and \(T_{\min}=300\) seconds. A threshold crossing occurs at
+index \(i\) when
+
+\[
+  S_i \ge \theta .
+\]
+
+The long-fade task does not define an event as a single uninterrupted run of
+above-threshold samples. Such a definition would split one physical fade into
+several fragments whenever the signal temporarily oscillates around the
+threshold. Instead, threshold crossings are grouped with the same operational
+convention used in the dataset builder. A grouped event starts at the first
+crossing. Further crossings whose timestamps are within three hours from that
+event start remain in the same grouped event. The event span extends from the
+first to the last threshold-crossing sample in the group. Samples below
+threshold inside this span are kept as part of the grouped event, so temporary
+recoveries do not create separate labels.
+
+For a grouped event \(e\), let \(a_e\) and \(b_e\) denote the first and last
+crossing indices in the group. Its duration is represented on the canonical
+sample grid as
+
+\[
+  D_e = (b_e-a_e+1)\Delta t,
+\]
+
+where \(\Delta t\) is the sampling interval. The event-level long-fade label is
+
+\[
+  y_e^{\text{LFD}}
+  =
+  \mathbb{1}[D_e \ge T_{\min}].
+\]
+
+Every valid decision timestamp \(i\) inside the grouped event span receives the
+same label:
+
+\[
+  y_i^{\text{LFD}} = y_e^{\text{LFD}},
+  \qquad i \in [a_e,b_e].
+\]
+
+This design makes the task a grouped-event classifier rather than a
+pointwise-threshold classifier. The model is not asked whether the signal is
+above threshold at the next sample; it is asked whether the current grouped fade
+belongs to an event whose total duration reaches the operational minimum.
+
+The input at a decision index is again restricted to past and current signal
+values. The main sequence representation is relative to the threshold:
+
+\[
+  X_i^{\text{rel-threshold}}
+  =
+  [S_{i-L+1}-\theta,\ldots,S_i-\theta].
+\]
+
+This representation centers the input around the operational decision boundary:
+positive values are above the fade threshold and negative values are below it.
+The model may also receive scalar context features computed only from the
+available past window and from online event-state information, such as the
+current signal, recent slopes, local window statistics, elapsed time since the
+first crossing, and the number of observed samples since the grouped event
+started. Quantities that require knowledge of the future event end, such as the
+final event duration or the final position fraction, are not allowed as model
+inputs.
+
+The exact long-fade scalar vector is
+\[
+\begin{aligned}
+  s_i^{\text{LFD}} = [
+  &S_i,\ S_i-\theta,\ \bar{S}_{i,L},\
+  \operatorname{sd}_{i,L},\
+  \min(X_i),\ \max(X_i),\
+  \max(X_i)-\min(X_i),\\
+  &\Delta_i^{(2)},\ \Delta_i^{(3)},\ \Delta_i^{(5)},\
+  \bar{S}_{i,5},\ \operatorname{sd}_{i,5},\
+  E_i^{\text{fade}},\ P_i^{\text{fade}}
+  ] ,
+\end{aligned}
+\]
+where \(E_i^{\text{fade}}\) is the elapsed time in seconds since the first
+crossing of the grouped event, and \(P_i^{\text{fade}}\) is the number of
+observed samples since that event start. Both are online quantities because they
+depend only on the already observed beginning of the grouped event and the
+current timestamp. The tabular XGBoost input \texttt{X\_lag\_scalar} is the
+concatenation
+\[
+  [
+  S_{i-L+1}-\theta,\ldots,S_i-\theta,\ s_i^{\text{LFD}}
+  ],
+\]
+with the lag columns named from \(\operatorname{lag}_{L-1}\) to
+\(\operatorname{lag}_{0}\). In the main \(L=30\) setup this gives 30
+threshold-relative lags plus 14 scalar features. The TCN and
+shapelet-convolution classifiers receive the threshold-relative sequence as a
+sequence tensor and the same standardized scalar vector through a separate
+scalar branch.
+
+\subsection{Tested Models}
+All long-fade models output a probability
+
+\[
+  \widehat{p}_i^{\text{LFD}}
+  =
+  P(y_i^{\text{LFD}}=1 \mid X_i),
+\]
+or a logit transformed into this probability. Neural classifiers are trained
+with weighted binary cross-entropy with logits,
+\[
+  \mathcal{L}_{\mathrm{LFD}}
+  =
+  -\frac{1}{N}
+  \sum_i
+  \left[
+    \alpha y_i^{\text{LFD}}\log \widehat{p}_i^{\text{LFD}}
+    +
+    (1-y_i^{\text{LFD}})
+    \log(1-\widehat{p}_i^{\text{LFD}})
+  \right],
+\]
+where \(\alpha\) is computed from the training split as the ratio between
+negative and positive samples, with a safe fallback when no positive sample is
+available. XGBoost uses the corresponding binary logistic boosted-tree
+objective and handles class imbalance through the positive-class scale
+parameter.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Long-fade detection classifiers.}
+  \label{tab:long-fade-models}
+  \renewcommand{\arraystretch}{1.25}
+  \setlength{\tabcolsep}{3pt}
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.24\textwidth}
+    >{\raggedright\arraybackslash}p{0.34\textwidth}
+    >{\raggedright\arraybackslash}p{0.32\textwidth}@{}}
+    \toprule
+    Model & Input representation & Purpose \\
+    \midrule
+    XGBoost lag-and-scalar classifier
+      & Threshold-relative lags plus train-standardized online scalar context.
+      & Tests whether fixed lag features and simple signal summaries are
+        sufficient for long-event classification. \\
+    Temporal convolution classifier
+      & Threshold-relative sequence plus scalar-context embedding.
+      & Uses dilated residual convolutions to combine local changes with wider
+        temporal context. \\
+    Multiscale shapelet-convolution classifier
+      & Multiscale distance-to-shapelet response maps plus scalar context.
+      & Tests whether explicit local pattern matching improves over generic
+        convolutional sequence features. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+All three models are causal at decision time because their inputs contain only
+the past context, the current signal, and online event-state quantities already
+observable at \(t_i\).
+
+\subsection{Switch Conversion}
+The long-fade classifier output is converted into a switch by thresholding the
+predicted probability and gating the decision with the current signal level. Let
+\(\pi_{\min}\) be the configured probability threshold. The raw switch is
+
+\[
+  r_i^{\text{LFD}}
+  =
+  \mathbb{1}
+  \left[
+    S_i \ge \theta
+    \ \land\
+    \widehat{p}_i^{\text{LFD}} \ge \pi_{\min}
+  \right].
+\]
+
+The signal gate is important because the model can produce a long-fade
+probability for timestamps inside the grouped event span even when the signal is
+temporarily below threshold. In those cases, the probability may still be
+informative about the event class, but the operational switch is activated only
+when the current signal is in the fade region. The default probability threshold
+used in the experiments is \(\pi_{\min}=0.5\). After this raw decision is
+formed, the same shared switch post-processing policy is applied before
+comparison with the Perfect Switch.
+
+\section{Survival Persistence}
+\label{sec:survival-formulation}
+Survival persistence models the remaining duration of the current fade event as
+a time-to-event problem. It is related to current-level persistence because both
+tasks estimate a future duration, but the definition of the target is different.
+Current-level persistence asks how long the signal will remain above
+\(S_i-\delta\). Survival persistence asks how long the current fade event will
+remain active before a stable recovery is observed.
+
+The task is therefore naturally expressed with survival analysis notation. For
+a decision time \(t_i\), let \(R_i\) be the residual duration of the current fade
+event. The desired model output is a conditional survival function
+
+\[
+  S(u \mid X_i) = P(R_i > u \mid X_i),
+\]
+
+where \(u\) is a future time horizon. This output is more informative than a
+single duration estimate: it can answer questions such as whether the current
+fade is likely to persist for more than 60 seconds, 300 seconds, or 900 seconds.
+The formulation also supports right-censored observations, a central feature of
+survival data \cite{keiding2015survival}. In this project, censoring occurs when
+the acquisition segment ends before stable recovery from the fade can be
+observed.
+
+\subsection{Task Definition}
+Survival-persistence samples are generated only inside detected fade events.
+Events are constructed within continuous acquisition segments using a
+state-machine definition. The event starts when the activation condition is
+satisfied,
+
+\[
+  S_i \ge \theta_{\text{on}},
+\]
+
+and remains active until a stable recovery is confirmed. A candidate recovery
+starts when the recovery condition is satisfied,
+
+\[
+  S_i < \theta_{\text{off}}.
+\]
+
+The candidate becomes the event end only if the following recovery window is
+stable enough: in the implemented configuration, the recovery window is
+300 seconds long, contains at least a minimum number of observations, and has at
+least 80\% of its samples satisfying the recovery condition. If a new activation
+crossing occurs during the candidate recovery interval, the candidate is
+aborted and the event remains active. This rule prevents short oscillations
+around the threshold from breaking one physical fade into several artificial
+events.
+
+For an observed event \(e\), let \(a_e\) be the event start index and let
+\(c_e\) be the first timestamp of the stable recovery interval. The survival
+event end is \(t_{c_e}\). The confirmation time may occur later, because future
+samples are needed to verify that the recovery interval is stable, but this
+confirmation delay is not added to the physical target duration. For a sample
+at index \(i\) inside the event,
+
+\[
+  R_i = t_{c_e} - t_i .
+\]
+
+Samples at the event end itself are excluded so that all observed survival
+times remain strictly positive.
+
+If the acquisition segment ends before a stable recovery can be confirmed, the
+sample is right-censored. In that case the exact residual duration is unknown,
+but it is known to be longer than the remaining observed follow-up in the
+segment. Let \(t_{\text{seg,end}}\) be the last timestamp of the acquisition
+segment. The stored survival label is then
+
+\[
+  R_i > t_{\text{seg,end}} - t_i .
+\]
+
+The canonical dataset represents this through lower and upper bounds:
+
+\[
+  y_{i,\text{lower}} =
+  \begin{cases}
+    R_i, & \text{if the event end is observed},\\
+    t_{\text{seg,end}}-t_i, & \text{if right-censored},
+  \end{cases}
+\]
+
+\[
+  y_{i,\text{upper}} =
+  \begin{cases}
+    R_i, & \text{if the event end is observed},\\
+    \infty, & \text{if right-censored}.
+  \end{cases}
+\]
+
+Observed samples therefore have a degenerate interval
+\([R_i,R_i]\), while right-censored samples have an interval
+\([t_{\text{seg,end}}-t_i,\infty)\). Censored samples are kept in the dataset;
+they are not dropped and they are not converted to artificial finite targets.
+This is a key methodological difference from ordinary duration regression.
+
+The saved inputs are model-independent. For every survival sample, the dataset
+stores three sequence representations:
+\[
+  X_{\text{raw},i}=[S_{i-L+1},\ldots,S_i],
+\]
+\[
+  X_{\text{rel-threshold},i}
+  =
+  [S_{i-L+1}-\theta_{\text{on}},\ldots,S_i-\theta_{\text{on}}],
+\]
+\[
+  X_{\text{rel-current},i}
+  =
+  [S_{i-L+1}-S_i,\ldots,0].
+\]
+It also stores a train-standardized scalar context vector. In the implemented
+dataset, this vector is ordered as
+\[
+\begin{aligned}
+  s_i^{\text{SP}} = [
+  &S_i,\ S_i-\theta_{\text{on}},\
+  \bar{S}_{i,L},\ \operatorname{sd}_{i,L},\
+  \min(X_i),\ \max(X_i),\
+  \max(X_i)-\min(X_i),\\
+  &\Delta_i^{(2)},\ \Delta_i^{(3)},\ \Delta_i^{(5)},\
+  \bar{S}_{i,5},\ \operatorname{sd}_{i,5},\
+  E_i^{\text{event}},\ P_i^{\text{event}},\\
+  &A_i,\ U_i,\ B_i,\ Q_i
+  ] .
+\end{aligned}
+\]
+Here \(E_i^{\text{event}}\) and \(P_i^{\text{event}}\) are the elapsed seconds
+and sample count since the event start, \(A_i\) indicates whether the current
+sample is above the activation threshold, \(U_i\) is the time since the last
+above-threshold sample, \(B_i\) is the current run length of consecutive
+below-threshold samples, and \(Q_i\) is the fraction of above-threshold samples
+in the trailing event-local window of up to five samples. These variables are
+online event-state variables. They do not require the future event end or the
+future recovery confirmation.
+
+Future fields such as event end time, recovery confirmation time, event
+duration, remaining duration, censoring flag, final event position, or future
+threshold crossings are excluded from all survival model inputs. They are used
+only for target construction, censoring metadata, evaluation, or audit tables.
+
+\subsection{Tested Models}
+Two survival model baselines are considered: XGBoost with an accelerated failure
+time objective and a discrete-time causal TCN. Both models use the same
+canonical survival labels, including right-censored samples. They differ in how
+they represent the input history and in how they parameterize the conditional
+survival function.
+
+The input choice is explicit for each baseline. XGBoost-AFT is tabular: selected
+sequence representations are flattened into lag columns and optionally
+concatenated with scalar context. The discrete-time TCN is sequential: it
+receives one or more signal channels of length \(L\), with the standardized
+scalar vector entering through a separate branch when enabled.
+
+\paragraph{XGBoost-AFT.}
+XGBoost-AFT receives a feature vector \(\phi_i^{\text{SP}}\) built from scalar
+context, flattened signal history, or their concatenation. No target bound,
+event-end field, censoring flag, or observed remaining time is part of this
+feature vector. The model assumes that the logarithm of the residual duration
+follows a location model,
+\[
+  \log R_i = F(\phi_i^{\text{SP}}) + s_{\mathrm{AFT}} \varepsilon_i,
+\]
+where \(F\) is the boosted-tree ensemble, \(s_{\mathrm{AFT}}>0\) is the
+configured scale, and \(\varepsilon_i\) follows the selected AFT error
+distribution. The stored lower and upper label bounds are passed directly to
+XGBoost: observed samples use \([R_i,R_i]\), while right-censored samples use
+\([c_i,\infty)\), where \(c_i=t_{\text{seg,end}}-t_i\) is the observed
+follow-up time.
+
+After training, the booster outputs the location prediction
+\(\widehat{\mu}_i=F(\phi_i^{\text{SP}})\). The survival probability at a horizon
+\(u\) is obtained from the AFT error cumulative distribution \(F_\varepsilon\):
+\[
+  \widehat{S}(u\mid X_i)
+  =
+  1
+  -
+  F_\varepsilon
+  \left(
+    \frac{\log u-\widehat{\mu}_i}{s_{\mathrm{AFT}}}
+  \right).
+\]
+The same location prediction is also converted into a predicted median residual
+duration for diagnostic interpretation. The switch pipeline uses the survival
+probability at the operational horizon.
+
+\paragraph{Discrete-time causal TCN.}
+The discrete-time TCN uses the same canonical survival dataset but converts the
+continuous residual-duration labels to discrete event and censoring masks inside
+the model adapter. Let the time grid be defined by intervals
+\((b_{k-1},b_k]\), with an optional final open-ended interval. For each sample,
+the adapter constructs an event mask \(e_{i,k}\) and an at-risk mask
+\(a_{i,k}\). If the event is observed in bin \(k^\star\), then
+\(e_{i,k^\star}=1\) and the at-risk mask is active up to that bin. If the sample
+is right-censored, no event bin is marked and the at-risk mask is active only
+for the bins that are fully observed before the censoring time.
+
+The neural model receives one of the canonical sequence representations, or a
+multichannel stack of them, and optionally the 18-dimensional scalar context. A
+stack of left-padded causal residual convolutions encodes the sequence. The
+output head produces one hazard logit per discrete time bin,
+\[
+  g_{i,k}=g_{\vartheta,k}(X_i,s_i),
+  \qquad
+  \widehat{h}_{i,k}=\sigma(g_{i,k}).
+\]
+Here \(\widehat{h}_{i,k}\) estimates the conditional hazard
+\[
+  P(R_i\in(b_{k-1},b_k] \mid R_i>b_{k-1}, X_i).
+\]
+The survival curve at the bin edges is reconstructed as the cumulative product
+of the predicted non-event probabilities:
+\[
+  \widehat{S}(b_k\mid X_i)
+  =
+  \prod_{r=1}^{k}(1-\widehat{h}_{i,r}).
+\]
+
+Training minimizes a masked discrete-time survival negative log-likelihood,
+implemented as binary cross-entropy over the at-risk bins,
+\[
+  \mathcal{L}_{\mathrm{DT}}
+  =
+  \frac{
+    \sum_i w_i
+    \sum_k a_{i,k}\,
+    \operatorname{BCE}(g_{i,k},e_{i,k})
+  }{
+    \sum_i w_i
+  } .
+\]
+For right-censored samples, the loss contains only bins known to have been
+survived. This keeps censored observations informative without converting them
+into artificial observed recoveries. The stored dataset remains
+model-independent because the discrete masks are derived inside the TCN adapter
+rather than saved as canonical labels.
+
+\subsection{Switch Conversion}
+The survival models output a curve rather than a binary switch. The operational
+conversion evaluates that curve at the switch-relevant horizon
+\(u^\star=300\) seconds. Let \(\rho_{\min}\) be the configured survival
+probability threshold. The raw switch is
+
+\[
+  r_i^{\text{SP}}
+  =
+  \mathbb{1}
+  \left[
+    S_i \ge \theta
+    \ \land\
+    \widehat{S}(u^\star \mid X_i) \ge \rho_{\min}
+  \right].
+\]
+
+In words, the model recommends switching only if the current signal is in the
+fade region and the predicted probability that the event will persist for at
+least another five minutes is high enough. The default uncalibrated probability
+threshold is \(0.5\). An additional exploratory setting with threshold \(0.65\)
+was retained for analysis, but it should be interpreted as a test-set
+diagnostic rather than as a validation-calibrated operating point.
+
+After this raw survival-derived switch is produced, the shared post-processing
+policy is applied and the final sequence is compared with the task-scoped
+Perfect Switch. This keeps the survival task aligned with the same operational
+evaluation layer used for the other formulations.
+
+\section{Comparison Between Formulations}
+The four formulations are not interchangeable supervised problems. They share
+the same signal-only input policy and the same final switch-evaluation layer,
+but they estimate different intermediate quantities. This matters because native
+predictive accuracy and operational switch quality are not equivalent: a model
+may forecast or classify well and still switch poorly near the decision
+boundary.
+
+\Cref{tab:formulation-comparison} summarizes the question addressed by each
+formulation, together with its main advantage and limitation.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Conceptual comparison of the four formulations.}
+  \label{tab:formulation-comparison}
+  \renewcommand{\arraystretch}{1.25}
+  \setlength{\tabcolsep}{3pt}
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.19\textwidth}
+    >{\raggedright\arraybackslash}p{0.27\textwidth}
+    >{\raggedright\arraybackslash}p{0.24\textwidth}
+    >{\raggedright\arraybackslash}p{0.19\textwidth}@{}}
+    \toprule
+    Formulation & Question answered & Main advantage & Main limitation \\
+    \midrule
+    Autoregressive forecasting
+      & What will the next signal values be?
+      & Keeps an inspectable future trajectory and leaves the threshold outside
+        the training target.
+      & Optimizes generic forecast error, not switch-critical error. \\
+    Current-level persistence
+      & How long will the current signal level persist?
+      & Targets short-term persistence directly.
+      & Does not model the end of the whole fade event and is sensitive to the
+        current reference level. \\
+    Long-fade detection
+      & Is the current grouped event a long fade?
+      & Aligns the target with the minimum operational duration.
+      & Discards residual-duration information within the event. \\
+    Survival persistence
+      & What is \(P(R_i>u\mid X_i)\) for the current event?
+      & Keeps censored samples and provides horizon-dependent persistence
+        probabilities.
+      & Depends strongly on the event-start, stable-recovery, and censoring
+        policy. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Because these questions generate decisions at different native timestamp sets,
+cross-task comparison requires explicit alignment. The experimental protocol
+therefore reports native task metrics and coverage-aware cross-task switch
+metrics separately. The final comparison is a comparison of complete pipelines:
+past signal window, task-specific output, raw switch conversion, and shared
+post-processing against the same Perfect Switch reference.

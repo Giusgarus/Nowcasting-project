@@ -60,15 +60,18 @@ Master thesis/
 ```
 
 as the isolated Overleaf-export working directory when the user explicitly asks
-to create or edit thesis material. This folder is intentionally ignored by Git
-and must not be mentioned in `README.md`. Do not create thesis files before the
-user asks for specific thesis content or structure.
+to create or edit thesis material. Track its LaTeX sources, bibliography,
+figures, plotting scripts, compilation configuration, and final
+`build/main.pdf` in Git. Compilation auxiliaries and temporary review renders
+remain ignored. Keep personal PhD application and presentation material local
+and excluded from Git. The thesis folder must not be mentioned in `README.md`.
+Do not create thesis files before the user asks for specific content or structure.
 
 Keep thesis prose separate from codebase documentation:
 
 - `README.md`, `docs/`, and `AGENTS.md` describe the repository and methods;
-- `Master thesis/` contains local thesis assets intended to be copied to
-  Overleaf;
+- `Master thesis/` contains versioned thesis assets intended to be copied to
+  Overleaf, together with the final compiled PDF;
 - generated experimental artifacts under `results/` should be referenced or
   summarized, not blindly copied into the thesis folder.
 

@@ -1,0 +1,201 @@
+\chapter{Introduction}
+\label{chap:introduction}
+
+Satellite communication links are affected by propagation impairments that can
+temporarily reduce the received signal quality. This problem is especially
+relevant at high frequencies, where atmospheric phenomena such as rain can
+produce strong fades on Earth-space paths \cite{panagopoulos2004satellite,
+iturP618}. In operational systems, a fade is not only a physical phenomenon to
+be described after it occurs. It is also a decision problem: when the primary
+link degrades, an operator or automated controller may need to activate a
+backup communication resource. Activating this resource too late may lead to
+service degradation, while activating it too often or for too long may waste
+capacity and increase operational cost.
+
+The central question of this thesis is therefore not simply whether the future
+satellite signal can be predicted. The more relevant question is whether
+information available at the current time can support a timely and reliable
+switch decision. This distinction changes how the problem should be modelled
+and evaluated. A model with a low forecast error is not necessarily a good
+switch controller if its errors occur around the operational threshold. A
+model that estimates a duration or a probability may be more useful than a
+trajectory forecaster if that quantity is more directly connected to the
+decision. For this reason, the thesis treats satellite fade nowcasting as a
+decision-oriented time-series problem.
+
+\section{Operational Motivation}
+\label{sec:introduction-operational-motivation}
+
+Fade mitigation techniques are commonly used to preserve link availability
+under adverse propagation conditions. Depending on the system, mitigation may
+involve power control, adaptive coding and modulation, site diversity, or the
+activation of an alternative link. The specific mitigation mechanism is outside
+the scope of this thesis. The focus here is the upstream decision that such a
+mechanism requires: given the signal observed up to the current timestamp,
+should the system switch to a backup resource?
+
+This decision has an intrinsically temporal structure. A very short threshold
+crossing may not justify a switch, because the system could recover before the
+backup activation becomes useful. Conversely, a fade that persists for several
+minutes may justify switching even if the instantaneous signal is not at its
+worst point yet. The operational objective is therefore tied to persistence,
+residual duration, and event evolution, not only to the instantaneous signal
+level. This is consistent with the broader propagation literature, where fade
+dynamics and time-series behavior are treated as relevant design quantities
+for Earth-space communication systems \cite{iturP1623,iturP1853}.
+
+This thesis was carried out at M.B.I. S.r.l. \cite{mbiGroup} within the broader
+context of the NEFOCAST project, for which M.B.I. is the lead company. NEFOCAST
+investigates an integrated technological platform for estimating rainfall
+fields from satellite-signal attenuation measurements
+\cite{nefocastProject}. This industrial and research setting provides the
+application context for the
+decision-oriented nowcasting problem addressed in this work.
+
+The data used in this work consist of signal time series acquired at the
+Fucino ground station from multiple files and time periods. The available files
+are heterogeneous: some are uplink or downlink beacon measurements, some are
+associated with different satellites, and only a subset contains auxiliary
+columns. To make the experimental comparison reproducible and fair, the thesis
+adopts a strict signal-only policy. Every dataset is standardized to a common
+time and signal representation, and all models use only the historical signal
+as input. This avoids comparing models that have access to different physical
+variables and keeps the focus on what can be learned from the signal evolution
+itself.
+
+\section{Satellite Link Fade Nowcasting}
+\label{sec:introduction-nowcasting-problem}
+
+Nowcasting refers to short-term prediction at or near the present time. In this
+work, the prediction time is a timestamp \(t\) in a satellite signal time
+series. The information available to a model is the recent past and present
+signal history, while the target concerns the future behavior of the same
+signal or of the ongoing fade event. No future observation can be used as an
+input. This no-leakage constraint is essential because the final goal is an
+operational decision that could be made online.
+
+The thesis investigates four task formulations that all serve the same final
+switching objective but estimate different intermediate quantities:
+
+\begin{itemize}
+  \item autoregressive forecasting, where the model predicts a future signal
+  trajectory;
+  \item current-level persistence, where the model estimates how long the
+  signal will remain close to its current level;
+  \item long-fade detection, where the model estimates whether the current
+  grouped fade event will last longer than an operational duration threshold;
+  \item survival persistence, where the model estimates a residual-duration
+  survival function for the ongoing fade event.
+\end{itemize}
+
+These formulations are not interchangeable. They answer different operational
+questions and produce different native outputs: trajectories, scalar
+durations, class probabilities, or survival curves. To compare them, the
+outputs must be converted into binary switch sequences and evaluated against a
+common reference. This thesis therefore builds a shared Perfect Switch
+reference, applies common switch post-processing, and reports operational
+metrics in addition to native model metrics.
+
+\section{Research Questions}
+\label{sec:introduction-research-questions}
+
+The work is guided by four research questions.
+
+\begin{enumerate}
+  \item \textbf{Can task-specific machine-learning models improve operational
+  switch decisions for satellite link fades?} The objective is to evaluate
+  whether learned models produce switch sequences that are closer to the
+  reference decision than simple threshold reasoning.
+
+  \item \textbf{Which predictive formulation is most useful for the switching
+  objective?} The thesis compares trajectory forecasting, duration regression,
+  event-level classification, and survival modeling because the best
+  formulation is not obvious a priori.
+
+  \item \textbf{Do native predictive metrics explain operational usefulness?}
+  Forecast RMSE, duration MAE, classification AUPRC, and survival metrics are
+  informative, but the final decision depends on thresholding,
+  post-processing, and event timing. The thesis therefore studies how native
+  metrics relate to switch metrics.
+
+  \item \textbf{How important are common reference construction and
+  post-processing?} Since different tasks produce outputs on different
+  timestamp domains and with different semantics, the comparison must separate
+  modeling differences from evaluation artifacts.
+\end{enumerate}
+
+These questions deliberately place the switch decision at the centre of the
+study. The intermediate predictions remain important, but they are evaluated
+as components of a decision pipeline rather than as isolated forecasting
+outputs.
+
+\section{Contributions}
+\label{sec:introduction-contributions}
+
+The main methodological and empirical contributions of the thesis are the
+following.
+
+\begin{enumerate}
+  \item It formulates satellite fade nowcasting as a decision-oriented problem
+  through four complementary predictive tasks: autoregressive forecasting,
+  current-level persistence, long-fade detection, and survival persistence.
+  Each task estimates a different intermediate quantity but is connected
+  explicitly to the same operational switch objective.
+
+  \item It establishes a shared switch-evaluation framework with a common
+  Perfect Switch reference, shared post-processing, task-native comparisons,
+  and a cross-task reference-grid comparison. This framework makes models with
+  different native outputs operationally comparable.
+
+  \item It evaluates a range of model families under these formulations,
+  including GRU models, PatchTST, Chronos zero-shot forecasting, XGBoost
+  baselines, learnable shapelet models, temporal convolutional networks,
+  XGBoost-AFT, and a discrete-time survival TCN.
+
+  \item It provides an empirical analysis of the relationship between native
+  prediction quality and operational switch quality. The results show that the
+  best native predictor is not always the best switch controller and that task
+  formulation strongly affects the precision-recall trade-off.
+
+  \item To support reproducibility, it develops a signal-only preprocessing
+  pipeline for heterogeneous satellite fade and beacon files. The pipeline
+  validates and standardizes raw data, handles gaps conservatively, constructs
+  task-specific datasets, and preserves the metadata required for event-level
+  evaluation.
+\end{enumerate}
+
+The source-code repository for the experimental framework is hosted on GitHub:
+\url{https://github.com/Giusgarus/Nowcasting-project}.
+It contains the task implementations, experiment configurations, and evaluation
+scripts used in this work.
+
+\section{Thesis Structure}
+\label{sec:introduction-structure}
+
+\Cref{chap:background} introduces the technical background needed for the
+work. It covers time-series data, machine-learning models used in the thesis,
+survival analysis, nowcasting and validation principles, and the satellite
+communication context.
+
+\Cref{chap:data-reference-framework} describes the data preparation and
+reference-decision framework. It explains the available signal files, the
+signal-only policy, parsing and validation, sampling gaps, conservative
+imputation, event construction, the external holdout split, the Perfect Switch
+reference, and the shared switch post-processing rules.
+
+\Cref{chap:task-formulations} presents the four modeling formulations. For
+each formulation, it defines the input representation, target construction,
+model families, native output, and switch-conversion rule.
+
+\Cref{chap:experimental-setup} describes the experimental protocol, including
+dataset construction, train-validation-test usage, hyperparameter search,
+native metrics, switch metrics, intra-task comparisons, cross-task
+comparisons, and reproducibility settings.
+
+\Cref{chap:results} reports and discusses the empirical results. It first
+analyses the native predictive performance within each task and then focuses
+on the switch metrics and event-level behavior that determine operational
+usefulness.
+
+\Cref{chap:conclusions} summarizes the main findings, answers the research
+questions, discusses limitations, and outlines future work.

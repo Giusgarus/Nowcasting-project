@@ -1,0 +1,178 @@
+\chapter{Implementation Details}
+\label{app:implementation-details}
+
+This appendix summarizes implementation details that are useful for
+reproducing the experiments but would interrupt the main methodological
+discussion. The repository was organized so that each task has its own
+configuration files, dataset builder, model runners, saved model artifacts, and
+result folders, while sharing common preprocessing, switch construction, and
+evaluation utilities.
+
+\section{Repository Structure}
+\label{app:repository-structure}
+
+The codebase separates common infrastructure from task-specific logic. Common
+utilities live under \path{src/data/}, \path{src/switching/}, \path{src/utils/},
+and \path{src/tuning/}. Task-specific implementations live under
+\path{src/tasks/<task_name>/}. Experiment entry points are grouped in
+\path{scripts/experiments/<task_name>/}, while analysis and comparison scripts
+are grouped in \path{scripts/analysis/}.
+
+\Cref{tab:appendix-repo-structure} gives the practical role of the main
+repository folders. The table is intended as a reproducibility map: it shows
+where configuration, immutable raw data, intermediate preprocessing outputs,
+final model-ready datasets, fitted models, and result artifacts are stored.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Main repository folders used by the experimental pipeline.}
+  \label{tab:appendix-repo-structure}
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \renewcommand{\arraystretch}{1.15}
+  \begin{tabular}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.30\textwidth}
+    >{\raggedright\arraybackslash}p{0.62\textwidth}
+    @{}
+  }
+    \toprule
+    Folder & Purpose \\
+    \midrule
+    \path{configs/}
+      & YAML configuration files for data preparation, model runs, grid searches, Perfect Switch construction, and switch comparisons. \\
+    \path{data/raw/}
+      & Original input files. These files are treated as read-only. \\
+    \path{data/interim/}
+      & Cleaned signals, candidate events, event windows, and intermediate reusable preprocessing artifacts. \\
+    \path{data/processed/}
+      & Final task-specific arrays and metadata used by model runners. \\
+    \path{src/tasks/}
+      & Task-scoped dataset, model, evaluation, plotting, and utility code. \\
+    \path{src/switching/}
+      & Model-agnostic Perfect Switch, switch conversion, post-processing, metrics, and plotting utilities. \\
+    \path{scripts/experiments/}
+      & Executable training, zero-shot evaluation, dataset-building, and grid-search scripts. \\
+    \path{scripts/analysis/}
+      & Data-analysis and post-training comparison scripts. \\
+    \path{models/}
+      & Saved checkpoints, fitted estimators, model configurations, and run metadata. \\
+    \path{results/}
+      & Predictions, metrics, tables, figures, comparison summaries, and result indexes. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The main task namespaces are \path{autoregressive},
+\path{current_level_persistence}, \path{long_fade_detection}, and
+\path{survival_persistence}. This separation avoids storing task-specific
+models or outputs under a generic folder and makes it possible to trace every
+result back to its task formulation.
+
+\section{Dataset Artifact Schema}
+\label{app:dataset-artifact-schema}
+
+Every processed dataset is stored together with metadata describing the
+selection identifier, split definition, context length, threshold assumptions,
+and preprocessing fingerprint. The canonical split is development versus
+external holdout: training and validation are drawn from development sources,
+whereas \path{fc-uplink-fade.csv} is used only as the final test source.
+
+\Cref{tab:appendix-dataset-artifacts} summarizes the arrays and metadata saved
+by each task-specific dataset builder. The table separates numerical arrays
+from metadata because the metadata is required to align predictions back to
+timestamps, events, source datasets, and switch-evaluation windows.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Main processed dataset artifacts by task.}
+  \label{tab:appendix-dataset-artifacts}
+  \small
+  \setlength{\tabcolsep}{3pt}
+  \renewcommand{\arraystretch}{1.15}
+  \begin{tabular}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.23\textwidth}
+    >{\raggedright\arraybackslash}p{0.33\textwidth}
+    >{\raggedright\arraybackslash}p{0.34\textwidth}
+    @{}
+  }
+    \toprule
+    Task & Array artifacts & Metadata artifacts \\
+    \midrule
+    Autoregressive forecasting
+      & \path{train.npz}, \path{val.npz}, and \path{test.npz} with raw and context-standardized past windows and future trajectories.
+      & Split metadata parquet files with window identifiers, event identifiers, source dataset names, timestamps, quality flags, and scaling parameters. \\
+    Current-level persistence
+      & Split NPZ files with raw context, relative-to-current context, scalar context features, and persistence duration targets.
+      & Metadata with target duration, censoring flags, acquisition segment identifiers, scalar feature names, and train-only scaler parameters. \\
+    Long-fade detection
+      & Split NPZ files with sequence context, relative-to-threshold context, scalar context, and binary long-fade labels.
+      & Metadata with grouped-event identifiers, event labels, timestamps, dataset identifiers, and quality flags. \\
+    Survival persistence
+      & Split NPZ files with past contexts, scalar features, residual-duration labels, and AFT lower/upper bounds.
+      & Metadata with event identifiers, censoring indicators, acquisition segment identifiers, observed durations, and survival target bounds. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The split metadata is as important as the numerical arrays. It preserves the
+alignment between model inputs, event timestamps, source files, event
+identifiers, and later switch comparisons. Model scripts do not reconstruct
+splits independently; they load these artifacts and validate their fingerprints
+where necessary.
+
+\section{Run and Result Artifact Schema}
+\label{app:run-result-artifact-schema}
+
+Each trained or evaluated model writes a run folder under
+\path{results/runs/<task_name>/} and, when applicable, a model folder under
+\path{models/<task_name>/}. Run identifiers encode the task, model family,
+variant, selection identifier, and relevant setup. A typical run folder
+contains:
+
+\begin{itemize}
+  \item \path{predictions/}: validation and/or test predictions in parquet
+  format;
+  \item \path{metrics/}: native task metrics such as forecast errors,
+  classification scores, duration errors, or survival metrics;
+  \item \path{figures/}: diagnostic plots generated by the run;
+  \item \path{tables/}: compact run summaries;
+  \item \path{metadata.yaml}: configuration, dataset fingerprint, selected
+  device, seed, and file paths.
+\end{itemize}
+
+Switch comparisons are stored separately from native model runs because the
+same predictions can be converted into switch sequences under different
+decision rules. Model-vs-reference comparisons are written under
+\path{results/comparisons/switch_eval/<task_name>/<selection_id>/}. Cross-task
+comparisons are written under
+\path{results/comparisons/cross_task_switch/<selection_id>/}. This separation
+keeps model training artifacts distinct from downstream operational
+evaluation.
+
+\section{Reproducibility Checklist}
+\label{app:reproducibility-checklist}
+
+The experiments are intended to be reproducible from configurations and saved
+artifacts. The following information is recorded or fixed for each run:
+
+\begin{itemize}
+  \item the YAML configuration path and configuration fingerprint;
+  \item the processed dataset path and dataset metadata fingerprint;
+  \item the task formulation, input representation, target definition, context
+  length, prediction horizon or duration horizon, and threshold assumptions;
+  \item train, validation, and external test split metadata;
+  \item random seed and hardware device used by the model runner;
+  \item model hyperparameters, selected validation score, and final test
+  metrics;
+  \item saved predictions used for switch conversion;
+  \item switch-conversion rule, post-processing settings, and Perfect Switch
+  reference path.
+\end{itemize}
+
+The Python environment is specified by \path{environment.yml}. Experiments use
+the active environment rather than creating a new virtual environment inside
+the repository. GPU acceleration is used when available, with CUDA preferred,
+then Apple MPS when supported, and CPU as a fallback. Grid searches distribute
+independent trials over available CUDA devices when possible.

@@ -1,0 +1,167 @@
+\chapter{Additional Results}
+\label{app:additional-results}
+
+The main text reports compact tables and representative figures. The complete
+experiment outputs are stored as repository artifacts so that individual runs,
+event-level metrics, and plots can be inspected without expanding the thesis
+with very large tables. This appendix documents where those additional results
+are located and how they relate to the summaries in \cref{chap:results}.
+
+\section{Native Prediction Metrics}
+\label{app:native-prediction-metrics}
+
+Native prediction metrics are stored in the corresponding run folders. These
+metrics should be interpreted as diagnostics for the underlying modeling task,
+not as replacements for the switch metrics. The main locations are summarized
+in \cref{tab:appendix-native-result-locations}.
+\Cref{tab:appendix-native-result-locations} is included to make the archived
+outputs traceable: for each task it identifies the native metric family and the
+repository locations where the full run-level tables can be inspected.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Repository locations for complete native prediction metrics.}
+  \label{tab:appendix-native-result-locations}
+  \small
+  \setlength{\tabcolsep}{3pt}
+  \renewcommand{\arraystretch}{1.15}
+  \begin{tabular}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.22\textwidth}
+    >{\raggedright\arraybackslash}p{0.32\textwidth}
+    >{\raggedright\arraybackslash}p{0.36\textwidth}
+    @{}
+  }
+    \toprule
+    Task & Main metric type & Artifact location \\
+    \midrule
+    Autoregressive forecasting
+      & MAE, RMSE, horizon-wise forecast errors, validation/test summaries.
+      & \path{results/runs/autoregressive/} and \path{results/comparisons/model_selection/autoregressive/}. \\
+    Current-level persistence
+      & Duration-regression MAE, RMSE, median absolute error, and model-selection summaries.
+      & \path{results/runs/current_level_persistence/} and \path{results/comparisons/model_selection/current_level_persistence/}. \\
+    Long-fade detection
+      & AUPRC, AUROC, F1 at the configured probability threshold, and classifier summaries.
+      & \path{results/runs/long_fade_detection/} and \path{results/comparisons/model_selection/long_fade_detection/}. \\
+    Survival persistence
+      & AFT negative log-likelihood, C-index, integrated Brier score, horizon-specific Brier scores, and calibration diagnostics.
+      & \path{results/runs/survival_persistence/} and \path{results/comparisons/model_selection/survival_persistence/}. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+For autoregressive models, the saved prediction files contain one row per
+forecast window and one column per forecast horizon. This makes it possible to
+recompute horizon-wise errors or alternative trajectory-to-switch rules without
+retraining the model. For duration and survival models, the prediction files
+contain the scalar duration estimate, probability estimate, or survival curve
+needed by the downstream switch-conversion scripts.
+
+\section{Switch Metrics and Event-Level Tables}
+\label{app:switch-event-tables}
+
+Switch evaluation artifacts are separated from native model metrics. Each
+switch-comparison folder contains:
+
+\begin{itemize}
+  \item \path{switch_metrics_summary.csv}, with global precision, recall, F1,
+  IoU, balanced accuracy, and related binary metrics;
+  \item \path{switch_metrics_by_event.csv}, with event-level binary metrics;
+  \item \path{global_switch_metrics.csv}, with active duration, number of
+  switch islands, and duration agreement diagnostics;
+  \item \path{event_switch_metrics.csv}, with the same behavior metrics
+  computed per event;
+  \item \path{predictions/model_vs_perfect_switch.parquet}, with the aligned
+  model and Perfect Switch time series used by the metrics;
+  \item \path{figures/event_switch_plots/}, with event-level timelines.
+\end{itemize}
+
+\Cref{tab:appendix-switch-artifact-locations} summarizes the folder layout for
+these switch artifacts. The distinction between task-native comparisons,
+task-level summaries, and cross-task comparisons is important because they use
+different timestamp grids and therefore answer different questions.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Switch-evaluation artifact locations.}
+  \label{tab:appendix-switch-artifact-locations}
+  \small
+  \setlength{\tabcolsep}{3pt}
+  \renewcommand{\arraystretch}{1.15}
+  \begin{tabular}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.27\textwidth}
+    >{\raggedright\arraybackslash}p{0.65\textwidth}
+    @{}
+  }
+    \toprule
+    Comparison type & Artifact location \\
+    \midrule
+    Task-native model-vs-Perfect comparisons
+      & \path{results/comparisons/switch_eval/<task_name>/<selection_id>/<comparison_id>/}. \\
+    Task-level model summaries
+      & \path{results/comparisons/model_summary/<task_name>/<selection_id>/}. \\
+    Cross-task switch comparison
+      & \path{results/comparisons/cross_task_switch/<selection_id>/}. \\
+    Perfect Switch reference
+      & \path{results/switching/perfect_switch/<task_name>/<selection_id>/}. \\
+    Central result indexes
+      & \path{results/index/}. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The cross-task comparison uses a common reference grid. Missing native
+decisions are mapped to switch \(0\), so the comparison reflects both switch
+quality and task coverage. The task-native switch comparisons remain useful
+for understanding model behavior on the timestamps where each formulation is
+defined.
+
+\section{Additional Diagnostic Plots}
+\label{app:additional-diagnostic-plots}
+
+The repository contains diagnostic plots beyond those shown in the main
+results chapter. These include forecast examples, worst forecast examples,
+horizon-wise error curves, duration-regression scatter plots, event-level
+switch timelines, cross-task heatmaps, and native decision-coverage plots.
+\Cref{tab:appendix-plot-locations} lists the main plot groups.
+\Cref{tab:appendix-plot-locations} is intended as a navigation aid for the
+generated visual audit trail. The plots are not all reproduced in the thesis,
+but they remain available for checking individual events, model failures, and
+coverage differences.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Main diagnostic plot locations.}
+  \label{tab:appendix-plot-locations}
+  \small
+  \setlength{\tabcolsep}{3pt}
+  \renewcommand{\arraystretch}{1.15}
+  \begin{tabular}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.28\textwidth}
+    >{\raggedright\arraybackslash}p{0.60\textwidth}
+    @{}
+  }
+    \toprule
+    Plot group & Location \\
+    \midrule
+    Forecast diagnostics
+      & \path{results/runs/autoregressive/<selection_id>/<run_id>/figures/}. \\
+    Duration-regression diagnostics
+      & \path{results/runs/current_level_persistence/<selection_id>/<run_id>/figures/}. \\
+    Survival curves and survival diagnostics
+      & \path{results/runs/survival_persistence/<selection_id>/<run_id>/figures/}. \\
+    Task-native switch timelines
+      & \path{results/comparisons/switch_eval/<task_name>/<selection_id>/<comparison_id>/figures/event_switch_plots/}. \\
+    Cross-task timelines, heatmaps, and coverage plots
+      & \path{results/comparisons/cross_task_switch/<selection_id>/<comparison_id>/figures/}. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+These plots are intentionally kept as generated artifacts rather than copied
+exhaustively into the thesis. The main text includes representative examples
+that support the empirical discussion, while the artifact folders preserve the
+complete visual audit trail for further inspection.

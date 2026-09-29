@@ -14,5 +14,5 @@ plots:
   max_cross_task_events: 12
   max_cross_task_timeline_methods: 8
   plot_all_cross_task_timeline_methods: true
-  max_survival_curves: 12
+  max_survival_curves: 6
   probability_calibration_bins: 10

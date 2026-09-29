@@ -1,0 +1,284 @@
+\chapter{Hyperparameter Grids}
+\label{app:hyperparameter-grids}
+
+This appendix reports the configurations selected by the validation-only
+model-selection searches summarized in \cref{sec:hyperparameter-search}. The
+tables list the archived selection score used by each search. Final external
+test metrics and switch metrics are reported in \cref{chap:results}; they should
+be considered the primary performance results.
+
+For current-level persistence, some duration metrics were refreshed without
+retraining after dataset-alignment updates. The configurations below are the
+selected model artifacts; the refreshed validation and test metrics used for
+the final discussion are those in \cref{chap:results}.
+
+\section{Search Design Summary}
+
+\Cref{tab:appendix-grid-search-summary} summarizes the model-selection
+searches used in the thesis. All searches use validation-only criteria. The
+external holdout split is not used to choose hyperparameters, thresholds, or
+checkpoints.
+The purpose of this table is to make the scale of the model-selection phase
+explicit before listing the selected configurations. It reports the criterion
+used to rank trials, the number of evaluated trials, and the main
+hyperparameter families varied by each search.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Summary of the hyperparameter searches. Trial counts refer to the archived searches used for the reported model artifacts.}
+  \label{tab:appendix-grid-search-summary}
+  \scriptsize
+  \setlength{\tabcolsep}{3pt}
+  \renewcommand{\arraystretch}{1.15}
+  \begin{tabular}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.20\textwidth}
+    >{\raggedright\arraybackslash}p{0.22\textwidth}
+    >{\raggedright\arraybackslash}p{0.18\textwidth}
+    >{\raggedleft\arraybackslash}p{0.08\textwidth}
+    >{\raggedright\arraybackslash}p{0.23\textwidth}
+    @{}
+  }
+    \toprule
+    Task & Search & Selection criterion & Trials & Main varied hyperparameters \\
+    \midrule
+    Autoregressive
+      & GRU S2V and encoder-decoder, raw and context-standard variants
+      & validation RMSE, minimized
+      & 576
+      & hidden size, number of layers, learning rate, weight decay, teacher forcing, architecture. \\
+    Autoregressive
+      & PatchTST, raw and context-standard variants
+      & validation RMSE, minimized
+      & 1728
+      & patch length, stride, model dimension, attention heads, number of layers, dropout, learning rate. \\
+    Autoregressive
+      & XGBoost multi-output horizon regressors
+      & validation RMSE, minimized
+      & 2304
+      & number of trees, depth, learning rate, subsampling, column sampling, minimum child weight, \(L_2\) regularization. \\
+    Current-level persistence
+      & Learnable-shapelet MLP, Transformer, and convolution heads
+      & validation MAE in seconds, minimized
+      & 648
+      & shapelet count, hidden dimensions, scalar encoder size, depth, dropout, learning rate. \\
+    Current-level persistence
+      & XGBoost duration regressor
+      & validation MAE in seconds, minimized
+      & 1152
+      & number of trees, depth, learning rate, subsampling, column sampling, minimum child weight, \(L_2\) regularization. \\
+    Long-fade detection
+      & XGBoost, TCN, and shapelet-convolution classifiers
+      & validation AUPRC, maximized
+      & 8928
+      & tree parameters, TCN channels/depth/kernel/dropout, shapelet count/lengths, scalar hidden dimension, learning rate, batch size. \\
+    Survival persistence
+      & XGBoost-AFT
+      & validation AFT negative log-likelihood, minimized
+      & 1920
+      & input representation, sample weighting, AFT distribution, AFT scale, tree depth, learning rate, subsampling, column sampling, regularization. \\
+    Survival persistence
+      & Discrete-time TCN
+      & validation integrated Brier score, minimized
+      & 1620
+      & binning strategy, input representation, sample weighting, channel schedule, kernel size, dropout, learning rate, weight decay, batch size. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+For tree-based grids, the configuration files use explicit numeric ranges
+defined by start, stop, and step values. For neural grids, categorical lists are
+used for architecture choices such as hidden dimensions, layer counts, dropout
+values, and learning rates. The resulting trial tables are archived under
+\path{results/grid_searches/}; the tables below report only the selected
+configuration for each model family or variant.
+
+\section{Autoregressive Forecasting}
+
+The autoregressive searches are run separately for the raw and
+context-standardized variants. Chronos is excluded from this table because it
+is evaluated in zero-shot mode and no hyperparameters are fitted.
+\Cref{tab:appendix-ar-best-configs} reports the best validation-selected
+configuration for each trainable autoregressive model and input variant. The
+selection score is the validation RMSE on the raw signal scale; the external
+test metrics are discussed in the results chapter rather than repeated here.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Best validation-selected autoregressive configurations.}
+  \label{tab:appendix-ar-best-configs}
+  \scriptsize
+  \setlength{\tabcolsep}{3pt}
+  \renewcommand{\arraystretch}{1.18}
+  \begin{tabular}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.17\textwidth}
+    >{\raggedright\arraybackslash}p{0.13\textwidth}
+    >{\raggedright\arraybackslash}p{0.48\textwidth}
+    >{\raggedleft\arraybackslash}p{0.14\textwidth}
+    @{}
+  }
+    \toprule
+    Model & Variant & Selected configuration & Validation RMSE \\
+    \midrule
+    GRU S2V & raw
+      & hidden size 16; 1 layer; learning rate 0.001; weight decay 0; teacher forcing 0
+      & 5.520 \\
+    GRU S2V & context-standard
+      & hidden size 64; 1 layer; learning rate 0.001; weight decay 0.0001; teacher forcing 0
+      & 3.716 \\
+    GRU encoder-decoder & raw
+      & hidden size 64; 1 layer; learning rate 0.001; weight decay 0.0001; teacher forcing 0.5
+      & 4.023 \\
+    GRU encoder-decoder & context-standard
+      & hidden size 64; 3 layers; learning rate 0.0003; weight decay 0; teacher forcing 0.25
+      & 3.691 \\
+    PatchTST & raw
+      & patch length 10; stride 2; model dimension 128; 4 heads; 3 layers; dropout 0.1; learning rate 0.001
+      & 5.526 \\
+    PatchTST & context-standard
+      & patch length 5; stride 5; model dimension 32; 2 heads; 1 layer; dropout 0.1; learning rate 0.001
+      & 3.815 \\
+    XGBoost & raw
+      & 300 trees; max depth 2; learning rate 0.03; subsample 1.0; column sample 0.8; minimum child weight 1; \(L_2=2.0\)
+      & 6.381 \\
+    XGBoost & context-standard
+      & 300 trees; max depth 4; learning rate 0.03; subsample 1.0; column sample 0.8; minimum child weight 3; \(L_2=2.0\)
+      & 3.912 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\clearpage
+
+\section{Current-Level Persistence}
+
+\Cref{tab:appendix-clp-best-configs} reports the selected duration-regression
+configuration for each current-level persistence model. The target for these
+models is the remaining time for which the signal stays above the
+current-level threshold \(S_t-\delta\). The table lists validation MAE in
+seconds because this was the selection metric used by the duration-regression
+searches.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Best validation-selected current-level persistence configurations.}
+  \label{tab:appendix-clp-best-configs}
+  \scriptsize
+  \setlength{\tabcolsep}{3pt}
+  \renewcommand{\arraystretch}{1.18}
+  \begin{tabular}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.22\textwidth}
+    >{\raggedright\arraybackslash}p{0.54\textwidth}
+    >{\raggedleft\arraybackslash}p{0.16\textwidth}
+    @{}
+  }
+    \toprule
+    Model & Selected configuration & Validation MAE [s] \\
+    \midrule
+    Shapelet MLP
+      & hidden dimension 64; 2 hidden layers; dropout 0.1; 64 shapelets per length; scalar encoder dimension 32; learning rate 0.001
+      & 5590.139 \\
+    Shapelet Transformer
+      & model dimension 32; 1 Transformer layer; dropout 0; 32 shapelets per length; scalar encoder dimension 16; learning rate 0.001
+      & 5653.660 \\
+    Shapelet Convolution
+      & convolution channels 64; 2 convolution layers; dropout 0; 16 shapelets per length; scalar encoder dimension 32; learning rate 0.001
+      & 5408.826 \\
+    XGBoost duration regressor
+      & 1200 trees; max depth 6; learning rate 0.11; subsample 0.8; column sample 0.8; minimum child weight 3; \(L_2=1.0\)
+      & 5465.665 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\clearpage
+
+\section{Long-Fade Detection}
+
+The long-fade detection search is a classification search. It compares one
+tabular gradient-boosted model and two neural sequence models on the same
+event-level binary target. The selection criterion is validation AUPRC because
+the task is imbalanced and the positive class corresponds to operationally
+important long fade events. The table reports the selected configuration for
+each classifier family.
+\Cref{tab:appendix-lfd-best-configs} therefore should be read as a summary of
+the best event-level classifiers, not as a switch-performance table. Switch
+quality is computed only after converting classifier probabilities into
+post-processed switch sequences.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Best validation-selected long-fade detection configurations.}
+  \label{tab:appendix-lfd-best-configs}
+  \scriptsize
+  \setlength{\tabcolsep}{3pt}
+  \renewcommand{\arraystretch}{1.18}
+  \begin{tabular}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.24\textwidth}
+    >{\raggedright\arraybackslash}p{0.52\textwidth}
+    >{\raggedleft\arraybackslash}p{0.16\textwidth}
+    @{}
+  }
+    \toprule
+    Model & Selected configuration & Validation AUPRC \\
+    \midrule
+    XGBoost classifier
+      & 200 trees; max depth 6; learning rate 0.1; subsample 0.8; column sample 0.9; \(L_2=0.1\)
+      & 0.999816 \\
+    TCN classifier
+      & 128 hidden channels; 5 temporal blocks; kernel size 3; dropout 0; scalar hidden dimension 64; learning rate 0.0003; batch size 128
+      & 0.999972 \\
+    Shapelet convolution classifier
+      & shapelet lengths 10, 15, and 20; 48 shapelets per length; 32 convolution channels; 1 convolution layer; dropout 0; scalar hidden dimension 32; learning rate 0.003
+      & 0.999949 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\clearpage
+
+\section{Survival Persistence}
+
+The survival-persistence searches are reported separately from the
+classification and regression tasks because their validation criteria are
+survival-specific. XGBoost-AFT is selected by validation AFT negative
+log-likelihood on continuous-time censored targets. The discrete-time TCN is
+selected by validation integrated Brier score after converting the same
+continuous-time labels into discrete survival bins during training.
+\Cref{tab:appendix-survival-best-configs} lists the selected survival models
+and their task-native validation criterion. The two scores are not directly
+comparable because XGBoost-AFT and the discrete-time TCN optimize different
+survival objectives.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Best validation-selected survival persistence configurations.}
+  \label{tab:appendix-survival-best-configs}
+  \scriptsize
+  \setlength{\tabcolsep}{3pt}
+  \renewcommand{\arraystretch}{1.18}
+  \begin{tabular}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.22\textwidth}
+    >{\raggedright\arraybackslash}p{0.49\textwidth}
+    >{\raggedright\arraybackslash}p{0.15\textwidth}
+    >{\raggedleft\arraybackslash}p{0.09\textwidth}
+    @{}
+  }
+    \toprule
+    Model & Selected configuration & Selection metric & Score \\
+    \midrule
+    XGBoost-AFT
+      & raw flattened context; uniform sample weights; logistic AFT loss with scale 1.0; 1200 boosting rounds; max depth 3; learning rate 0.1; \(L_2=5.0\)
+      & validation AFT negative log-likelihood
+      & 1.610 \\
+    Discrete-time TCN
+      & relative-to-current sequence with scalar context; hybrid survival bins; channels 32, 64, and 64; kernel size 3; dilations 1, 2, 4, 8, and 16; dropout 0.25; learning rate 0.0015
+      & validation Integrated Brier Score
+      & 0.104 \\
+    \bottomrule
+  \end{tabular}
+\end{table}

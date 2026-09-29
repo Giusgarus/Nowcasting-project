@@ -1,0 +1,76 @@
+\documentclass[a4paper,12pt,oneside,openany]{book}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage{siunitx}
+\usepackage{tikz}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{csquotes}
+\usepackage[backend=biber,style=numeric,sorting=none]{biblatex}
+\usetikzlibrary{arrows.meta,positioning,calc}
+
+\geometry{
+  a4paper,
+  left=3.5cm,
+  right=2.5cm,
+  top=3cm,
+  bottom=3cm
+}
+
+\onehalfspacing
+\graphicspath{{figures/}}
+\addbibresource{references.bib}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=black,
+  urlcolor=blue,
+  pdftitle={Machine Learning for Satellite Link Fade Nowcasting},
+  pdfauthor={Giuseppe Gabriele Russo}
+}
+
+\newcommand{\planningnote}[1]{%
+  \par\noindent\textit{#1}\par\medskip
+}
+
+\begin{document}
+
+\frontmatter
+\input{frontmatter/titlepage}
+\input{frontmatter/abstract}
+%\input{frontmatter/acknowledgements}
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+\mainmatter
+\input{chapters/01_introduction}
+\input{chapters/02_background}
+\input{chapters/03_data_and_reference_decision_framework}
+\input{chapters/04_task_formulations}
+\input{chapters/05_models_and_experimental_setup}
+\input{chapters/06_results}
+\input{chapters/07_conclusions}
+
+\appendix
+\input{appendices/A_implementation_details}
+\input{appendices/B_hyperparameter_grids}
+\input{appendices/C_additional_results}
+
+\backmatter
+\printbibliography
+
+\end{document}

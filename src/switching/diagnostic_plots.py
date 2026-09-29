@@ -712,7 +712,7 @@ def plot_survival_curves(
     title: str,
     max_curves: int = 12,
 ) -> None:
-    """Plot saved survival curves for selected test timestamps."""
+    """Plot representative saved survival curves across the prediction range."""
 
     probability_columns = [
         column
@@ -726,20 +726,74 @@ def plot_survival_curves(
     horizons = np.asarray(horizons)[order]
     probability_columns = [probability_columns[index] for index in order]
 
-    frame = predictions.copy()
+    frame = predictions.copy().reset_index(drop=True)
     time_column = "sample_time" if "sample_time" in frame.columns else "Time"
     frame[time_column] = pd.to_datetime(frame[time_column], errors="raise")
-    selected = frame.sort_values(time_column, kind="stable").head(max_curves)
+    selection_column = (
+        "survival_probability_300s"
+        if "survival_probability_300s" in frame.columns
+        else probability_columns[len(probability_columns) // 2]
+    )
+    valid = frame.loc[frame[selection_column].notna()].copy()
+    if valid.empty:
+        return
+    n_curves = min(max(1, int(max_curves)), len(valid))
+    quantiles = np.linspace(0.05, 0.95, n_curves) if n_curves > 1 else np.asarray([0.5])
+    score_values = valid[selection_column].to_numpy(dtype=float)
+    selected_positions: list[int] = []
+    selected_quantiles: list[float] = []
+    for quantile in quantiles:
+        target = float(np.quantile(score_values, quantile))
+        candidates = np.argsort(np.abs(score_values - target), kind="stable")
+        position = next(int(value) for value in candidates if int(value) not in selected_positions)
+        selected_positions.append(position)
+        selected_quantiles.append(float(quantile))
+    selected = valid.iloc[selected_positions].copy()
+    selected["_selection_quantile"] = selected_quantiles
 
-    figure, axis = plt.subplots(figsize=(9, 6))
-    for _, row in selected.iterrows():
-        label = pd.Timestamp(row[time_column]).strftime("%Y-%m-%d %H:%M")
-        axis.plot(horizons / 60.0, row[probability_columns].to_numpy(dtype=float), alpha=0.75, label=label)
+    figure, axis = plt.subplots(figsize=(10.0, 8.2))
+    colors = plt.get_cmap("viridis")(np.linspace(0.08, 0.92, len(selected)))
+    for color, (_, row) in zip(colors, selected.iterrows(), strict=True):
+        quantile_pct = int(round(float(row["_selection_quantile"]) * 100))
+        survival_300s = float(row[selection_column])
+        median_seconds = float(row.get("predicted_median_remaining_seconds", np.nan))
+        observed_seconds = float(row.get("y_time_seconds", np.nan))
+        observed = bool(row.get("y_event_observed", True))
+        median_label = f"{median_seconds / 60.0:.1f} min" if np.isfinite(median_seconds) else "n/a"
+        if np.isfinite(observed_seconds):
+            observed_label = f"{observed_seconds / 60.0:.1f} min"
+            if not observed:
+                observed_label = f">={observed_label}"
+        else:
+            observed_label = "n/a"
+        label = (
+            f"q{quantile_pct:02d} | S(5 min)={survival_300s:.2f}\n"
+            f"pred. median={median_label} | observed={observed_label}"
+        )
+        axis.plot(
+            horizons / 60.0,
+            row[probability_columns].to_numpy(dtype=float),
+            color=color,
+            linewidth=2.0,
+            marker="o",
+            markersize=3.5,
+            label=label,
+        )
+    axis.axvline(5.0, color="black", linestyle=":", linewidth=1.2, label="Decision horizon (5 min)")
     axis.set_xlabel("Horizon (minutes)")
     axis.set_ylabel("Survival probability")
     axis.set_ylim(-0.03, 1.03)
     axis.grid(True, linestyle="--", alpha=0.35)
-    if len(selected) <= 8:
-        axis.legend(fontsize=7)
+    axis.legend(
+        fontsize=8.0,
+        title="Representative test windows",
+        title_fontsize=9,
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.16),
+        ncol=2,
+        columnspacing=1.5,
+        handlelength=2.5,
+    )
     axis.set_title(title, fontsize=13, fontweight="bold")
+    figure.tight_layout(rect=(0.0, 0.25, 1.0, 1.0))
     save_figure(figure, output_path)

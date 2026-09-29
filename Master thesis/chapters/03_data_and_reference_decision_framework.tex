@@ -1,0 +1,933 @@
+\chapter{Data and Reference Decision Framework}
+\label{chap:data-reference-framework}
+
+The operational problem addressed in this thesis starts from a stream of
+timestamped satellite signal measurements and asks whether the link condition
+justifies activating a backup resource. Before any model can be trained, this
+problem requires a precise data and decision framework: the raw files must be
+converted into a common signal representation, invalid observations and gaps
+must be handled consistently, continuous acquisition segments must be defined,
+and the reference switch sequence must be constructed from explicit rules.
+
+This chapter defines that framework. Its purpose is not only to prepare data
+for modeling, but to fix the operational meaning of the quantities evaluated
+later in the thesis. The same data layer determines what counts as an available
+observation at prediction time, how heterogeneous sources are reduced to the
+signal-only schema, how candidate fade periods are identified, and how model
+outputs are compared against a common Perfect Switch reference. The experimental
+split and validation protocol then follow from this framework, because model
+comparisons are only meaningful when they share the same cleaned data,
+timestamp grid, reference decision, and post-processing policy.
+
+\section{Data Preparation Pipeline Overview}
+\label{sec:data-preparation-pipeline-overview}
+
+The complete preparation flow is summarized in
+\cref{fig:data-preparation-pipeline}. The diagram is intended as a map for the
+rest of the chapter: each block is introduced here once, and the following
+sections describe the corresponding assumptions and implementation choices in
+detail.
+
+\begin{figure}[p]
+\centering
+\vspace*{-0.35cm}
+
+\resizebox{0.98\textwidth}{!}{%
+\begin{tikzpicture}[
+    >=Latex,
+    common/.style={
+        draw,
+        rounded corners,
+        fill=gray!12,
+        align=center,
+        text width=4.15cm,
+        minimum height=1.05cm,
+        inner sep=6pt,
+        font=\footnotesize
+    },
+    prep/.style={
+        draw,
+        rounded corners,
+        fill=yellow!18,
+        align=center,
+        text width=4.15cm,
+        minimum height=1.05cm,
+        inner sep=6pt,
+        font=\footnotesize
+    },
+    lane/.style={
+        draw,
+        rounded corners,
+        align=center,
+        text width=4.85cm,
+        minimum height=1.35cm,
+        inner sep=7pt,
+        font=\footnotesize
+    },
+    eval/.style={
+        draw,
+        rounded corners,
+        fill=purple!12,
+        align=center,
+        text width=4.25cm,
+        minimum height=1.05cm,
+        inner sep=6pt,
+        font=\footnotesize
+    },
+    arrow/.style={->, thick, gray!75!black},
+    ararrow/.style={->, very thick, blue!70!black},
+    clparrow/.style={->, very thick, green!50!black},
+    lfdarrow/.style={->, very thick, orange!80!black},
+    sparrow/.style={->, very thick, purple!75!black},
+    note/.style={align=center, font=\footnotesize}
+]
+
+% ============================================================
+% Introductory note
+% ============================================================
+
+\node[
+    note,
+    text width=12.5cm
+] at (5.10,0.65)
+{
+Common signal-only preparation: all tasks start from the same cleaned
+univariate signal representation, and no future observations are used
+as model inputs.
+};
+
+% ============================================================
+% Common preprocessing
+% ============================================================
+
+\node[common] (raw) at (0.00,-0.85)
+    {Raw satellite signal files};
+
+\node[common] (load) at (5.10,-0.85)
+    {Signal-only loading: \texttt{Time}, \texttt{Signal}};
+
+\node[common] (clean) at (10.20,-0.85)
+    {Timestamp parsing, sorting, cleaning, and schema validation};
+
+% Slightly raised preprocessing row
+\node[prep] (segments) at (10.20,-2.70)
+    {Sampling-time checks, conservative gap handling,
+     and acquisition segments};
+
+\node[prep] (events) at (5.10,-2.70)
+    {Candidate fade events, event windows, and quality filtering};
+
+% Slightly lowered to create more separation
+\node[
+    prep,
+    text width=5.65cm
+] (split) at (5.10,-4.45)
+    {Valid sample index, split arrays, metadata,
+     and external-holdout split};
+
+% Common pipeline arrows
+
+\draw[arrow] (raw) -- (load);
+\draw[arrow] (load) -- (clean);
+\draw[arrow] (clean.south) -- (segments.north);
+\draw[arrow] (segments.west) -- (events.east);
+\draw[arrow] (events.south) -- (split.north);
+
+% ============================================================
+% Task branching
+% ============================================================
+
+% Slightly lowered together with split
+\coordinate (branch) at (5.10,-5.50);
+
+\draw[arrow] (split.south) -- (branch);
+
+% ============================================================
+% Task-specific blocks
+% ============================================================
+
+\node[
+    lane,
+    fill=blue!10
+] (ar) at (1.80,-6.85)
+{
+\textbf{Autoregressive forecasting}\\[3pt]
+Context \(\rightarrow\) trajectory
+};
+
+\node[
+    lane,
+    fill=green!12
+] (clp) at (8.40,-6.85)
+{
+\textbf{Current-level persistence}\\[3pt]
+Context \(\rightarrow\) duration
+};
+
+\node[
+    lane,
+    fill=orange!14
+] (lfd) at (1.80,-9.15)
+{
+\textbf{Long-fade detection}\\[3pt]
+Event context \(\rightarrow\) class
+};
+
+\node[
+    lane,
+    fill=purple!10
+] (sp) at (8.40,-9.15)
+{
+\textbf{Survival persistence}\\[3pt]
+Context \(\rightarrow\) survival curve
+};
+
+% ============================================================
+% Central branch
+% ============================================================
+
+\coordinate (branchbottom) at (5.10,-11.00);
+
+\draw[
+    thick,
+    gray!75!black
+] (branch) -- (branchbottom);
+
+% Horizontal task arrows
+
+\draw[ararrow]
+    (5.10,-6.85) -- (ar.east);
+
+\draw[clparrow]
+    (5.10,-6.85) -- (clp.west);
+
+\draw[lfdarrow]
+    (5.10,-9.15) -- (lfd.east);
+
+\draw[sparrow]
+    (5.10,-9.15) -- (sp.west);
+
+% ============================================================
+% Shared reference / evaluation
+% ============================================================
+
+\node[eval] (derived) at (1.80,-12.25)
+{
+Task-specific\\
+model outputs
+};
+
+\node[eval] (perfect) at (8.40,-12.25)
+{
+Perfect Switch reference\\
+from observed signal
+};
+
+\node[eval] (post) at (1.80,-13.85)
+{
+Shared switch\\
+post-processing
+};
+
+\node[eval] (metrics) at (8.40,-13.85)
+{
+Switch metrics and\\
+cross-task comparison
+};
+
+% ============================================================
+% Evaluation arrows
+% ============================================================
+
+\draw[arrow, rounded corners=4pt]
+    (branchbottom)
+    -- ++(0,-0.35)
+    -| (derived.north);
+
+\draw[arrow]
+    (derived.east) -- (perfect.west);
+
+\draw[arrow]
+    (derived.south) -- (post.north);
+
+\draw[arrow]
+    (perfect.south) -- (metrics.north);
+
+\draw[arrow]
+    (post.east) -- (metrics.west);
+
+\end{tikzpicture}%
+}
+
+\caption{Overview of the signal-only data preparation and reference-decision
+pipeline. Gray and yellow blocks are shared preprocessing steps; colored
+blocks are task-specific dataset targets and downstream switch-evaluation
+inputs.}
+
+\label{fig:data-preparation-pipeline}
+\end{figure}
+
+
+The key point is that the pipeline is shared up to the point where each
+modeling task requires a different target. Autoregressive forecasting needs
+past-future signal windows, current-level persistence needs residual duration
+relative to the current signal level, long-fade detection needs a grouped-event
+class label, and survival persistence needs observed or right-censored
+remaining event durations. The raw data cleaning, segment boundaries, external
+holdout policy, and switch reference construction remain common, so differences
+in the results can be attributed to the task formulation and model family
+rather than to incompatible preprocessing.
+
+\section{Available Signal Datasets}
+
+The project uses a collection of satellite fade and beacon signal files
+associated with the Fucino ground segment in Italy and with GX4/GX5 satellite
+links \cite{telespazio_fucino,satbeams_gx4,satbeams_gx5}. The files were made
+available for this thesis as project data rather than as a public benchmark
+dataset. They cover different sources and acquisition periods. Each file
+contains a sequence of timestamped observations of the link signal or
+attenuation level, but the raw format is not homogeneous across sources. Some
+files include explicit column headers, while others are plain delimited files
+without column names. Some files contain only timestamp and signal columns,
+whereas a small subset includes additional environmental columns. The first
+requirement of the data layer is therefore to map these heterogeneous files
+into a common representation before any task-specific dataset is built.
+
+The raw inventory used in the final experiments contains eight loaded signal
+datasets. Their time coverage ranges from several weeks to several months, with
+the earliest acquisition starting in July 2020 and the latest ending in July
+2021. \Cref{tab:raw-dataset-inventory} summarizes the loaded files at the level
+needed for the experimental protocol.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Raw signal datasets used in the project inventory. Row counts refer
+  to valid rows after the common loading and validation stage.}
+  \label{tab:raw-dataset-inventory}
+  \begin{tabular}{lrr}
+    \toprule
+    Dataset & Valid rows & Duration (hours) \\
+    \midrule
+    \texttt{uplink\_beacon\_data\_fucino\_GX4.csv} & 481715 & 4081.5 \\
+    \texttt{dati\_meteo\_beacon.csv} & 484031 & 4081.5 \\
+    \texttt{fc-uplink-fade.csv} & 378191 & 3218.0 \\
+    \texttt{fc-downlink-fade.csv} & 380566 & 3215.8 \\
+    \texttt{UPLINK-FADE\_Fucino\_GX4\_AprJun2021.csv} & 259992 & 2171.7 \\
+    \texttt{UPLINK-FADE\_Fucino\_GX5\_AprJun2021.csv} & 256519 & 2161.0 \\
+    \texttt{DOWNLINK-FADE\_Fucino\_GX4\_MarJun2021.csv} & 338281 & 2826.0 \\
+    \texttt{DOWNLINK-FADE\_Fucino\_GX5\_AprJun2021.csv} & 256519 & 2161.0 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+All datasets used in this work are associated with measurements from the
+Fucino ground segment in Italy. Fucino is one of Telespazio's main space
+centres and teleports \cite{telespazio_fucino}. The satellite identifiers in
+the file names refer to GX4 and GX5, corresponding to the Inmarsat Global
+Xpress spacecraft Inmarsat GX4, catalogued as NORAD 42698, and Inmarsat GX5,
+catalogued as NORAD 44801 \cite{satbeams_gx4,satbeams_gx5}. Viasat completed
+its acquisition of Inmarsat in 2023, so these spacecraft belong to the current
+Viasat/Inmarsat provider context \cite{viasat_inmarsat_acquisition}. The
+historical Inmarsat GX names are nevertheless retained in this thesis because
+they are the identifiers used in the raw files and in public satellite
+catalogues.
+
+Within this context, several files are also related by link direction. In the
+dataset names, \emph{uplink} denotes the ground-to-satellite propagation path,
+while \emph{downlink} denotes the satellite-to-ground propagation path. Thus,
+uplink and downlink files can be interpreted as physically paired measurements
+or derived fade series for opposite directions of the same broader
+communication link, especially when they refer to the same site and payload
+identifier. In this thesis, however, these files are not combined into a
+multivariate paired representation. Each file is treated as an independent
+univariate signal series, because the final modeling policy requires the same
+single input variable, \texttt{Signal}, to be available for every dataset.
+
+The datasets differ not only in their acquisition period, but also in their
+maximum observed signal excursions and in the amount of invalid or missing
+source rows. They also differ in the availability of auxiliary variables.
+\Cref{tab:ignored-source-columns} reports the files whose raw format contains
+more than the timestamp and signal fields used by the models.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Additional source columns found in the raw files and ignored by the
+  signal-only data policy.}
+  \label{tab:ignored-source-columns}
+  \begin{tabular}{lp{8.5cm}}
+    \toprule
+    Dataset & Ignored source columns \\
+    \midrule
+    uplink beacon GX4
+      & \texttt{Temperature}, \texttt{Pressure}, \texttt{Humidity} \\
+    meteo beacon
+      & \texttt{airt\_bt}, \texttt{pres\_bt}, \texttt{relh\_bt}, \texttt{temp\_bt} \\
+    fc-uplink fade
+      & third trailing column, empty in the inspected rows \\
+    fc-downlink fade
+      & third trailing column, empty in the inspected rows \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The environmental columns would be potentially useful in a broader
+multivariate nowcasting study, since atmospheric conditions can affect
+attenuation dynamics. They are not used here because they are not available in a
+consistent form across all datasets. Including them would force the experiments
+to either discard most datasets or compare models trained with different input
+information. By contrast, several of the Fucino 2021 files contain exactly two
+columns and are loaded through positional column selection. This variability
+motivates the strict loading policy described in the next section: downstream
+models should not depend on source-specific formatting decisions.
+
+The final experimental protocol treats \texttt{fc-uplink-fade.csv} as an
+external holdout. This file is included in the project inventory and in the
+final processed datasets, but it is reserved for test evaluation. All remaining
+datasets form the development pool used for training and validation. Exact
+supervised sample counts are reported with the experimental setup, because they
+depend on the task-specific target and validity rules.
+
+\section{Signal-Only Policy}
+
+All models in this thesis follow a strict signal-only policy. After loading and
+validation, every dataset is standardized to exactly two columns:
+
+\begin{center}
+\texttt{Time}, \texttt{Signal}.
+\end{center}
+
+The \texttt{Time} column identifies when the observation was acquired. It is
+used for chronological ordering, gap detection, elapsed-duration computation,
+and splitting into train, validation, and test sets. It is not used directly as
+a model input.
+The \texttt{Signal} column is the only measured variable made available to the
+models. In the raw files, this quantity represents the signal or fade level
+used to describe the link degradation. The exact source formatting may differ,
+but after the common loading step all downstream tasks operate on the same
+semantic object: a univariate time series of signal values.
+
+This policy is deliberately restrictive. Some raw files contain environmental
+measurements, such as temperature, pressure, or humidity, and these variables
+could plausibly improve attenuation nowcasting in a dedicated multivariate
+study. They are excluded here because they are not available consistently
+across the full dataset collection. If such variables were used, the
+experimental comparison would no longer isolate the effect of the modeling
+formulation. Some models would exploit richer inputs, while others would be
+trained on signal-only data or on a reduced subset of files. The resulting
+differences could then reflect input availability rather than modeling
+quality.
+
+The signal-only policy also reduces the risk of uncontrolled leakage. Metadata
+columns, dataset identifiers, event labels, final event durations, and future
+event properties are never passed as model inputs. The timestamp is not used as
+a standalone calendar covariate: it is not converted into hour-of-day,
+day-of-year, or month features. This avoids letting the models exploit
+dataset-specific acquisition periods or seasonal correlations that may not
+transfer to a new deployment period.
+
+The derived predictors allowed by the final datasets must be observable at the
+decision time. Most of them are deterministic functions of the past and present
+signal window, such as a recent mean, a local range, a recent slope, or a value
+expressed relative to the current signal or to the fade threshold. Some
+task-specific datasets may also include online elapsed-time quantities defined
+by a threshold state machine, such as time since the first crossing of the
+current grouped event. These features still obey the signal-only policy because
+the state machine is driven only by past and current \texttt{Signal} values and
+their timestamps. They do not include calendar predictors, source-specific
+metadata, future event ends, final event durations, or labels.
+
+In practical terms, this means that all task formulations are evaluated under
+the same information constraint. Autoregressive forecasting, current-level
+persistence, long-fade detection, and survival persistence ask different
+questions about the same observed signal history, but none of them receives
+additional external predictors. This makes the experimental comparison less
+ambitious than a full operational system with meteorological inputs, but it
+makes the methodological comparison cleaner and reproducible across all
+available files.
+
+\section{Parsing, Cleaning, and Validation}
+
+The first processing stage converts each raw file into a validated
+\texttt{Time}/\texttt{Signal} table. This stage is intentionally separated
+from all modeling scripts. Its purpose is to make every subsequent task start
+from the same chronological signal representation, independently of the
+formatting details of the original file.
+
+Raw files may or may not contain column headers. When headers are available,
+the configured timestamp and signal columns are selected by name when possible.
+When headers are absent, or when positional loading is explicitly required, the
+first column is interpreted as \texttt{Time} and the second column as
+\texttt{Signal}. If the file contains fewer than two columns, loading fails
+with an explicit error. If the file contains more than two columns, the extra
+columns are ignored and recorded in the loading metadata.
+
+The parser performs only strict conversion. Timestamps are parsed into datetime
+values and signal entries are converted to numeric values. Rows with missing or
+unparseable timestamps are excluded, because they cannot be placed in the time
+series. Rows with missing, non-numeric, or non-finite signal values are also
+excluded, because they cannot be used as observed signal measurements. These
+rows are not silently hidden: the corresponding counts are saved for each
+dataset and used in the inventory summaries.
+
+Some raw files may also contain suspicious finite values that are technically
+numeric but likely represent default missing-data codes. In this project,
+signal values at or below -10 are reported as suspected sentinel values. They
+are not removed automatically at the parsing stage, because doing so would
+embed a domain assumption directly into the generic loader. Instead, they are
+kept as observations and made visible through the data-quality metadata. This
+keeps the cleaning policy auditable and avoids silently changing the empirical
+signal distribution.
+
+After parsing, each dataset is cleaned and temporally segmented. The common
+cleaning stage applies the following operations:
+
+\begin{itemize}
+  \item sort each dataset chronologically;
+  \item resolve duplicate timestamps according to the configured strategy;
+  \item assign a deterministic \texttt{dataset\_id} and \texttt{row\_id};
+  \item compute the elapsed time from the previous observation;
+  \item assign a continuous acquisition \texttt{segment\_id};
+  \item save the cleaned signal table and the loading metadata.
+\end{itemize}
+
+Duplicate timestamps are handled before segment construction. In the canonical
+configuration, duplicate observations with the same timestamp are collapsed by
+averaging their signal values. Alternative strategies, such as keeping the
+first value, keeping the last value, or raising an error, are supported by the
+preprocessing layer, but the final experiments use one configured policy
+consistently. This is important because duplicate handling can otherwise
+change threshold crossings and event boundaries.
+
+The \texttt{segment\_id} marks continuous acquisition stretches. It is created
+from the chronological time differences: whenever the elapsed time between two
+successive observations exceeds the configured gap threshold, a new segment is
+started. At this stage no missing samples are inserted and no signal values are
+interpolated. The cleaned tables therefore remain faithful to the observed
+timestamps, while still making acquisition breaks explicit for later
+no-leakage checks.
+
+Validation is performed through explicit metadata rather than implicit
+assumptions. For every raw file, the pipeline records the number of raw rows,
+valid rows, invalid timestamp rows, invalid signal rows, suspected sentinel
+rows, duplicate timestamps, ignored columns, and whether positional fallback
+was used. These diagnostics make it possible to identify datasets that require
+special attention before they influence model training or evaluation.
+
+The output of this stage is the common clean signal layer stored under the
+intermediate data directory. Downstream task builders reuse this layer instead
+of reading raw CSV files independently. This design prevents each task from
+implementing its own parser, duplicate policy, or timestamp convention. As a
+result, differences between autoregressive forecasting, current-level
+persistence, long-fade detection, and survival persistence are due to the task
+definition and model family, not to inconsistent low-level data handling.
+
+\section{Sampling Time, Gaps, and Conservative Imputation}
+
+The final experiments assume a nominal sampling interval
+\(\Delta t = 30\) seconds. This interval is used to interpret context lengths,
+forecast horizons, switch-time constraints, and duration thresholds. For
+example, a context length of \(L=30\) corresponds to approximately 15 minutes
+of past observations, while a prediction horizon of \(h=10\) corresponds to
+approximately 5 minutes into the future. These conversions are meaningful only
+if the sequence is approximately regular, so the treatment of missing
+timestamps is part of the experimental methodology rather than a minor
+implementation detail.
+
+Let an observed signal segment be represented as an ordered sequence
+\[
+  (t_1, s_1), (t_2, s_2), \ldots, (t_n, s_n),
+\]
+where \(t_i\) is the timestamp and \(s_i\) is the corresponding signal value.
+For two consecutive observations in the same acquisition segment, define
+\[
+  d_i = t_i - t_{i-1}.
+\]
+If \(d_i \leq 1.5\Delta t\), the pair is considered close enough to the
+expected sampling rate and no missing sample is inferred. If \(d_i >
+1.5\Delta t\), the number of missing samples is estimated as
+\[
+  m_i = \mathrm{round}\left(\frac{d_i}{\Delta t}\right) - 1.
+\]
+This rule identifies gaps that are longer than the nominal interval but still
+compatible with a small number of missing 30-second samples.
+
+The conservative imputation policy used in the final datasets is:
+
+\begin{itemize}
+  \item expected sampling interval: 30 seconds;
+  \item maximum gap eligible for imputation: 90 seconds;
+  \item maximum number of inserted samples in one gap: two;
+  \item interpolation method: linear interpolation in time;
+  \item allowed scope: only inside the same continuous acquisition segment.
+\end{itemize}
+
+Therefore, a gap is imputed only if \(m_i > 0\), \(m_i \leq 2\), and
+\(d_i \leq 90\) seconds. For each missing index \(k=1,\ldots,m_i\), the
+inserted timestamp and signal value are
+\[
+  \tilde{t}_{i,k} = t_{i-1} + k\Delta t,
+\]
+\[
+  \tilde{s}_{i,k}
+  =
+  s_{i-1}
+  +
+  \frac{k}{m_i+1}
+  (s_i - s_{i-1}).
+\]
+The reconstructed value is thus a straight-line interpolation between the
+previous and next observed samples. No model is used to infer the missing
+signal. The method does not attempt to reconstruct hidden attenuation peaks,
+fast rain-cell dynamics, or any physical process during the missing interval.
+It only repairs very short holes that are consistent with one or two omitted
+regular samples.
+
+The most important constraint is that imputation is never allowed across
+different acquisition segments. Segment boundaries are defined before
+imputation from gaps exceeding the configured continuity threshold. Once two
+observations belong to different \texttt{segment\_id} values, no interpolation
+can connect them. A later observation after such a break is therefore not
+treated as evidence that the signal stayed above or below any threshold during
+the unobserved period.
+
+This has direct consequences for target construction. In autoregressive
+forecasting, a context-target pair is valid only if the required past and
+future observations can be represented on the prepared event-window grid. In
+current-level persistence, a recovery observed only after an unbridgeable gap
+cannot be used as the true recovery time for a sample before the gap. In
+survival persistence, if the end of the fade event is not observed before the
+continuous segment ends, the corresponding sample is right-censored rather
+than assigned an artificial observed residual duration. The policy therefore
+prevents missing data from being converted into false certainty about event
+persistence or recovery.
+
+There are differences across tasks, but not across models within the same
+task. The imputation policy is applied before model training or evaluation, so
+all models belonging to the same task consume the same prepared dataset. GRU,
+PatchTST, autoregressive XGBoost, and Chronos are evaluated on the same
+autoregressive windows for a given context length and horizon. The
+current-level shapelet models and current-level XGBoost share the same
+current-level dataset. The long-fade classifiers share the same grouped-event
+classification dataset, and the survival models share the same
+survival-persistence dataset with observed and censored targets.
+
+The task-level usage is as follows. The autoregressive preparation first
+constructs event-centered windows and stores a prepared signal version with
+small recoverable gaps filled. This prepared signal is also used by task
+builders that start from the shared event-window artifacts, such as
+current-level persistence and long-fade detection. Duration-oriented builders
+also apply the same small-gap rule to the full cleaned signal inside each
+continuous segment when they need to search for a future recovery or event end.
+Survival persistence applies the same rule before running its event state
+machine, so that very short missing intervals do not artificially fragment an
+otherwise continuous fade episode. In every case, imputation remains local,
+auditable, and bounded by the same numerical constraints.
+
+Event-window quality is derived from this gap analysis. Windows with acceptable
+coverage and only recoverable small gaps can be marked as usable or
+warning-level, depending on the number and length of the gaps. Windows with
+insufficient coverage, excessive missing runs, or gaps that cannot be repaired
+are excluded from the final supervised window index. The retained datasets also
+store imputation summaries, including how many rows were inserted, how many
+gaps were filled, and the largest imputed gap per group.
+
+The policy is intentionally conservative. It may discard some potentially
+informative samples, but it avoids a more serious failure: constructing inputs,
+targets, or switch references from time intervals where the signal was not
+actually observed. This trade-off is consistent with the operational objective
+of the thesis, where reliable switch behavior is more important than
+maximizing the number of training windows at any cost.
+
+\section{Candidate Events and Acquisition Segments}
+
+The modeling tasks do not sample uniformly from the complete raw files. Most
+timestamps correspond to normal or weakly attenuated propagation conditions,
+whereas the operational decision is relevant around fade episodes. The common
+preparation stage therefore introduces two related, but distinct, concepts:
+\emph{acquisition segments} and \emph{candidate fade events}.
+
+An acquisition segment is a continuous portion of one loaded signal file. After
+the signal has been sorted by time, a new segment is started whenever the time
+distance between two consecutive valid observations is larger than the maximum
+allowed continuity gap. In the canonical configuration this limit is
+\(90\) seconds. Formally, if \(d_i=t_i-t_{i-1}\), then observations \(i-1\) and
+\(i\) belong to the same segment only when \(d_i \leq 90\) seconds. The resulting
+\texttt{segment\_id} is used as a guardrail throughout the pipeline: input
+contexts must not cross segment boundaries, and future targets must not be
+resolved by jumping over an unobserved acquisition break.
+
+Candidate fade events are instead a practical sampling device. For each dataset,
+the preparation code first identifies threshold-crossing timestamps,
+
+\[
+  \mathcal{C}_{\theta} = \{t_i : S(t_i) \geq \theta\},
+\]
+
+with \(\theta=10.0\) dB in the main experiments. The condition is deliberately
+non-strict, so a sample exactly equal to \(10.0\) dB is treated as belonging to
+the threshold region. Crossings are then grouped chronologically. A group starts
+at its first crossing time \(t_0\), and subsequent crossings remain in the same
+candidate event while they occur within the configured grouping horizon from
+\(t_0\). The default horizon is three hours. A later crossing outside that
+horizon starts a new candidate event.
+
+Each candidate event is anchored at the first threshold crossing, called the
+\texttt{event\_timestamp}, and is expanded into an event-centered analysis window,
+
+\[
+  [t_0 - 1.5\text{h},\; t_0 + 1.5\text{h}],
+\]
+
+using the canonical configuration. This window is not intended to say that the
+fade lasts three hours. It is only a local region that contains pre-event
+context, the threshold-crossing period, and post-event recovery or follow-up
+samples when they are observed. The window may therefore contain both
+above-threshold and below-threshold samples.
+
+These candidate events should not be confused with the final reference switch,
+nor with the task-specific event definitions used later. They are used to make
+the raw time series operationally manageable, to compute coverage and gap
+quality checks, and to decide which local portions of the files can generate
+supervised samples. Window quality is assessed after bounded imputation: the
+pipeline records coverage, maximum gap length, number of inferred missing
+samples, number of imputed samples, duplicate timestamps, missing values, and
+the number of points above and below the threshold. Events with insufficient
+coverage or unrecoverable gaps are excluded from the final window index, while
+warning-level events can be retained when this is explicitly enabled.
+
+Task-specific datasets are then built on top of this common signal layer:
+
+\begin{itemize}
+  \item autoregressive forecasting uses event-window indices to build past
+  context and future trajectory pairs. A training sample is valid only when the
+  full context and the full prediction horizon are available on the prepared
+  time grid;
+  \item current-level persistence searches the full cleaned signal for the
+  first future recovery below a level relative to the current signal. The
+  candidate window can determine which timestamps are considered, but the target
+  duration is not truncated at the event-window boundary;
+  \item long-fade detection groups threshold crossings within a configured
+  temporal horizon and assigns one binary label to all timestamps in the grouped
+  fade episode. Temporary below-threshold oscillations inside the grouped event
+  do not split the event;
+  \item survival persistence uses a state machine with activation, candidate
+  recovery, stable recovery, and right-censoring at segment boundaries. Its
+  target is the remaining duration until the end of the whole fade event, not
+  the duration of the current signal level.
+\end{itemize}
+
+The separation between acquisition segments, candidate events, and task-specific
+labels is important. Acquisition segments describe what was continuously
+observed. Candidate events describe where the pipeline should look for
+operationally relevant samples. The supervised target definition is then chosen
+by the task. This design preserves a common data foundation while allowing each
+model family to answer a different operational question without silently
+changing the meaning of an event.
+
+\section{External Holdout Split}
+
+The final evaluation uses an external-holdout protocol. One complete raw file,
+\texttt{fc-uplink-fade.csv}, is reserved for test evaluation. It is not used for
+model fitting, hyperparameter selection, early stopping, architecture selection,
+normalization-statistic fitting, or decision-rule calibration. All remaining
+datasets form the development pool.
+
+The split is therefore performed at two levels. At the file level, the held-out
+dataset is assigned entirely to the test split:
+
+\[
+  \mathcal{D}_{\text{test}} = \{\texttt{fc-uplink-fade.csv}\}.
+\]
+
+The development set is the complement,
+
+\[
+  \mathcal{D}_{\text{dev}} = \mathcal{D}\setminus\mathcal{D}_{\text{test}}.
+\]
+
+At the event level, each development dataset is split chronologically into
+training and validation events. Events are first ordered by their earliest
+available input timestamp. The first \(85\%\) of development events are assigned
+to training and the remaining \(15\%\) to validation, subject to a minimum-event
+guard. If a development dataset contains too few events to support a meaningful
+validation subdivision, all its events are kept in training rather than creating
+an unstable validation split. In the canonical autoregressive and survival
+dataset builders the minimum is three events; in the long-fade configuration it
+is two events.
+
+This event-aware split prevents windows from the same physical fade episode from
+appearing in both training and validation. It also prevents the external test
+file from leaking into the development process. The validation split is used for
+model selection: selecting grid-search configurations, choosing early-stopping
+epochs, comparing candidate architectures, and calibrating only those decision
+rules that are explicitly treated as validation-calibrated. The test split is
+evaluated after this selection step. If a test-set sweep is ever performed for
+diagnostic purposes, it must be reported as exploratory and not as a
+validation-calibrated operating point.
+
+The same principle is applied across tasks, although the exact number of samples
+differs because each task defines a different supervised target and therefore a
+different set of valid decision timestamps. Autoregressive forecasting produces
+past-context and future-trajectory windows. Current-level persistence produces
+duration-regression samples. Long-fade detection produces grouped-event
+classification samples. Survival persistence produces observed and right-censored
+residual-duration samples. In all cases, however, the final test data come from
+the same held-out acquisition file.
+
+This protocol is stricter than a random sample split. A random split would place
+nearby, highly correlated timestamps on both sides of the split and would inflate
+performance estimates. The external-holdout protocol is closer to the intended
+use case: a model or decision rule is developed on existing acquisition files and
+then applied to a separate file. It should still be interpreted as file-level
+generalization within the available Fucino data, not as proof of generalization
+to all teleports, satellite links, seasons, or operating conditions.
+
+\section{Perfect Switch Reference}
+
+All model-derived switch decisions are evaluated against a model-independent
+reference called the Perfect Switch. The Perfect Switch is not a trained model.
+It is a reference decision derived from the observed signal and the configured
+operational threshold. It is an oracle in the evaluation sense: it can use the
+future observed signal to decide whether a switch should have been active, but
+it is never available to a real online model.
+
+The reference starts from an instantaneous outage mask. In the canonical
+experiments the threshold is \(\theta=10.0\) dB and comparisons are inclusive:
+
+\[
+  M_i = \mathbb{1}\{S(t_i) \geq \theta\}.
+\]
+
+This binary mask alone is not the Perfect Switch. It only states whether the
+currently observed signal is in the threshold region. The Perfect Switch also
+incorporates the operational persistence requirement: a switch should not be
+activated for isolated threshold crossings that disappear immediately. With
+30-second sampling and \(\texttt{switch\_time}=10\), the reference requires
+eleven consecutive above-threshold samples, corresponding to ten 30-second
+intervals, i.e. approximately five minutes of persistence.
+
+Equivalently, for each contiguous run of \(M_i=1\), the raw Perfect Switch is set
+to one only if the run contains at least
+\(\texttt{switch\_time}+1\) samples. Shorter above-threshold runs remain zero.
+This produces the stored column \texttt{perfect\_switch\_raw}. A legacy
+right-extension step is then applied to enforce the minimum switch-time behavior
+used in the previous implementation. Finally, if the switch is already active
+and the observed signal is still above threshold, the switch is held active even
+if the intermediate rule would otherwise return zero. This final held signal is
+the column used as the reference in the experiments:
+
+\[
+  \texttt{perfect\_switch} \equiv \texttt{perfect\_switch\_min\_time}.
+\]
+
+The pipeline also stores diagnostic columns for auditing this transition:
+
+\begin{itemize}
+  \item \texttt{outage\_mask}, the instantaneous threshold mask;
+  \item \texttt{perfect\_switch\_min\_island\_old}, the legacy right-extension
+  intermediate signal;
+  \item \texttt{perfect\_switch\_adjusted}, a separate adjusted diagnostic
+  variant.
+\end{itemize}
+
+These columns help inspect the transition from threshold mask to reference
+switch, but the main switch metrics compare model decisions against
+\texttt{perfect\_switch}.
+
+The Perfect Switch is task-scoped in terms of timestamp grid. Each task can
+produce decisions only at its native decision timestamps, so the reference is
+aligned to those timestamps before computing task-level switch metrics. The
+underlying threshold convention and post-processing rule, however, are shared
+across tasks. This is why any change to the Perfect Switch definition is a
+methodological change: it affects every reported switch metric.
+
+\section{Shared Switch Post-Processing}
+\label{sec:shared-switch-post-processing}
+
+The reference framework operates after a task-specific prediction has already
+been converted into a raw binary decision. The predictive quantity may be a
+forecast trajectory, a duration estimate, a class probability, or a survival
+curve, but that distinction belongs to the task formulation. At this stage, all
+models expose the same intermediate decision column:
+
+\begin{center}
+\texttt{model\_switch\_raw}.
+\end{center}
+
+The mapping from a native model output to \texttt{model\_switch\_raw} is
+task-specific and is defined with the individual formulations in
+\cref{chap:task-formulations}. The data-and-reference layer does not choose
+those task thresholds or probability operating points; it only receives the raw
+decision sequence and applies the same temporal policy to all methods.
+
+After this task-specific conversion, all methods use the same temporal
+post-processing. This is intentionally separated from model training: changing
+it changes the evaluation decision rule, but it does not require retraining the
+underlying forecasting, regression, classification, or survival model.
+
+The first post-processing step enforces a minimum active switch duration on the
+raw decision sequence. Each contiguous island of ones is inspected. If the
+island is shorter than \(\texttt{switch\_time}\), it is extended to the right
+until it reaches that length, or until the available event grid ends. This rule
+does not fill arbitrary zero gaps between two switch islands. It can only make
+two islands touch if the right-extension of the first island reaches the second
+one.
+
+The second step is stateful and uses only information available at the current
+decision time. If the post-processed switch was active at the previous timestamp
+and the currently observed signal is still above the operational threshold, the
+switch is kept active even if the raw model decision has temporarily returned to
+zero. This avoids an unrealistic behavior in which the system switches off
+while the fade is still ongoing. Once the observed signal leaves the threshold
+region, the switch is no longer forced by this holding rule.
+
+The post-processed decision produced by these two steps is the one used for the
+main reported switch metrics:
+
+\begin{center}
+\texttt{model\_switch}.
+\end{center}
+
+This separation prevents a common source of ambiguity. Parameters used inside a
+task-specific conversion rule, such as forecast-horizon requirements or
+probability thresholds, are different from \texttt{switch\_time}, which controls
+only the temporal post-processing of an already binary decision sequence.
+
+Raw and intermediate switch columns are still saved for diagnostics. For model
+outputs, \texttt{model\_switch\_raw} is the direct task-specific binary
+decision before post-processing; \texttt{model\_switch\_min\_island\_old} is
+the right-extended minimum-duration version; \texttt{model\_switch\_min\_time}
+is the held version after the above-threshold rule; and
+\texttt{model\_switch\_adjusted} is a separate legacy diagnostic variant. These
+columns are useful for understanding whether an error comes from the model
+output itself or from the operational post-processing rule. Unless explicitly
+stated otherwise, the reported switch metrics use the held minimum-time version,
+saved as both \texttt{model\_switch\_min\_time} and \texttt{model\_switch}.
+
+\section{Evaluation Alignment}
+
+The data and reference layer provides the common objects needed for operational
+evaluation: the observed signal, the instantaneous outage mask, the
+task-aligned Perfect Switch, and the intermediate switch columns generated by
+the shared post-processing rule. It does not define the native losses of the
+models, select hyperparameters, or choose task-specific probability and
+duration thresholds. Those experimental choices are specified in
+\cref{chap:task-formulations,chap:experimental-setup}.
+
+For each task, model outputs are first converted into
+\texttt{model\_switch\_raw} according to the task formulation. The shared
+post-processing then produces \texttt{model\_switch}, which is compared with the
+aligned \texttt{perfect\_switch}. The same tables also retain diagnostic fields
+for the outage mask, raw and adjusted Perfect Switch variants, and the raw model
+decision. These fields make it possible to audit whether a disagreement comes
+from the predictive model, from the task-specific conversion rule, or from the
+operational post-processing layer.
+
+Metric formulas and comparison denominators are intentionally left to the
+experimental setup chapter. The role of the present chapter is narrower: it
+defines the signal representation and the reference decision objects that all
+tasks must use. This keeps the thesis definitions separated: \cref{chap:background}
+introduces general concepts, this chapter defines the data and reference layer,
+\cref{chap:task-formulations} defines task-specific model outputs and raw switch
+rules, and \cref{chap:experimental-setup} defines how the resulting runs are
+selected and compared.

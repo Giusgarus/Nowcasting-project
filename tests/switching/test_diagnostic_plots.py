@@ -8,6 +8,7 @@ from src.switching.cross_task import SwitchComparisonSource
 from src.switching.diagnostic_plots import (
     compute_reference_event_f1_matrix,
     plot_metric_bars,
+    plot_survival_curves,
     plot_switch_timeline_rows,
 )
 
@@ -86,3 +87,23 @@ def test_plot_helpers_write_png_files(tmp_path: Path) -> None:
 
     assert metric_path.exists()
     assert timeline_path.exists()
+
+
+def test_plot_survival_curves_writes_representative_quantile_plot(tmp_path: Path) -> None:
+    predictions = pd.DataFrame(
+        {
+            "sample_time": pd.date_range("2026-01-01", periods=8, freq="30s"),
+            "y_time_seconds": [30, 60, 90, 120, 180, 300, 600, 900],
+            "y_event_observed": [1] * 8,
+            "predicted_median_remaining_seconds": [60, 60, 120, 180, 300, 600, 900, 1200],
+            "survival_probability_60s": [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85],
+            "survival_probability_300s": [0.10, 0.20, 0.30, 0.40, 0.60, 0.70, 0.80, 0.90],
+            "survival_probability_900s": [0.01, 0.02, 0.03, 0.04, 0.08, 0.12, 0.20, 0.30],
+        }
+    )
+    output_path = tmp_path / "survival_curves.png"
+
+    plot_survival_curves(predictions, output_path, title="Curves", max_curves=6)
+
+    assert output_path.exists()
+    assert output_path.stat().st_size > 0

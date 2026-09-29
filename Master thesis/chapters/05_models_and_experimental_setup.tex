@@ -1,0 +1,386 @@
+\chapter{Experimental Setup}
+\label{chap:experimental-setup}
+
+Once the task formulations are fixed, the main experimental risk is no longer
+architectural ambiguity but unfair comparison. Models can look better or worse
+simply because they were trained on different splits, selected with different
+criteria, or evaluated through different switch rules. The protocol below makes
+these choices explicit. All experiments use the same raw signal sources and the
+same external-holdout principle, while each task still produces its own
+supervised dataset because the target variable and the set of valid decision
+timestamps are different.
+
+The setup follows three constraints. First, the test dataset is held out as a
+complete external file and is never used for model selection. Second, all fitted
+transformations, such as feature standardization, are estimated on the training
+split only. Third, all final operational comparisons are made after converting
+model outputs into binary switch decisions and applying the shared
+post-processing rule defined in \cref{sec:shared-switch-post-processing}.
+
+\section{Dataset}
+\label{sec:experimental-dataset-configuration}
+
+The common operational threshold used in the final experiments is
+\(\theta=\SI{10.0}{dB}\). Unless stated otherwise, samples are represented on a
+\SI{30}{s} grid and the decision context contains the last \(L=30\) signal
+observations, corresponding to approximately \SI{15}{min} of history. The
+operational persistence horizon used for switch decisions is
+\(T_{\min}=\SI{300}{s}\), i.e. \SI{5}{min}. This horizon is used as the forecast
+horizon interpretation for autoregressive switch conversion, as the duration
+threshold for current-level persistence, as the minimum long-fade duration for
+long-fade detection, and as the survival horizon for survival persistence.
+
+The external test source is the complete file
+\texttt{fc-uplink-fade.csv}. It is excluded from all training, validation, grid
+search, early stopping, and model-selection steps. The remaining signal files
+form the development pool. Within the development pool, train and validation
+splits are constructed chronologically at event level when event identities are
+available, so that strongly related windows from the same event are not split
+between training and validation.
+
+\subsection{Autoregressive Forecasting Dataset}
+
+The autoregressive dataset uses past windows and future signal trajectories.
+The main configuration uses \(L=30\) and prediction length \(h=10\), so each
+target covers the next \SI{300}{s}. The resulting external-holdout dataset
+contains 19,412 training windows, 4,783 validation windows, and 7,708 test
+windows under the inclusive \(S_i\ge\SI{10.0}{dB}\) threshold convention. A
+separate diagnostic Chronos experiment also uses \(L=120\) while keeping
+\(h=10\); this longer context is treated as an additional Chronos run, not as
+the common autoregressive configuration for all models.
+
+\subsection{Current-Level Persistence Dataset}
+
+The current-level persistence dataset uses the same \(L=30\) context length and
+\(\delta=\SI{0.5}{dB}\). Its target is the residual time for which the future
+signal remains above \(S_i-\delta\). Since this target requires observing a
+future recovery below a sample-specific level, a small number of candidate
+windows is right-censored and excluded from ordinary duration-regression
+training. The final uncensored regression dataset contains 19,598 training
+windows, 4,798 validation windows, and 7,692 test windows. The excluded
+censored candidate windows account for approximately 2.12\%, 2.74\%, and
+3.22\% of the train, validation, and test candidate windows respectively.
+
+\subsection{Long-Fade Detection Dataset}
+
+The long-fade detection dataset is built only inside grouped fade events. It
+uses \(L=30\), \(\theta=\SI{10.0}{dB}\), and a long-fade label defined by event
+duration at least \(T_{\min}=\SI{300}{s}\). The resulting dataset contains 4,589
+training samples from 62 grouped events, 790 validation samples from 15 grouped
+events, and 2,569 test samples from 25 grouped events. This dataset is much
+smaller than the autoregressive and current-level datasets because it does not
+generate samples outside grouped fade events.
+
+\subsection{Survival-Persistence Dataset}
+
+The survival-persistence dataset also uses \(L=30\), but keeps censored samples
+instead of discarding them. Each sample is generated inside a detected fade
+event and stores lower and upper time bounds for the residual event duration.
+Observed samples have equal lower and upper bounds, while censored samples have
+an infinite upper bound. The final survival dataset contains 1,729 training
+samples, 729 validation samples, and 921 test samples. The validation split
+contains 6 censored samples from one event, while the external test split
+contains 70 censored samples from two events.
+
+\subsection{Small-Gap Imputation Policy}
+
+Small-gap imputation is enabled only through the shared conservative policy.
+It may fill short gaps up to \SI{90}{s}, corresponding to at most two inserted
+\SI{30}{s} samples, by linear interpolation in time. The policy is applied
+before task-specific dataset construction where explicitly configured, but it
+does not bridge acquisition-segment boundaries or long missing intervals.
+
+\section{Train, Validation, and Test Protocol}
+\label{sec:train-validation-test-protocol}
+
+The experiments use a three-way protocol: training, validation, and external
+test. The training split is used to fit model parameters. The validation split is
+used for early stopping, hyperparameter selection, architecture selection, and
+any comparison among alternative variants of the same task. The external test
+split is used only once a model or configuration has already been selected.
+
+The distinction between validation and test is especially important in this
+work, because the models are evaluated not only through their native predictive
+losses but also through derived switch decisions. A threshold or architecture
+that looks attractive on the test set would no longer provide an unbiased
+estimate of future operational behavior. For this reason, the final selected
+models are chosen using validation-only criteria. Exploratory operating points
+reported outside this rule are explicitly treated as diagnostics rather than as
+calibrated deployment thresholds.
+
+For trainable neural models, early stopping or fixed-epoch training is governed
+by validation-only information during the selection phase. After the best
+configuration is chosen, the published run is either retrained on the full
+development set, i.e. training plus validation, or the selected validation-stage
+checkpoint is promoted. For reproducibility, this finalization choice is not
+left implicit: each published run stores in its metadata whether the test
+artifact was obtained from a train-validation refit or from a promoted
+validation-stage checkpoint, together with the selected epoch, configuration,
+random seed, and dataset fingerprint when available. The external test split is
+evaluated only after the selection step has been completed. XGBoost models
+follow the same principle: validation selects the hyperparameters, and the
+selected configuration is then published before test evaluation. Chronos is the
+only exception, because it is evaluated in zero-shot mode and therefore loads no
+training or validation data.
+
+All splits preserve the signal-only policy. Time, event identifiers, dataset
+identifiers, and quality flags are stored as metadata for alignment,
+diagnostics, and grouping, but they are not used as model inputs unless a
+feature is explicitly described as an online scalar derived from the past signal
+window or from the current event state available at the decision time.
+
+\section{Hyperparameter Search}
+\label{sec:hyperparameter-search}
+
+Hyperparameter search is performed separately for each task and model family.
+Each search is defined by a YAML configuration file and produces a structured
+trial table, selected-parameter file, final run folder, model artifact folder,
+and metadata file. The grid-search runners assign independent trials across all
+available CUDA devices when possible. If CUDA is unavailable, the code falls
+back to MPS when supported, and finally to CPU.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Summary of the main model-selection searches.}
+  \label{tab:model-selection-searches}
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.18\textwidth}
+    >{\raggedright\arraybackslash}p{0.36\textwidth}
+    >{\raggedright\arraybackslash}p{0.11\textwidth}
+    >{\raggedright\arraybackslash}p{0.25\textwidth}
+    @{}
+  }
+    \toprule
+    Task & Model family & Trials & Selection metric \\
+    \midrule
+    Autoregressive & GRU S2V, raw/context-standard & 72 each & validation RMSE \\
+    Autoregressive & GRU encoder-decoder, raw/context-standard & 216 each & validation RMSE \\
+    Autoregressive & PatchTST, raw/context-standard & 864 each & validation RMSE \\
+    Autoregressive & XGBoost, raw/context-standard & 1152 each & validation RMSE \\
+    Current-level persistence & Shapelet MLP/Transformer/Convolution & 216 each & validation MAE \\
+    Current-level persistence & XGBoost duration regressor & 1152 & validation MAE \\
+    Long-fade detection & XGBoost/TCN/Shapelet-Convolution classifiers & 8928 total & validation AUPRC \\
+    Survival persistence & XGBoost-AFT & 1920 & validation AFT negative log-likelihood \\
+    Survival persistence & Discrete-time TCN & 1620 & validation Integrated Brier Score \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The search dimensions and validation-only selection rules are summarized in
+\cref{tab:model-selection-dimensions}. All error-based selection metrics are
+computed after returning predictions to their reported physical scale.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Main hyperparameter dimensions and validation-only selection rules.}
+  \label{tab:model-selection-dimensions}
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \renewcommand{\arraystretch}{1.25}
+  \begin{tabular}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.24\textwidth}
+    >{\raggedright\arraybackslash}p{0.47\textwidth}
+    >{\raggedright\arraybackslash}p{0.20\textwidth}
+    @{}
+  }
+    \toprule
+    Task and model family & Tuned dimensions & Selection rule \\
+    \midrule
+    Autoregressive GRU
+      & input variant, recurrent capacity, number of layers, dropout, learning rate, weight decay, teacher forcing for encoder-decoder
+      & validation RMSE in raw signal scale \\
+    Autoregressive PatchTST
+      & input variant, patch length and stride, Transformer width, heads, layers, dropout, learning rate, weight decay
+      & validation RMSE in raw signal scale \\
+    Autoregressive XGBoost
+      & input variant, tree depth, estimators, learning rate, subsampling, column sampling, child weight, regularization
+      & validation RMSE in raw signal scale \\
+    Current-level persistence
+      & shapelet representation size, neural head capacity, scalar-context embedding, dropout, learning rate; XGBoost tree parameters
+      & validation MAE in seconds \\
+    Long-fade detection
+      & classifier family, sequence or lag representation, model capacity, tree or neural regularization
+      & validation AUPRC \\
+    Survival persistence
+      & AFT tree parameters; TCN binning, input representation, sample weighting, architecture scale, seed
+      & AFT negative log-likelihood or Integrated Brier Score \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Forecast, Regression, Classification, and Survival Metrics}
+\label{sec:native-task-metrics}
+
+The metric definitions are introduced in
+\cref{sec:background-operational-evaluation}. This section specifies how those
+metrics are used in the experimental protocol.
+
+For autoregressive forecasting, MAE and RMSE are computed after all predictions
+have been returned to raw signal scale. They are reported globally and by
+horizon step. Validation RMSE is used for neural and XGBoost model selection,
+because large forecast errors near the operational threshold can strongly affect
+the derived switch decision.
+
+For current-level persistence, the models are trained on
+\(\log(1+D_i^{\text{CLP}})\), but native evaluation is performed after mapping
+predictions back to seconds. Validation MAE in seconds is used for model
+selection, and test MAE/RMSE in seconds are retained as diagnostic duration
+metrics.
+
+For long-fade detection, the native output is a probability that the grouped
+event is a long fade. Validation AUPRC is used for model selection because the
+classification problem is imbalanced. AUROC and thresholded classification
+metrics are reported as secondary diagnostics.
+
+For survival persistence, XGBoost-AFT is selected by validation AFT negative
+log-likelihood, while the discrete-time TCN is selected by validation
+Integrated Brier Score. Concordance index, Brier scores, and survival
+likelihood values are reported to diagnose whether the predicted residual
+duration distribution is meaningful before it is converted into a switch.
+
+\section{Switch Metrics}
+\label{sec:switch-metrics}
+
+The switch metrics are also defined in
+\cref{sec:background-operational-evaluation}. In the experiments, they are
+computed after task-specific raw decisions have been converted into the common
+post-processed switch sequence. The evaluated sequence is always compared with
+the task-scoped Perfect Switch on the same timestamp grid.
+
+The reported switch tables include pointwise metrics, active switch duration,
+the number of switch islands, detected and missed Perfect Switch events, false
+switch events, onset delay when defined, and the amount of change introduced by
+post-processing. These quantities are reported because the operational cost of
+backup-link activation depends on the duration and fragmentation of switch
+periods, not only on pointwise classification agreement.
+
+\section{Use of Shared Switch Post-Processing}
+\label{sec:experimental-switch-post-processing}
+
+The post-processing rule itself is defined with the reference framework in
+\cref{sec:shared-switch-post-processing}. In the experiments, the same
+configured rule is applied unchanged after each task-specific raw switch
+conversion. The primary evaluated sequence is \texttt{model\_switch}, which is
+the held minimum-time sequence introduced in
+\cref{sec:shared-switch-post-processing}. The auxiliary diagnostic columns are:
+
+\begin{itemize}
+  \item \texttt{model\_switch\_raw}, the immediate task-specific decision;
+  \item \texttt{model\_switch\_min\_island\_old}, after minimum-duration
+        extension;
+  \item \texttt{model\_switch\_min\_time}, after the above-threshold holding
+        rule;
+  \item \texttt{model\_switch\_adjusted}, the legacy adjusted diagnostic
+        variant.
+\end{itemize}
+
+Only \texttt{model\_switch} is used as the main operational sequence; the other
+columns are retained to audit how much post-processing changes the immediate
+model decision.
+
+\section{Intra-Task Comparison Protocol}
+\label{sec:intra-task-comparison-protocol}
+
+Intra-task comparisons evaluate models that solve the same supervised problem.
+They therefore share the same dataset, split, native target, Perfect Switch
+grid, and switch-conversion rule. This is the cleanest comparison level because
+the only intended difference is the model family or input representation.
+
+For autoregressive forecasting, the comparison includes GRU
+sequence-to-vector, GRU encoder-decoder, PatchTST, XGBoost, and Chronos
+zero-shot runs. Forecast metrics are compared where available, and switch
+metrics are computed after applying the autoregressive conversion rule defined
+in \cref{chap:task-formulations}.
+
+For current-level persistence, the comparison includes the three learnable
+shapelet regressors and the XGBoost duration regressor. The models are selected
+by validation duration error and then evaluated through the common
+duration-to-switch conversion.
+
+For long-fade detection, the comparison includes XGBoost, TCN, and
+shapelet-convolution classifiers. The models are selected by validation AUPRC
+and then evaluated through the common probability-to-switch conversion.
+
+For survival persistence, XGBoost-AFT and the grid-selected discrete-time TCN
+are compared through survival metrics and through the survival-to-switch
+conversion at the configured operational horizon.
+
+Each intra-task comparison also produces event-level plots. The plots show the
+raw signal, the operational threshold, the Perfect Switch, and the
+post-processed model switch sequence. For long-fade and survival models, the
+visual window is extended to 90 minutes before and after the event timestamp,
+while switches outside the task-native decision grid are displayed as zero. This
+makes event plots easier to compare visually without changing the metric
+denominator.
+
+\section{Cross-Task Comparison Protocol}
+\label{sec:cross-task-comparison-protocol}
+
+Cross-task comparison is more difficult than intra-task comparison because the
+tasks do not necessarily produce decisions at the same timestamps. The
+autoregressive task produces one decision for each valid forecast window.
+Current-level persistence produces decisions for valid duration-regression
+samples. Long-fade detection and survival persistence produce decisions only
+inside their own event definitions. Directly comparing only the common
+intersection of all timestamps would hide this difference in coverage.
+
+The primary cross-task protocol therefore aligns all methods to a common
+reference grid derived from the external-holdout Perfect Switch. If a method has
+no native decision at a reference-grid timestamp, the missing value is filled as
+zero. This denominator is called
+\texttt{reference\_grid\_missing\_as\_zero}. It evaluates both the correctness of
+the decisions that a method makes and the operational consequence of not
+producing decisions at some reference-grid timestamps.
+
+A second denominator,
+\texttt{strict\_common\_timestamp\_intersection}, is also computed as a
+diagnostic. It keeps only timestamps where all compared methods have native
+decisions. This view is useful for asking which method behaves better when all
+methods are active on the same timestamps, but it is not sufficient as the main
+comparison because it removes the coverage problem.
+
+The cross-task analysis therefore reports both switch metrics and native
+decision coverage. Coverage is the fraction of the reference grid on which a
+method actually produced a native decision before missing values were filled.
+This is essential for interpreting models such as long-fade and survival
+methods, whose task definitions intentionally restrict the decision set.
+
+\section{Hardware and Reproducibility}
+\label{sec:hardware-reproducibility}
+
+The implementation is based on Python. Neural models are implemented with
+PyTorch, while tree-based baselines use XGBoost. Experiment configuration is
+stored in YAML files, and generated artifacts are organized by task, selection
+identifier, and run identifier.
+
+The source-code repository is linked in \cref{sec:introduction-contributions}.
+Its structure and artifact schemas are described in
+\cref{app:implementation-details}.
+
+All model runners use centralized device selection. The preferred device order
+is CUDA, then Apple MPS when supported, then CPU. Grid searches consist of
+independent trials and therefore distribute trials across all available CUDA
+devices, for example \texttt{cuda:0}, \texttt{cuda:1}, and \texttt{cuda:2}, when
+the machine exposes multiple GPUs. Final run metadata records the selected
+device, configuration fingerprint, dataset fingerprint when available, model
+family, architecture, variant, seed, and output paths.
+
+The main random seed is 42 unless otherwise stated. Neural training stores the
+best checkpoint and training metadata. XGBoost runs store the fitted model and
+the resolved configuration. Chronos stores run metadata and predictions but no
+trained checkpoint, because no project-specific training is performed. All
+published runs save prediction files so that switch comparisons can be
+regenerated without retraining the models.
+
+The result structure separates four artifact types. First, dataset-preparation
+artifacts store split summaries, metadata, and quality checks. Second,
+grid-search artifacts store trial tables and selected configurations. Third,
+run artifacts store model predictions, native metrics, plots, and run metadata.
+Fourth, comparison artifacts store intra-task switch evaluations, model
+summaries, and cross-task switch plots. This separation is used to make later
+thesis tables reproducible from saved outputs rather than from manually edited
+numbers.

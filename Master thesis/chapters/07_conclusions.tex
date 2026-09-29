@@ -1,0 +1,148 @@
+\chapter{Conclusions}
+\label{chap:conclusions}
+
+Satellite fade nowcasting is useful when it supports timely switching, not
+merely accurate intermediate predictions. The conclusions below identify what
+the experiments establish about that objective and what remains unresolved.
+
+\section{Contribution and Operational Lessons}
+
+The contribution of this thesis is a decision-level comparison of four fade
+nowcasting formulations, rather than a new model architecture. By mapping
+different predictive outputs to a common switch reference and making decision
+coverage explicit, the study distinguishes accurate intermediate predictions
+from useful operational decisions. Its central empirical result is that the
+best predictor according to a task's native loss is not necessarily the best
+switch controller.
+
+On the external holdout, current-level XGBoost, survival XGBoost-AFT, and raw
+PatchTST produced useful but different switching policies: conservative
+activation, higher fade coverage, and the strongest autoregressive switch
+balance, respectively. These results support the use of signal-only models
+for switching, but do not establish a universal winner.
+In particular, the retained survival operating point was chosen exploratorily
+on test data and still requires validation-only calibration.
+
+The negative results are equally informative. The current-level shapelet
+models never activated the switch on the evaluated test grid, while the
+long-fade classifiers' strong classification scores did not prevent excessive
+switch activity. Neither architectural complexity nor high native accuracy
+was sufficient. The practical lesson is to select the predictive target and
+assess its decision rule together: an output that is poorly aligned with the
+required switch behavior cannot be judged useful from its native score alone.
+
+\section{Answers to the Research Questions}
+
+\paragraph{Can learned models improve switch decisions?}
+The experiments support their usefulness: signal-history models can recover
+reference switch intervals while limiting unnecessary activation. They do not,
+however, establish superiority over a deployed engineering controller.
+Well-tuned tabular models remained competitive with neural sequence models,
+so greater architectural complexity is not itself evidence of operational
+improvement.
+
+\paragraph{Which formulation is most useful?}
+The choice depends on the cost of missed fade coverage relative to unnecessary
+switch time. Residual-duration survival modeling directly addresses whether an
+ongoing fade will persist; current-level regression can support a conservative
+policy but estimates a different quantity. Forecasting remains useful when
+the future trajectory is also required. Grouped-event classification is better
+suited to a high-recall warning than precise switch timing. These differences
+make target definition an operational choice, not merely a modeling detail.
+
+\paragraph{Do native metrics explain operational usefulness?}
+Not sufficiently. The survival TCN obtained the better integrated Brier score,
+whereas XGBoost-AFT produced the better switch sequence at the evaluated
+operating point. Similarly, low forecast error did not identify the strongest
+autoregressive switch model. Native scores remain necessary to assess the
+predicted quantity, but decision timing, active duration, and fragmentation
+must be assessed after conversion and post-processing.
+
+\paragraph{Why are a common reference and post-processing necessary?}
+They prevent differences in reference construction or decision smoothing from
+being mistaken for model improvements. A common timestamp grid is also needed:
+task-native scores alone compare decisions over different domains. Reporting
+coverage alongside switch quality makes this distinction explicit and shows
+where a method would still require a fallback decision in operation.
+
+\section{Limitations}
+
+The main limitation is the size and heterogeneity of the available data. The
+external holdout design is stricter than a random split and is appropriate for
+testing generalization, but it also means that the final conclusions are based
+on one held-out acquisition source. Additional acquisition periods, terminals,
+satellite links, and weather conditions would be needed to establish broader
+operational robustness.
+
+The thesis deliberately used a signal-only policy. This made the comparison
+consistent across files and avoided dependence on columns that were not
+available in all datasets. At the same time, it excluded potentially relevant
+physical covariates, such as weather measurements, link geometry, or system
+state variables. A model that combines signal history with consistently
+available physical information could improve anticipation of fades, especially
+before the signal crosses the operational threshold.
+
+Another limitation concerns threshold and calibration choices. The switch
+reference was built around a \SI{10.0}{dB} threshold and a
+\SI{300}{s} operational duration. These values were fixed to make the
+experiments comparable, but real deployments may prefer different operating
+points. The survival probability threshold used for the retained switch
+analysis was exploratory and not a fully validation-calibrated operating
+point. Future work should calibrate all decision thresholds on validation data
+only and then evaluate the chosen operating point on test data.
+
+Finally, the cross-task comparison required aligning task-native decisions to a
+common reference grid. This is necessary for fairness, but it also exposes a
+structural issue: different task definitions do not naturally produce
+decisions at exactly the same timestamps. The reported coverage values should
+therefore be interpreted as part of the result, not as a nuisance. A task that
+is accurate only on a small native domain may still be useful, but it cannot
+replace a controller that must decide at every operational timestamp.
+
+\section{Future Work}
+
+The first extension should be validation-only calibration of switch-conversion
+rules. Autoregressive trajectory thresholds, current-level duration
+thresholds, long-fade probability thresholds, and survival probability
+thresholds should be tuned on validation data using explicitly chosen
+operational costs. This would turn the current comparison from a fixed-rule
+benchmark into a calibrated decision study.
+
+Second, the survival formulation should be developed further. XGBoost-AFT
+showed that residual-duration modeling is promising, but richer survival
+models could improve calibration and event-level timing. Candidate directions
+include better discrete-time neural survival models, DeepHit-style competing
+risk formulations if multiple event types are introduced, and validation of
+survival probability calibration across operational horizons.
+
+Third, the dataset should be expanded and enriched. More external holdout
+sources would allow blocked or source-level cross-validation, reducing the risk
+that the conclusions depend on one held-out file. If auxiliary variables become
+available consistently, future work could compare the current signal-only
+framework with a physically enriched framework while preserving the same
+no-leakage and switch-evaluation protocol.
+
+Fourth, future experiments should connect the switch metrics to explicit
+operational costs. Precision, recall, F1, IoU, active duration, and event
+counts describe different aspects of switch behavior, but an operator may
+assign asymmetric costs to false activations, missed fades, delayed onsets, and
+excessive switch fragmentation. A cost-based decision layer would make the
+choice between conservative and high-recall models more transparent.
+
+Fifth, the framework should be moved from offline evaluation toward an online
+nowcasting prototype. The current experiments reproduce the information
+available at each decision time, but they are still executed as batch analyses.
+A deployable system would need streaming ingestion, stateful preprocessing,
+incremental gap and quality checks, stateful switch post-processing, latency
+measurement, and clear fallback behavior when input quality is poor. Such a
+prototype would also make it possible to compare the learned decision rules
+against engineering baselines under realistic operating constraints, rather
+than only after the acquisition has been processed offline.
+
+The broader conclusion is that satellite fade nowcasting should be treated as a
+decision-oriented time-series problem. Accurate forecasts, duration estimates,
+and survival curves are valuable only insofar as they support timely and
+reliable switch decisions. The framework developed in this thesis provides a
+reproducible basis for that evaluation and shows that task formulation,
+post-processing, and operational metrics are central components of the
+modeling problem, not secondary details.

@@ -195,9 +195,32 @@ models/*
 # Local review notes
 reports/local_methodology_review_summary.md
 
-# Local thesis/Overleaf working folder.
-# This folder is intentionally kept outside Git and outside README documentation.
-Master thesis/
+# Personal PhD application/presentation material stays local.
+/PhD project presentation/
+/output/latex/autocertificazione_lingua_inglese_B2_Giuseppe_Gabriele_Russo.tex
+/Master thesis/**/phd_application_abstract.*
+
+# Temporary document previews and review renders stay local.
+/tmp/
+/Master thesis/tmp/
+
+# Track thesis sources, figures, and only the final compiled PDF.
+# Reopen this folder because the generic build/ rule above ignores it.
+!/Master thesis/build/
+/Master thesis/build/*
+!/Master thesis/build/main.pdf
+/Master thesis/**/*.aux
+/Master thesis/**/*.bbl
+/Master thesis/**/*.bcf
+/Master thesis/**/*.blg
+/Master thesis/**/*.fdb_latexmk
+/Master thesis/**/*.fls
+/Master thesis/**/*.lof
+/Master thesis/**/*.lot
+/Master thesis/**/*.out
+/Master thesis/**/*.run.xml
+/Master thesis/**/*.synctex.gz
+/Master thesis/**/*.toc
 
 # Results: keep lightweight CSV/YAML summaries and indexes trackable.
 # Ignore heavy or easily regenerated result artifacts.

@@ -1,0 +1,38 @@
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+Satellite communication links may experience fade events that degrade the
+received signal and require the activation of a backup communication resource.
+In this setting, the relevant objective is not only to predict the future
+signal accurately, but to support a timely switch decision using only
+information available at the current time. This thesis studies satellite link
+fade nowcasting as a decision-oriented time-series problem.
+
+The work develops a reproducible signal-only machine-learning framework for
+satellite fade data acquired at the Fucino ground station. The raw files are
+standardized, cleaned, segmented, and converted into task-specific supervised
+datasets. An external holdout source is kept separate from the development
+data to evaluate generalization to an unseen acquisition file. A common
+Perfect Switch reference and shared post-processing procedure are used to
+compare models through operational switch metrics rather than only through
+native prediction losses.
+
+Four task formulations are investigated: autoregressive forecasting of the
+future signal trajectory, current-level persistence regression, long-fade
+detection, and survival persistence modeling. The evaluated model families
+include GRU forecasting models, PatchTST, Chronos zero-shot forecasting,
+XGBoost baselines, learnable shapelet models, temporal convolutional networks,
+XGBoost-AFT, and a discrete-time survival TCN.
+
+The results show that native predictive accuracy alone is not sufficient to
+assess operational usefulness. Forecast errors, duration errors,
+classification scores, and survival metrics are useful diagnostics, but final
+switch quality depends on the formulation, conversion rule, and
+post-processing. XGBoost-based current-level persistence provides a precise
+and conservative switch policy, while XGBoost-AFT survival persistence offers
+a stronger recall-oriented residual-duration formulation. PatchTST is the
+strongest autoregressive switch model, whereas long-fade detection is more
+appropriate as a high-recall warning mechanism than as a final controller.
+Overall, satellite fade nowcasting should be evaluated as a complete decision
+pipeline in which modeling choices and operational switch metrics are
+inseparable.
