@@ -1,0 +1,445 @@
+\documentclass[aspectratio=169,10pt]{beamer}
+\usetheme[compress,subsection=false]{Berlin}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{booktabs,tabularx,array}
+\usepackage{tikz,pgfplots}
+\usetikzlibrary{arrows.meta,positioning,calc}
+\usepgfplotslibrary{groupplots}
+\pgfplotsset{compat=1.18}
+\definecolor{navy}{HTML}{004B7A}
+\definecolor{ink}{HTML}{173449}
+\definecolor{muted}{HTML}{5C6F7D}
+\definecolor{forecast}{HTML}{267FB4}
+\definecolor{current}{HTML}{16877F}
+\definecolor{longfade}{HTML}{BD732B}
+\definecolor{survival}{HTML}{7A5F9E}
+\definecolor{alertred}{HTML}{BE5348}
+\definecolor{pale}{HTML}{F0F5F8}
+\setbeamercolor{normal text}{fg=ink,bg=white}
+\setbeamercolor{structure}{fg=navy}
+\setbeamercolor{alerted text}{fg=alertred}
+\setbeamercolor{block title}{fg=navy,bg=pale}
+\setbeamercolor{block body}{fg=ink,bg=pale}
+\setbeamerfont{frametitle}{size=\Large,series=\bfseries}
+\setbeamerfont{block title}{size=\normalsize}
+\setbeamercolor{frametitle}{fg=white,bg=navy}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{itemize item}{\small\raisebox{.15ex}{\textbullet}}
+\setbeamersize{text margin left=8mm,text margin right=8mm}
+\setbeamertemplate{footline}{\leavevmode\hbox to\paperwidth{\hskip8mm%
+  \textcolor{muted}{\scriptsize Giuseppe Gabriele Russo\quad |\quad Satellite Link Fade Nowcasting}%
+  \hfil\textcolor{muted}{\scriptsize\insertframenumber\,/\,\inserttotalframenumber}\hskip3mm%
+  \raisebox{-1mm}{\includegraphics[height=6mm]{../figures/cherubino_pant541.png}}\hskip8mm}\vskip3mm}
+\newcommand{\takeaway}[1]{\vfill\begin{beamercolorbox}[sep=2mm,wd=\textwidth]{block body}\small\textbf{#1}\end{beamercolorbox}}
+\newcommand{\smallnote}[1]{\par\vspace{2mm}{\scriptsize\color{muted}#1\par}}
+\newcommand{\rulebox}[1]{\begin{block}{Decision before shared post-processing}\centering #1\end{block}}
+\pgfplotsset{every axis/.append style={
+  font=\footnotesize,axis line style={muted!50},tick style={muted!40},
+  grid=major,grid style={muted!12},
+  label style={font=\footnotesize},tick label style={font=\scriptsize},
+  legend style={font=\scriptsize,draw=none,fill=none},
+  scaled ticks=false}}
+\title{Machine Learning for Satellite Link Fade Nowcasting}
+\author{Giuseppe Gabriele Russo}
+\date{}
+\hypersetup{pdftitle={Machine Learning for Satellite Link Fade Nowcasting},pdfauthor={Giuseppe Gabriele Russo}}
+
+\begin{document}
+
+\section{Introduction}
+
+% 1 -- 0:20
+\begin{frame}[plain]
+  \begin{minipage}{.68\textwidth}
+    \includegraphics[height=17mm]{../figures/cherubino_pant541.png}\hspace{4mm}%
+    \begin{minipage}{.72\linewidth}\color{navy}\textbf{University of Pisa}\\[1mm]
+    \small Master's Degree in Computer Science\\Curriculum: Artificial Intelligence\end{minipage}
+  \end{minipage}\hfill\includegraphics[width=27mm]{mbi.png}
+  \vspace{10mm}
+
+  {\color{navy}\LARGE\bfseries Machine Learning for\\[2mm] Satellite Link Fade Nowcasting\par}
+  \vspace{5mm}
+  {\large Giuseppe Gabriele Russo\par}
+  \vspace{2mm}
+  {\color{muted}Experimental thesis carried out at M.B.I. S.r.l.\par}
+  \vfill
+  \begin{columns}[T,onlytextwidth]
+    \column{.48\textwidth}\small\textcolor{muted}{Supervisor}\\\textbf{Davide Bacciu}
+    \column{.48\textwidth}\small\textcolor{muted}{Co-supervisor}\\\textbf{Giovanni Scognamiglio}
+  \end{columns}
+  \vspace{4mm}
+\end{frame}
+
+% 2 -- 1:20
+\begin{frame}{Industrial Context and Operational Problem}
+\begin{columns}[T,onlytextwidth]
+\column{.40\textwidth}
+\textbf{Experimental work at M.B.I.}\\[2mm]
+Real satellite fade and beacon recordings from the Fucino ground station.
+\vspace{4mm}
+\begin{block}{The operational question}
+Will the fade persist long enough to justify a backup-link switch?
+\end{block}
+\small Switching late leaves the link exposed. Reacting to every fluctuation causes unnecessary activation.
+\column{.57\textwidth}
+\begin{tikzpicture}
+\begin{axis}[width=\linewidth,height=4.4cm,xmin=0,xmax=60,ymin=0,ymax=45,
+ xlabel={Time from window start (min)},ylabel={Signal (dB)},legend pos=north east]
+\addplot[ink,thick] table[x=minutes,y=signal,col sep=comma]{data/event.csv};
+\addlegendentry{Observed signal}
+\addplot[alertred,dashed,thick] coordinates {(0,10)(60,10)};
+\addlegendentry{10 dB threshold}
+\end{axis}
+\end{tikzpicture}
+\smallnote{Excerpt from the held-out source; future samples are unavailable to the predictor at decision time.}
+\end{columns}
+\takeaway{Anticipate persistence, rather than only detect a threshold crossing.}
+\end{frame}
+
+% 3 -- 1:00
+\begin{frame}{Research Objective and Contribution}
+\leavevmode{\large Which predictive formulation supports useful switch decisions\\from signal history alone?\par}
+\vspace{6mm}
+\begin{center}
+\begin{tikzpicture}[box/.style={draw=navy!25,fill=pale,rounded corners=2pt,align=center,minimum height=13mm,font=\small},>=Stealth]
+\node[box,text width=29mm] (history) {Past signal\\history};
+\node[box,text width=48mm,right=9mm of history] (targets) {Trajectory \quad Duration\\Event class \quad Survival curve};
+\node[box,text width=29mm,right=9mm of targets] (decision) {Shared switch\\evaluation};
+\draw[->,thick,navy] (history)--(targets);
+\draw[->,thick,navy] (targets)--(decision);
+\end{tikzpicture}
+\end{center}
+\vspace{4mm}
+\begin{itemize}\setlength{\itemsep}{3mm}
+\item Compare four task formulations using established model families.
+\item Separate predictive accuracy from operational switch behavior.
+\item Make decision coverage explicit when comparing different tasks.
+\end{itemize}
+\takeaway{The contribution is a decision-level comparison, not a new neural architecture.}
+\end{frame}
+
+% 4 -- 1:10
+\begin{frame}{Data and Experimental Setting}
+\begin{columns}[T,onlytextwidth]
+\column{.46\textwidth}
+\textbf{Shared data preparation}
+\begin{itemize}\setlength{\itemsep}{2mm}
+\item Signal-only inputs; 30-second sampling.
+\item 30-observation context: approximately 15 minutes.
+\item Timestamp validation and conservative gap handling.
+\item Task-specific targets and eligibility rules.
+\end{itemize}
+\smallnote{Small-gap policy: at most two inserted samples within a 90-second gap; no interpolation across long acquisition gaps.}
+\column{.49\textwidth}
+\begin{block}{Development sources}
+Chronological training / validation splits.\\[2mm]
+Validation-based model selection.
+\end{block}
+\vspace{2mm}
+\begin{block}{External test source}
+\texttt{fc-uplink-fade.csv}\\[2mm]
+Excluded from fitting and hyperparameter search.
+\end{block}
+\smallnote{Chronos: zero-shot. Survival switch threshold: exploratory.}
+\end{columns}
+\takeaway{A common signal source and split protocol, with different prediction targets.}
+\end{frame}
+
+% 5 -- 1:20
+\section{Methodology}
+\begin{frame}{Four Predictive Formulations}
+\renewcommand{\arraystretch}{1.7}
+\begin{tabularx}{\textwidth}{@{}p{36mm}X p{39mm}@{}}
+\toprule
+\textbf{Formulation} & \textbf{Question at time $t$} & \textbf{Output}\\\midrule
+\textcolor{forecast}{\textbf{Autoregressive}} & What are the next ten signal values? & Future trajectory\\
+\textcolor{current}{\textbf{Current-level}} & How long until the signal falls below $S_t-0.5$ dB? & Duration estimate\\
+\textcolor{longfade}{\textbf{Long-fade}} & Does the entire grouped event last at least 300 seconds? & Class probability\\
+\textcolor{survival}{\textbf{Survival}} & Will the current fade remain active for more than $u$ seconds? & Survival curve $S(u\mid X_t)$\\
+\bottomrule
+\end{tabularx}
+\takeaway{All use past signal information; their targets are not interchangeable.}
+\end{frame}
+
+% 6 -- 0:55
+\begin{frame}{Perfect Switch and Evaluation}
+\begin{columns}[T,onlytextwidth]
+\column{.46\textwidth}
+\begin{block}{Perfect Switch}
+An offline reference using the true signal and future persistence.\\[2mm]
+An evaluation oracle, not a deployable predictor.
+\end{block}
+\vspace{2mm}
+\textbf{Complementary measurements}
+\begin{itemize}
+\item Precision, recall, F1, balanced accuracy.
+\item Active duration and switch intervals.
+\item Timing and missed activity.
+\end{itemize}
+\column{.49\textwidth}
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=1 by 2,vertical sep=8mm},width=6.5cm,height=2.35cm,
+ xmin=0,xmax=11,ymin=-.1,ymax=1.2,ytick={0,1},xtick=\empty]
+\nextgroupplot[title={Reference}]
+\addplot[const plot,ink,very thick] coordinates {(0,0)(3,1)(8,0)(11,0)};
+\nextgroupplot[title={Model decision},xlabel={Time (illustration)}]
+\addplot[const plot,forecast,very thick] coordinates {(0,0)(1,1)(6,0)(11,0)};
+\end{groupplot}
+\end{tikzpicture}
+\end{columns}
+\takeaway{Measure what the decision does, not only how accurate the prediction is.}
+\end{frame}
+
+% 7 -- 1:05
+\begin{frame}{Shared Switch Post-Processing}
+\begin{columns}[T,onlytextwidth]
+\column{.39\textwidth}
+\textbf{1. Raw decision}\\
+Apply the task-specific conversion rule.
+\vspace{4mm}
+
+\textbf{2. Minimum active interval}\\
+Extend short positive islands to the configured ten-sample length.
+\vspace{4mm}
+
+\textbf{3. Hold while above threshold}\\
+Keep an already active switch on while the current signal remains $\geq10$ dB.
+\smallnote{This modifies the binary decision, not the input signal.}
+\column{.58\textwidth}
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=1 by 4,vertical sep=2mm},width=7cm,height=1.12cm,
+ scale only axis,xmin=1,xmax=15,xtick=\empty,ymin=-.15,ymax=1.2,ytick={0,1},ylabel style={font=\scriptsize}]
+\nextgroupplot[ymin=8.5,ymax=11.5,ytick={9,11},ylabel={Signal}]
+\addplot[ink,thick] table[x=sample,y=signal,col sep=comma]{data/postprocessing.csv};
+\addplot[alertred,dashed] coordinates{(1,10)(15,10)};
+\nextgroupplot[ylabel={Raw}]
+\addplot[const plot,forecast,thick] table[x=sample,y=raw,col sep=comma]{data/postprocessing.csv};
+\nextgroupplot[ylabel={Extended}]
+\addplot[const plot,survival,thick] table[x=sample,y=extended,col sep=comma]{data/postprocessing.csv};
+\nextgroupplot[ylabel={Final},xtick={1,5,10,15},xlabel={Sample (30 seconds)}]
+\addplot[const plot,current,very thick] table[x=sample,y=held,col sep=comma]{data/postprocessing.csv};
+\end{groupplot}
+\end{tikzpicture}
+\end{columns}
+\end{frame}
+
+% 8 -- 1:40
+\section{Models}
+\begin{frame}{Autoregressive Forecasting}
+\begin{columns}[T,onlytextwidth]
+\column{.48\textwidth}
+\textcolor{forecast}{\textbf{Predict the next ten values}}\[
+X_t=(S_{t-29},\ldots,S_t)\ \longrightarrow\ (\widehat S_{t+1},\ldots,\widehat S_{t+10})
+\]
+\small GRU sequence-to-vector and encoder-decoder; PatchTST; XGBoost per horizon; Chronos zero-shot.
+\vspace{3mm}
+\rulebox{$a_t=1\quad\text{if }\widehat S_{t+k}\geq10\ \ \forall k=1,\ldots,10$}
+\smallnote{Raw and context-standardized trainable variants. Chronos uses raw contexts; L120 is an additional experiment.}
+\column{.48\textwidth}
+\textbf{External test, native L30 grid}
+\vspace{3mm}
+\renewcommand{\arraystretch}{1.6}
+\begin{tabular}{@{}lrr@{}}\toprule
+Model & RMSE $\downarrow$ & F1 $\uparrow$\\
+ & (dB) & (switch)\\\midrule
+GRU S2V raw & \textbf{2.852} & 0.674\\
+PatchTST raw & 3.088 & \textbf{0.808}\\\bottomrule
+\end{tabular}\par
+\vspace{5mm}
+PatchTST provides the stronger switch decision despite a higher trajectory RMSE.
+\end{columns}
+\takeaway{The best forecasting score does not select the best operational policy.}
+\end{frame}
+
+% 9 -- 1:25
+\begin{frame}{Current-Level Persistence}
+\begin{columns}[T,onlytextwidth]
+\column{.48\textwidth}
+\textcolor{current}{\textbf{Predict time below the current level}}\[
+R_t^{\mathrm{level}}=\inf\{u>0:S_{t+u}<S_t-0.5\}
+\]
+\small Learnable shapelets with MLP, convolutional or Transformer heads; XGBoost baseline. Relative histories plus scalar signal context.
+\rulebox{$a_t=1\quad\text{if }S_t\geq10\ \text{and }\widehat R_t^{\mathrm{level}}\geq300\,\mathrm{s}$}
+\column{.48\textwidth}
+\textbf{XGBoost: external test, native grid}
+\vspace{3mm}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{@{}lr@{}}\toprule
+Duration MAE $\downarrow$ & 586.9 s\\
+Duration median AE $\downarrow$ & 27.2 s\\\midrule
+Switch precision $\uparrow$ & 1.000\\
+Switch recall $\uparrow$ & 0.822\\
+Switch F1 $\uparrow$ & 0.902\\\bottomrule
+\end{tabular}
+\smallnote{Shapelet variants never activate the final switch: their duration estimates do not satisfy the operational gate.}
+\end{columns}
+\takeaway{A conservative XGBoost policy succeeds where the shapelet duration models fail.}
+\end{frame}
+
+% 10 -- 1:20
+\begin{frame}{Long-Fade Detection}
+\begin{columns}[T,onlytextwidth]
+\column{.48\textwidth}
+\textcolor{longfade}{\textbf{Classify the entire grouped event}}\[
+p_t=P(D_{\mathrm{event}}\geq300\,\mathrm{s}\mid X_t)
+\]
+\small XGBoost, causal TCN and shapelet convolution classifier.
+\vspace{3mm}
+\rulebox{$a_t=1\quad\text{if }p_t\geq0.5$}
+\smallnote{The label remains positive throughout a long grouped event, including near its end. It does not describe the remaining duration.}
+\column{.48\textwidth}
+\textbf{TCN: external test, native grid}
+\vspace{3mm}
+\renewcommand{\arraystretch}{1.6}
+\begin{tabular}{@{}lr@{}}\toprule
+Classification AUPRC $\uparrow$ & $\approx1.000$\\\midrule
+Switch precision $\uparrow$ & 0.540\\
+Switch recall $\uparrow$ & 1.000\\
+Switch F1 $\uparrow$ & 0.702\\
+Active duration & 445 min\\\bottomrule
+\end{tabular}
+\smallnote{Classification is evaluated on an event-conditioned, strongly imbalanced domain.}
+\end{columns}
+\takeaway{Near-perfect event classification does not imply accurate switch timing.}
+\end{frame}
+
+% 11 -- 1:35
+\begin{frame}{Survival Persistence}
+\begin{columns}[T,onlytextwidth]
+\column{.46\textwidth}
+\textcolor{survival}{\textbf{Predict residual-event uncertainty}}\[
+S(u\mid X_t)=P(R_t>u\mid X_t)
+\]
+\small XGBoost-AFT uses survival bounds; the TCN predicts discrete hazards. Both retain censored samples.
+\rulebox{$a_t=1\text{ if }S(300\,\mathrm{s}\mid X_t)\geq0.65$\\and $S_t\geq10$}
+\smallnote{\textcolor{alertred}{0.65 is an exploratory test-selected threshold, not validation-calibrated.}}
+\vspace{1mm}
+\small Native test: TCN has lower IBS (0.103 vs 0.117); AFT higher switch F1 (0.863 vs 0.784).
+\column{.51\textwidth}
+\begin{tikzpicture}
+\begin{axis}[width=\linewidth,height=4.4cm,xmin=0,xmax=30,ymin=0,ymax=1,
+ xlabel={Remaining time (min)},ylabel={Survival probability},legend pos=north east]
+\addplot[forecast,very thick] table[x=minutes,y=curve1,col sep=comma]{data/survival.csv};\addlegendentry{Low $S(300)$}
+\addplot[current,very thick] table[x=minutes,y=curve2,col sep=comma]{data/survival.csv};\addlegendentry{Median $S(300)$}
+\addplot[survival,very thick] table[x=minutes,y=curve3,col sep=comma]{data/survival.csv};\addlegendentry{High $S(300)$}
+\addplot[muted,dashed] coordinates{(5,0)(5,1)};
+\end{axis}
+\end{tikzpicture}
+\smallnote{Three actual TCN predictions at the 5th, 50th and 95th percentiles of predicted $S(300)$; display limited to 30 min.}
+\end{columns}
+\end{frame}
+
+% 12 -- 1:20
+\section{Results}
+\begin{frame}{Cross-Task Switch Performance}
+\textbf{Selected representatives on the common reference grid}\par
+\vspace{3mm}
+\renewcommand{\arraystretch}{1.4}
+\setlength{\tabcolsep}{4pt}
+\noindent\begin{tabularx}{\textwidth}{@{}Xrrrr@{}}\toprule
+Representative & Coverage & Precision $\uparrow$ & Recall $\uparrow$ & F1 $\uparrow$\\\midrule
+\textcolor{current}{Current-level XGBoost} & 89.0\% & \textbf{1.000} & 0.808 & \textbf{0.894}\\
+\textcolor{survival}{Survival XGBoost-AFT} & 9.2\% & 0.812 & 0.938 & 0.870\\
+\textcolor{forecast}{PatchTST raw} & 89.2\% & 0.779 & 0.821 & 0.800\\
+\textcolor{longfade}{Long-fade TCN} & 28.7\% & 0.557 & \textbf{1.000} & 0.715\\\bottomrule
+\end{tabularx}\par
+\vspace{3mm}
+\small Missing native decisions map to zero. Coverage measures the fraction of reference timestamps with a native decision.
+\smallnote{Survival threshold: exploratory 0.65. Descriptive test comparison, not a validation-selected cross-task winner.}
+\takeaway{Conservative activation, greater recovery and broad recall are different trade-offs.}
+\end{frame}
+
+% 13 -- 1:40
+\begin{frame}{Active Duration and Switching Events}
+\begin{columns}[T,onlytextwidth]
+\column{.61\textwidth}
+\begin{tikzpicture}
+\begin{axis}[xbar,bar shift=0,width=7.6cm,height=5cm,xmin=0,xmax=480,ymin=-.6,ymax=4.6,
+ ytick={0,1,2,3,4},yticklabels={Long-fade TCN,Survival AFT,PatchTST raw,Current-level XGB,Perfect},
+ xlabel={Common-grid active duration (min)},bar width=5mm,
+ nodes near coords,nodes near coords style={font=\scriptsize},
+ yticklabel style={font=\scriptsize},xmajorgrids=true,ymajorgrids=false]
+\addplot[fill=ink,draw=none] coordinates{(234.5,4)};
+\addplot[fill=current,draw=none] coordinates{(189.5,3)};
+\addplot[fill=forecast,draw=none] coordinates{(247,2)};
+\addplot[fill=survival,draw=none] coordinates{(271,1)};
+\addplot[fill=longfade,draw=none] coordinates{(421,0)};
+\end{axis}
+\end{tikzpicture}
+\column{.35\textwidth}
+\textbf{Duration is not fragmentation}
+\vspace{3mm}
+
+The same active time can be split into very different numbers of switch intervals.
+\vspace{4mm}
+\begin{block}{Within-task example}
+Native autoregressive grid:\\[2mm]
+Perfect: \textbf{18 intervals}\\
+PatchTST: \textbf{20 intervals}
+\end{block}
+\smallnote{An interval is a contiguous run of switch 1, not necessarily a distinct physical fade. Native counts are not cross-task counts.}
+\end{columns}
+\end{frame}
+
+% 14 -- 1:20
+\begin{frame}{An Event-Level Comparison}
+\vspace{-3mm}
+\begin{center}
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=1 by 6,vertical sep=2mm},width=11.6cm,height=.51cm,
+ scale only axis,xmin=0,xmax=180,xtick={0,30,60,90,120,150,180},xticklabels=\empty,
+ ymin=-.15,ymax=1.2,ytick=\empty,ymajorgrids=false]
+\nextgroupplot[height=1.1cm,ymin=0,ymax=40,ytick={0,20,40},ylabel={Signal (dB)}]
+\addplot[ink,thick] table[x=minutes,y=signal,col sep=comma]{data/event.csv};
+\addplot[alertred,dashed] coordinates{(0,10)(180,10)};
+\nextgroupplot
+\addplot[const plot,ink,very thick] table[x=minutes,y=perfect,col sep=comma]{data/event.csv};
+\nextgroupplot
+\addplot[const plot,current,very thick] table[x=minutes,y=current,col sep=comma]{data/event.csv};
+\nextgroupplot
+\addplot[const plot,forecast,very thick] table[x=minutes,y=forecast,col sep=comma]{data/event.csv};
+\nextgroupplot
+\addplot[const plot,survival,very thick] table[x=minutes,y=survival,col sep=comma]{data/event.csv};
+\nextgroupplot[xticklabels={0,30,60,90,120,150,180},xlabel={Time from reference-window start (min)}]
+\addplot[const plot,longfade,very thick] table[x=minutes,y=longfade,col sep=comma]{data/event.csv};
+\end{groupplot}
+\foreach \row/\label in {2/Perfect,3/Current-level,4/PatchTST raw,5/Survival AFT,6/Long-fade TCN}{
+\node[anchor=east,font=\scriptsize] at ([xshift=-2mm]group c1r\row.west) {\label};}
+\end{tikzpicture}
+\end{center}
+\smallnote{Event \texttt{dataset\_007\_event\_00007}. Final decisions: low = 0, high = 1. Missing native decisions map to 0; shared Perfect reference.}
+\end{frame}
+
+% 15 -- 0:55
+\section{Conclusions}
+\begin{frame}{Limitations and Next Steps}
+\renewcommand{\arraystretch}{2}
+\begin{tabularx}{\textwidth}{@{}p{59mm}X@{}}\toprule
+\textbf{Experimental limitation} & \textbf{Next step}\\\midrule
+One external test source & More terminals and independent acquisition periods\\
+Exploratory survival threshold & Validation-only, cost-aware probability calibration\\
+Offline evaluation and partial coverage & Streaming prototype with an explicit fallback policy\\\bottomrule
+\end{tabularx}\par
+\vspace{5mm}
+\small A deployed controller also needs a data-availability audit, persistent switch state, latency measurements and comparison against the engineering baseline.
+\takeaway{These are offline experimental results, not evidence of deployment readiness.}
+\end{frame}
+
+% 16 -- 0:50
+\begin{frame}{Conclusions}
+\begin{enumerate}\setlength{\itemsep}{6mm}
+\item \textbf{Task definition changes the switch behavior.}\\
+\small A future trajectory, a level duration and an event label answer different questions.
+\item \normalsize\textbf{Native predictive scores do not determine operational quality.}\\
+\small Evaluate timing, false activation, missed activity and decision coverage.
+\item \normalsize\textbf{Tabular baselines remain competitive.}\\
+\small Current-level XGBoost and survival XGBoost-AFT expose useful operating trade-offs.
+\end{enumerate}
+\vfill
+{\large\color{navy}\textbf{Evaluate the prediction and the decision policy together.}\par}
+\vspace{5mm}
+\textcolor{muted}{Thank you. Questions?}
+\end{frame}
+
+\end{document}

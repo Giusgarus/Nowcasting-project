@@ -1,0 +1,102 @@
+{
+  "event_id": "dataset_007_event_00007",
+  "sources": [
+    "results/comparisons/switch_eval/current_level_persistence/externalHoldout_test_fc_uplink_fade/switch_eval_currentLevelPersistence_delta0p5_L30_xgboost_scalarContext_externalHoldout_test_fc_uplink_fade/predictions/model_vs_perfect_switch.parquet",
+    "results/comparisons/switch_eval/autoregressive/externalHoldout_test_fc_uplink_fade_L30_h10_thr10/switch_eval_patchtst_raw_externalHoldout_test_fc_uplink_fade_L30_h10_thr10/predictions/model_vs_perfect_switch.parquet",
+    "results/comparisons/switch_eval/survival_persistence/externalHoldout_test_fc_uplink_fade/switch_eval_survivalPersistence_xgboost_aft_raw_flattened_uniform_externalHoldout_test_fc_uplink_fade_h300_prob0p65/predictions/model_vs_perfect_switch.parquet",
+    "results/comparisons/switch_eval/long_fade_detection/externalHoldout_test_fc_uplink_fade/switch_eval_longFadeDetection_thr10p0_dur300_tcn_classifier_externalHoldout_test_fc_uplink_fade/predictions/model_vs_perfect_switch.parquet",
+    "results/runs/survival_persistence/externalHoldout_test_fc_uplink_fade/survivalPersistence_discrete_time_tcn_relative_current_plus_scalar_uniform_externalHoldout_test_fc_uplink_fade_grid_extended_best/predictions/test_predictions.parquet",
+    "results/comparisons/cross_task_switch/externalHoldout_test_fc_uplink_fade/crossTask_switch_externalHoldout_test_fc_uplink_fade_referenceGrid/tables/cross_task_switch_metrics_reference_grid.csv"
+  ],
+  "metrics": [
+    {
+      "label": "Current-level XGBoost",
+      "task": "current_level_persistence",
+      "coverage": 88.98658028690421,
+      "precision": 1.0,
+      "recall": 0.8081023454157783,
+      "f1": 0.8938679245283019,
+      "minutes": 189.5
+    },
+    {
+      "label": "PatchTST raw",
+      "task": "autoregressive",
+      "coverage": 89.17167977788061,
+      "precision": 0.7793522267206477,
+      "recall": 0.8208955223880597,
+      "f1": 0.7995846313603323,
+      "minutes": 247.0
+    },
+    {
+      "label": "Survival XGBoost-AFT",
+      "task": "survival_persistence",
+      "coverage": 9.220268394261916,
+      "precision": 0.8118081180811808,
+      "recall": 0.9381663113006397,
+      "f1": 0.8704253214638971,
+      "minutes": 271.0
+    },
+    {
+      "label": "Long-fade TCN",
+      "task": "long_fade_detection",
+      "coverage": 28.690421101341972,
+      "precision": 0.5570071258907363,
+      "recall": 1.0,
+      "f1": 0.7154843630816171,
+      "minutes": 421.0
+    }
+  ],
+  "survival_curves": [
+    {
+      "quantile": 0.05,
+      "window_id": "fc-uplink-fade.csv::sp_window_000001860",
+      "s300": 0.3893889784812927,
+      "values": [
+        0.9444082379341125,
+        0.8619368672370911,
+        0.6975197792053223,
+        0.5735763311386108,
+        0.3893889784812927,
+        0.18807071447372437,
+        0.10745114088058472,
+        0.024136565625667572,
+        0.0005688517121598125,
+        9.82334022410214e-05
+      ]
+    },
+    {
+      "quantile": 0.5,
+      "window_id": "fc-uplink-fade.csv::sp_window_000001118",
+      "s300": 0.6543969511985779,
+      "values": [
+        0.9823065996170044,
+        0.956691563129425,
+        0.8938354253768921,
+        0.8117567300796509,
+        0.6543969511985779,
+        0.40314438939094543,
+        0.26321202516555786,
+        0.04563175514340401,
+        0.0002551095967646688,
+        3.507158180582337e-05
+      ]
+    },
+    {
+      "quantile": 0.95,
+      "window_id": "fc-uplink-fade.csv::sp_window_000000957",
+      "s300": 0.8143376708030701,
+      "values": [
+        0.9970476627349854,
+        0.992072582244873,
+        0.9675257205963135,
+        0.9110649228096008,
+        0.8143376708030701,
+        0.6442453265190125,
+        0.45005470514297485,
+        0.10386069864034653,
+        0.0001996053906623274,
+        2.29188608500408e-05
+      ]
+    }
+  ]
+}
