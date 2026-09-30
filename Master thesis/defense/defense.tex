@@ -81,7 +81,6 @@ Real satellite fade and beacon recordings from the Fucino ground station.
 \begin{block}{The operational question}
 Will the fade persist long enough to justify a backup-link switch?
 \end{block}
-\small Switching late leaves the link exposed. Reacting to every fluctuation causes unnecessary activation.
 \column{.57\textwidth}
 \begin{tikzpicture}
 \begin{axis}[width=\linewidth,height=4.4cm,xmin=0,xmax=60,ymin=0,ymax=45,
@@ -92,7 +91,7 @@ Will the fade persist long enough to justify a backup-link switch?
 \addlegendentry{10 dB threshold}
 \end{axis}
 \end{tikzpicture}
-\smallnote{Excerpt from the held-out source; future samples are unavailable to the predictor at decision time.}
+\smallnote{Except from the held-out source; future samples are unavailable to the predictor at decision time.}
 \end{columns}
 \takeaway{Anticipate persistence, rather than only detect a threshold crossing.}
 \end{frame}
@@ -100,23 +99,31 @@ Will the fade persist long enough to justify a backup-link switch?
 % 3 -- 1:00
 \begin{frame}{Research Objective and Contribution}
 \leavevmode{\large Which predictive formulation supports useful switch decisions\\from signal history alone?\par}
-\vspace{6mm}
-\begin{center}
-\begin{tikzpicture}[box/.style={draw=navy!25,fill=pale,rounded corners=2pt,align=center,minimum height=13mm,font=\small},>=Stealth]
-\node[box,text width=29mm] (history) {Past signal\\history};
-\node[box,text width=48mm,right=9mm of history] (targets) {Trajectory \quad Duration\\Event class \quad Survival curve};
-\node[box,text width=29mm,right=9mm of targets] (decision) {Shared switch\\evaluation};
-\draw[->,thick,navy] (history)--(targets);
-\draw[->,thick,navy] (targets)--(decision);
+\vspace{1mm}
+{\centering
+\begin{tikzpicture}[box/.style={draw=navy!25,fill=pale,rounded corners=2pt,align=center,minimum height=7mm,font=\small},>={Stealth[length=1.2mm,width=1mm]}]
+\node[box,text width=35mm] (history) at (0,1) {Past signal history};
+\node[box,text width=27mm,draw=forecast,fill=forecast!8] (trajectory) at (-4.8,-0.1) {Trajectory};
+\node[box,text width=27mm,draw=current,fill=current!8] (duration) at (-1.6,-0.1) {Duration};
+\node[box,text width=27mm,draw=longfade,fill=longfade!8] (event) at (1.6,-0.1) {Event class};
+\node[box,text width=27mm,draw=survival,fill=survival!8] (curve) at (4.8,-0.1) {Survival curve};
+\node[box,text width=42mm] (decision) at (0,-1.4) {Shared switch evaluation};
+\draw[thick,navy] (history.south)--(0,.55);
+\draw[thick,navy] (-4.8,.55)--(4.8,.55);
+\draw[thick,navy] (-4.8,-.75)--(4.8,-.75);
+\foreach \target in {trajectory,duration,event,curve}{
+  \draw[->,thick,navy] (\target.north |- 0,.55)--(\target.north);
+  \draw[thick,navy] (\target.south)--(\target.south |- 0,-.75);
+}
+\draw[->,thick,navy] (0,-.75)--(decision.north);
 \end{tikzpicture}
-\end{center}
-\vspace{4mm}
-\begin{itemize}\setlength{\itemsep}{3mm}
+\par}
+\vspace{3mm}
+\begin{itemize}\setlength{\itemsep}{1.5mm}
 \item Compare four task formulations using established model families.
 \item Separate predictive accuracy from operational switch behavior.
 \item Make decision coverage explicit when comparing different tasks.
 \end{itemize}
-\takeaway{The contribution is a decision-level comparison, not a new neural architecture.}
 \end{frame}
 
 % 4 -- 1:10
@@ -141,7 +148,6 @@ Validation-based model selection.
 \texttt{fc-uplink-fade.csv}\\[2mm]
 Excluded from fitting and hyperparameter search.
 \end{block}
-\smallnote{Chronos: zero-shot. Survival switch threshold: exploratory.}
 \end{columns}
 \takeaway{A common signal source and split protocol, with different prediction targets.}
 \end{frame}
@@ -154,7 +160,7 @@ Excluded from fitting and hyperparameter search.
 \toprule
 \textbf{Formulation} & \textbf{Question at time $t$} & \textbf{Output}\\\midrule
 \textcolor{forecast}{\textbf{Autoregressive}} & What are the next ten signal values? & Future trajectory\\
-\textcolor{current}{\textbf{Current-level}} & How long until the signal falls below $S_t-0.5$ dB? & Duration estimate\\
+\textcolor{current}{\textbf{Current-level}} & How long until the signal falls below the threshold $S_t-0.5$ dB? & Duration estimate\\
 \textcolor{longfade}{\textbf{Long-fade}} & Does the entire grouped event last at least 300 seconds? & Class probability\\
 \textcolor{survival}{\textbf{Survival}} & Will the current fade remain active for more than $u$ seconds? & Survival curve $S(u\mid X_t)$\\
 \bottomrule
@@ -178,6 +184,8 @@ An evaluation oracle, not a deployable predictor.
 \item Timing and missed activity.
 \end{itemize}
 \column{.49\textwidth}
+\vspace{8mm} % sposta il grafico più in basso
+\hspace{9mm} % sposta il grafico più a destra
 \begin{tikzpicture}
 \begin{groupplot}[group style={group size=1 by 2,vertical sep=8mm},width=6.5cm,height=2.35cm,
  xmin=0,xmax=11,ymin=-.1,ymax=1.2,ytick={0,1},xtick=\empty]
@@ -188,6 +196,7 @@ An evaluation oracle, not a deployable predictor.
 \end{groupplot}
 \end{tikzpicture}
 \end{columns}
+\vspace{2mm}
 \takeaway{Measure what the decision does, not only how accurate the prediction is.}
 \end{frame}
 
@@ -205,7 +214,7 @@ Extend short positive islands to the configured ten-sample length.
 
 \textbf{3. Hold while above threshold}\\
 Keep an already active switch on while the current signal remains $\geq10$ dB.
-\smallnote{This modifies the binary decision, not the input signal.}
+\smallnote{Modifies the binary decision, not the input signal.}
 \column{.58\textwidth}
 \begin{tikzpicture}
 \begin{groupplot}[group style={group size=1 by 4,vertical sep=2mm},width=7cm,height=1.12cm,
@@ -235,6 +244,7 @@ X_t=(S_{t-29},\ldots,S_t)\ \longrightarrow\ (\widehat S_{t+1},\ldots,\widehat S_
 \small GRU sequence-to-vector and encoder-decoder; PatchTST; XGBoost per horizon; Chronos zero-shot.
 \vspace{3mm}
 \rulebox{$a_t=1\quad\text{if }\widehat S_{t+k}\geq10\ \ \forall k=1,\ldots,10$}
+\vspace{3mm}
 \smallnote{Raw and context-standardized trainable variants. Chronos uses raw contexts; L120 is an additional experiment.}
 \column{.48\textwidth}
 \textbf{External test, native L30 grid}
