@@ -128,17 +128,20 @@ Will the fade persist long enough to justify a backup-link switch?
 
 % 4 -- 1:10
 \begin{frame}{Data and Experimental Setting}
+\noindent
+{\small\color{muted}Signal-only inputs \quad 30-second sampling \quad Main context: 30 observations\par}
+\vspace{3mm}
 \begin{columns}[T,onlytextwidth]
-\column{.46\textwidth}
-\textbf{Shared data preparation}
-\begin{itemize}\setlength{\itemsep}{2mm}
-\item Signal-only inputs; 30-second sampling.
-\item 30-observation context: approximately 15 minutes.
-\item Timestamp validation and conservative gap handling.
-\item Task-specific targets and eligibility rules.
-\end{itemize}
-\smallnote{Small-gap policy: at most two inserted samples within a 90-second gap; no interpolation across long acquisition gaps.}
-\column{.49\textwidth}
+\column{.51\textwidth}
+\textbf{Why sample around fades?}\par\vspace{2mm}
+Fade episodes are sparse; most samples lie near the non-fade baseline.
+\par\vspace{2mm}
+\small Uniform sampling risks letting long quiet plateaus dominate the training loss.
+\par\vspace{3mm}
+\textcolor{navy}{\textbf{Event-focused sample selection}}\par\vspace{1mm}
+Forecasting / current-level: windows extending \textbf{90 min before and after} candidate onset.\\[2mm]
+Long-fade / survival: \textbf{within-event samples}.
+\column{.43\textwidth}
 \begin{block}{Development sources}
 Chronological training / validation splits.\\[2mm]
 Validation-based model selection.
@@ -149,7 +152,7 @@ Validation-based model selection.
 Excluded from fitting and hyperparameter search.
 \end{block}
 \end{columns}
-\takeaway{A common signal source and split protocol, with different prediction targets.}
+\takeaway{Event-focused evaluation is not continuous monitoring of the complete time series.}
 \end{frame}
 
 % 5 -- 1:20
@@ -204,6 +207,7 @@ An evaluation oracle, not a deployable predictor.
 \begin{frame}{Shared Switch Post-Processing}
 \begin{columns}[T,onlytextwidth]
 \column{.39\textwidth}
+\vspace{2mm}
 \textbf{1. Raw decision}\\
 Apply the task-specific conversion rule.
 \vspace{4mm}
@@ -236,99 +240,121 @@ Keep an already active switch on while the current signal remains $\geq10$ dB.
 % 8 -- 1:40
 \section{Models}
 \begin{frame}{Autoregressive Forecasting}
+\noindent
+{\small\color{muted}GRU S2V / encoder--decoder \quad PatchTST \quad XGBoost \quad Chronos\par}
+\vspace{4mm}
 \begin{columns}[T,onlytextwidth]
-\column{.48\textwidth}
-\textcolor{forecast}{\textbf{Predict the next ten values}}\[
-X_t=(S_{t-29},\ldots,S_t)\ \longrightarrow\ (\widehat S_{t+1},\ldots,\widehat S_{t+10})
-\]
-\small GRU sequence-to-vector and encoder-decoder; PatchTST; XGBoost per horizon; Chronos zero-shot.
+\column{.44\textwidth}
+\textcolor{forecast}{\textbf{Predict}}\par\vspace{2mm}
+\textbf{30 past values} $\longrightarrow$ \textbf{10 future values}.
 \vspace{3mm}
-\rulebox{$a_t=1\quad\text{if }\widehat S_{t+k}\geq10\ \ \forall k=1,\ldots,10$}
+
+\small Trainable models: raw and context-standardized inputs. Chronos: raw, zero-shot.
 \vspace{3mm}
-\smallnote{Raw and context-standardized trainable variants. Chronos uses raw contexts; L120 is an additional experiment.}
-\column{.48\textwidth}
-\textbf{External test, native L30 grid}
+\begin{block}{Initial switch}
+All ten predictions are $\geq10$ dB.
+\end{block}
+\column{.50\textwidth}
+\textbf{Forecast error vs. switch quality}\par
 \vspace{3mm}
-\renewcommand{\arraystretch}{1.6}
+\renewcommand{\arraystretch}{1.8}
 \begin{tabular}{@{}lrr@{}}\toprule
-Model & RMSE $\downarrow$ & F1 $\uparrow$\\
- & (dB) & (switch)\\\midrule
+Model & RMSE (dB) $\downarrow$ & Switch F1 $\uparrow$\\\midrule
 GRU S2V raw & \textbf{2.852} & 0.674\\
 PatchTST raw & 3.088 & \textbf{0.808}\\\bottomrule
 \end{tabular}\par
-\vspace{5mm}
-PatchTST provides the stronger switch decision despite a higher trajectory RMSE.
+\smallnote{External test, native L30 grid.}
 \end{columns}
-\takeaway{The best forecasting score does not select the best operational policy.}
+\takeaway{Lower forecast error does not guarantee better switches.}
 \end{frame}
 
 % 9 -- 1:25
 \begin{frame}{Current-Level Persistence}
+\noindent
+{\small\color{muted}XGBoost \quad Shapelets with MLP, convolutional or Transformer heads\par}
+\vspace{4mm}
 \begin{columns}[T,onlytextwidth]
-\column{.48\textwidth}
-\textcolor{current}{\textbf{Predict time below the current level}}\[
-R_t^{\mathrm{level}}=\inf\{u>0:S_{t+u}<S_t-0.5\}
-\]
-\small Learnable shapelets with MLP, convolutional or Transformer heads; XGBoost baseline. Relative histories plus scalar signal context.
-\rulebox{$a_t=1\quad\text{if }S_t\geq10\ \text{and }\widehat R_t^{\mathrm{level}}\geq300\,\mathrm{s}$}
-\column{.48\textwidth}
-\textbf{XGBoost: external test, native grid}
+\column{.44\textwidth}
+\textcolor{current}{\textbf{Predict}}\par\vspace{2mm}
+Time until the signal falls below its \textbf{current level minus 0.5 dB}.
+\par\vspace{3mm}
+\small Input: relative-to-current history plus scalar signal features.
+\vspace{3mm}
+\begin{block}{Initial switch}
+Predicted duration $\geq5$ min\\
+and current signal $\geq10$ dB.
+\end{block}
+\column{.50\textwidth}
+\hspace{6mm}
+\textbf{XGBoost: duration vs. decision}\par
 \vspace{3mm}
 \renewcommand{\arraystretch}{1.5}
+\hspace{6mm}
 \begin{tabular}{@{}lr@{}}\toprule
-Duration MAE $\downarrow$ & 586.9 s\\
+Duration MAE $\downarrow$ & \textbf{586.9 s}\\
 Duration median AE $\downarrow$ & 27.2 s\\\midrule
-Switch precision $\uparrow$ & 1.000\\
-Switch recall $\uparrow$ & 0.822\\
-Switch F1 $\uparrow$ & 0.902\\\bottomrule
-\end{tabular}
-\smallnote{Shapelet variants never activate the final switch: their duration estimates do not satisfy the operational gate.}
+Switch F1 $\uparrow$ & \textbf{0.902}\\\bottomrule
+\end{tabular}\par
+\hspace{6mm}
+\smallnote{External test, native grid.}
+\vspace{2mm}
+\small\textbf{Shapelet variants:} no final switch activations on this test set.
 \end{columns}
-\takeaway{A conservative XGBoost policy succeeds where the shapelet duration models fail.}
+\takeaway{Useful switches despite large errors; level recovery is not fade recovery.}
 \end{frame}
 
 % 10 -- 1:20
 \begin{frame}{Long-Fade Detection}
+\noindent
+{\small\color{muted}XGBoost \quad TCN \quad Shapelet convolution classifier\par}
+\vspace{4mm}
 \begin{columns}[T,onlytextwidth]
-\column{.48\textwidth}
-\textcolor{longfade}{\textbf{Classify the entire grouped event}}\[
-p_t=P(D_{\mathrm{event}}\geq300\,\mathrm{s}\mid X_t)
-\]
-\small XGBoost, causal TCN and shapelet convolution classifier.
+\column{.44\textwidth}
+\textcolor{longfade}{\textbf{Predict}}\par\vspace{2mm}
+Probability that the \textbf{whole grouped event} lasts at least 5 min.
+\par\vspace{3mm}
+\small The label stays the same throughout the event, even near its end.
 \vspace{3mm}
-\rulebox{$a_t=1\quad\text{if }p_t\geq0.5$}
-\smallnote{The label remains positive throughout a long grouped event, including near its end. It does not describe the remaining duration.}
-\column{.48\textwidth}
-\textbf{TCN: external test, native grid}
+\begin{block}{Initial switch}
+Predicted probability $\geq0.5$.
+\end{block}
+\column{.50\textwidth}
+\hspace{6mm}
+\textbf{TCN: classification vs. decision}\par
 \vspace{3mm}
 \renewcommand{\arraystretch}{1.6}
+\hspace{6mm}
 \begin{tabular}{@{}lr@{}}\toprule
 Classification AUPRC $\uparrow$ & $\approx1.000$\\\midrule
-Switch precision $\uparrow$ & 0.540\\
-Switch recall $\uparrow$ & 1.000\\
-Switch F1 $\uparrow$ & 0.702\\
-Active duration & 445 min\\\bottomrule
-\end{tabular}
-\smallnote{Classification is evaluated on an event-conditioned, strongly imbalanced domain.}
+Switch precision $\uparrow$ & \textbf{0.540}\\
+Switch recall $\uparrow$ & \textbf{1.000}\\\bottomrule
+\end{tabular}\par
+\smallnote{External test, native grid. Event-conditioned, highly imbalanced classification.}
 \end{columns}
-\takeaway{Near-perfect event classification does not imply accurate switch timing.}
+\takeaway{Total event duration is not remaining duration.}
 \end{frame}
 
 % 11 -- 1:35
 \begin{frame}{Survival Persistence}
+\noindent
+{\small\color{muted}XGBoost-AFT: time distribution \qquad TCN: discrete hazards\par}
+\vspace{2mm}
 \begin{columns}[T,onlytextwidth]
-\column{.46\textwidth}
-\textcolor{survival}{\textbf{Predict residual-event uncertainty}}\[
-S(u\mid X_t)=P(R_t>u\mid X_t)
+\column{.42\textwidth}
+\textcolor{survival}{\textbf{Remaining fade duration}}
+\[
+\mathcal S(u\mid X_t)=P(R_t>u\mid X_t)
 \]
-\small XGBoost-AFT uses survival bounds; the TCN predicts discrete hazards. Both retain censored samples.
-\rulebox{$a_t=1\text{ if }S(300\,\mathrm{s}\mid X_t)\geq0.65$\\and $S_t\geq10$}
-\smallnote{\textcolor{alertred}{0.65 is an exploratory test-selected threshold, not validation-calibrated.}}
-\vspace{1mm}
-\small Native test: TCN has lower IBS (0.103 vs 0.117); AFT higher switch F1 (0.863 vs 0.784).
-\column{.51\textwidth}
+\small Right-censored samples are retained.
+\vspace{2mm}
+\begin{block}{Initial switch}
+Five-minute probability $\geq0.65$\\
+and current signal $\geq10$ dB.
+\end{block}
+\smallnote{\textcolor{alertred}{0.65 is exploratory/test-selected, not validation-calibrated.}}
+\column{.54\textwidth}
 \begin{tikzpicture}
-\begin{axis}[width=\linewidth,height=4.4cm,xmin=0,xmax=30,ymin=0,ymax=1,
+\begin{axis}[width=\linewidth,height=4.1cm,xmin=0,xmax=30,ymin=0,ymax=1,
  xlabel={Remaining time (min)},ylabel={Survival probability},legend pos=north east]
 \addplot[forecast,very thick] table[x=minutes,y=curve1,col sep=comma]{data/survival.csv};\addlegendentry{Low $S(300)$}
 \addplot[current,very thick] table[x=minutes,y=curve2,col sep=comma]{data/survival.csv};\addlegendentry{Median $S(300)$}
@@ -336,8 +362,10 @@ S(u\mid X_t)=P(R_t>u\mid X_t)
 \addplot[muted,dashed] coordinates{(5,0)(5,1)};
 \end{axis}
 \end{tikzpicture}
-\smallnote{Three actual TCN predictions at the 5th, 50th and 95th percentiles of predicted $S(300)$; display limited to 30 min.}
+\smallnote{Three test TCN predictions; dashed line: 5 min.}
 \end{columns}
+\vspace{2mm}
+\takeaway{Direct residual-persistence estimates, with calibration still required.}
 \end{frame}
 
 % 12 -- 1:20
@@ -364,6 +392,7 @@ Representative & Coverage & Precision $\uparrow$ & Recall $\uparrow$ & F1 $\upar
 \begin{frame}{Active Duration and Switching Events}
 \begin{columns}[T,onlytextwidth]
 \column{.61\textwidth}
+\vspace{10mm} % sposta il grafico più in basso
 \begin{tikzpicture}
 \begin{axis}[xbar,bar shift=0,width=7.6cm,height=5cm,xmin=0,xmax=480,ymin=-.6,ymax=4.6,
  ytick={0,1,2,3,4},yticklabels={Long-fade TCN,Survival AFT,PatchTST raw,Current-level XGB,Perfect},
@@ -438,18 +467,61 @@ Offline evaluation and partial coverage & Streaming prototype with an explicit f
 
 % 16 -- 0:50
 \begin{frame}{Conclusions}
-\begin{enumerate}\setlength{\itemsep}{6mm}
-\item \textbf{Task definition changes the switch behavior.}\\
-\small A future trajectory, a level duration and an event label answer different questions.
-\item \normalsize\textbf{Native predictive scores do not determine operational quality.}\\
-\small Evaluate timing, false activation, missed activity and decision coverage.
-\item \normalsize\textbf{Tabular baselines remain competitive.}\\
-\small Current-level XGBoost and survival XGBoost-AFT expose useful operating trade-offs.
-\end{enumerate}
-\vfill
-{\large\color{navy}\textbf{Evaluate the prediction and the decision policy together.}\par}
-\vspace{5mm}
-\textcolor{muted}{Thank you. Questions?}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{@{}p{31mm}X@{}}
+\toprule
+\textcolor{forecast}{\textbf{Autoregressive}} & Effective trajectory-based decisions; lower forecast error does not guarantee better switches.\\[2mm]
+\textcolor{current}{\textbf{Current-level}} & Conservative XGBoost switches despite large duration errors; level recovery is not fade recovery.\\[2mm]
+\textcolor{longfade}{\textbf{Long-fade}} & Strong event classification, but total event duration is poorly aligned with residual switch timing.\\[2mm]
+\textcolor{survival}{\textbf{Survival}} & Directly targets residual fade persistence; probability and decision-threshold calibration remain necessary.\\
+\bottomrule
+\end{tabularx}\par
+\smallnote{One external holdout and an exploratory survival threshold: no universal winner established.}
+\takeaway{Evaluate target alignment, prediction quality and the final switch policy together.}
 \end{frame}
+
+
+% 17 -- closing screen; the appendix below is outside the main slide count.
+\begin{frame}[plain,label=closing]
+  \begin{tikzpicture}[remember picture,overlay]
+    \fill[pale] (current page.south west) rectangle
+      ([yshift=16mm]current page.south east);
+    \node[anchor=south east,inner sep=0] at
+      ([xshift=-8mm,yshift=4mm]current page.south east)
+      {\includegraphics[height=8mm]{../figures/cherubino_pant541.png}};
+    \node[anchor=south west,inner sep=0,font=\scriptsize,text=muted] at
+      ([xshift=8mm,yshift=7mm]current page.south west)
+      {Giuseppe Gabriele Russo\quad |\quad University of Pisa};
+  \end{tikzpicture}
+  \centering
+  \vspace{7mm}
+  {\color{navy}\fontsize{32}{36}\selectfont\bfseries Thank you\par}
+  \vspace{3mm}
+  {\color{muted}\large for your attention\par}
+  \vspace{5mm}
+  \begin{tikzpicture}
+    \foreach \i/\c in {0/forecast,1/current,2/longfade,3/survival}
+      \fill[\c] (\i*1.1,0) rectangle +(1,.045);
+  \end{tikzpicture}\par
+  \vspace{5mm}
+  {\color{ink}\large Questions \& discussion\par}
+  \vspace{3mm}
+  {\color{muted}\small Machine Learning for Satellite Link Fade Nowcasting\par}
+  \vspace{3mm}
+  \hyperlink{backup-rules}{\beamergotobutton{Backup material}}
+  \vfill
+  \vspace{10mm}
+\end{frame}
+
+% Appendix is a separate Beamer part: no backup markers in the main navigation.
+% Every backup frame is unnumbered, so the total remains the main-slide total.
+\renewcommand{\appendixname}{Backup material}
+\appendix
+\setbeamertemplate{headline}{}
+\setbeamertemplate{footline}{\leavevmode\hbox to\paperwidth{\hskip8mm%
+  \textcolor{muted}{\scriptsize Backup material}\hskip5mm%
+  \hyperlink{closing}{\beamerreturnbutton{Questions}}%
+  \hfil\raisebox{-1mm}{\includegraphics[height=6mm]{../figures/cherubino_pant541.png}}\hskip8mm}\vskip3mm}
+\input{backup_slides}
 
 \end{document}

@@ -1,0 +1,28 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{lmodern,microtype}
+\usepackage[a4paper,margin=20mm,headheight=15pt]{geometry}
+\usepackage{setspace,fancyhdr,titlesec,needspace}
+\usepackage[hidelinks]{hyperref}
+\setstretch{1.08}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\raggedbottom
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small Thesis defense | Speaker notes}
+\fancyhead[R]{\small Giuseppe Gabriele Russo}
+\fancyfoot[C]{\small\thepage}
+\titleformat{\section}{\Large\bfseries}{}{0pt}{}
+\titleformat{\subsection}{\normalsize\bfseries}{}{0pt}{}
+\titlespacing*{\subsection}{0pt}{12pt}{5pt}
+\newcommand{\noteslide}[4]{%
+  \Needspace{8\baselineskip}%
+  {\large\bfseries Slide #1 | #2\par}%
+  {\small Target: #3\quad |\quad Cumulative: #4\par}\vspace{2mm}}
+\newcommand{\transition}[1]{\par\vspace{1mm}\textit{Transition: #1}\par}
+\hypersetup{pdftitle={Thesis Defense - Speaker Notes},pdfauthor={Giuseppe Gabriele Russo}}
+\begin{document}
+\input{build/speaker_notes_content.tex}
+\end{document}

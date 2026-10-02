@@ -8,7 +8,7 @@
 - Co-supervisor: Giovanni Scognamiglio
 - Language: English for both slides and oral presentation.
 - Audience assumption: a computer science committee with general machine-learning knowledge, but no specialist satellite-communications background.
-- Format: 16 main slides, approximately 19 minutes 15 seconds including transitions and time to explain figures. Reserve the remaining 45 seconds for pauses.
+- Format: 17 main slides including the closing screen, approximately 19 minutes 20 seconds including transitions and time to explain figures. Reserve the remaining 40 seconds for pauses. Ten optional backup slides are outside this allocation.
 - Status: implemented as `defense.tex`, a 16:9 LaTeX Beamer deck. Speaker notes below accompany the slides; compilation instructions are in the local `README.md`.
 
 **Central message:** The most accurate predictor under a task-specific metric is not necessarily the most useful switch policy. Target definition, output conversion, and decision coverage must be evaluated together.
@@ -33,6 +33,7 @@
 | 14 | An Event-Level Comparison | 1:20 | 17:30 |
 | 15 | Limitations and Next Steps | 0:55 | 18:25 |
 | 16 | Conclusions | 0:50 | 19:15 |
+| 17 | Thank You / Questions | 0:05 | 19:20 |
 
 ## Slide 1. Machine Learning for Satellite Link Fade Nowcasting
 
@@ -80,7 +81,7 @@ This is an experimental study of that decision, using historical data and an off
 
 **Speaker notes:**
 
-The contribution is a decision-level comparison of four formulations, rather than a new neural architecture. We can predict a future trajectory, estimate a duration, classify an event, or estimate the probability that the remaining event duration exceeds a given horizon.
+The contribution is a decision-level comparison of four formulations. We can predict a future trajectory, estimate a duration, classify an event, or estimate the probability that the remaining event duration exceeds a given horizon.
 
 Each formulation has its own natural training objective. However, all of them eventually need to support the same operational action. I therefore compare both their native predictive performance and the switch sequences obtained from their outputs. An important part of the framework is making the evaluation domain explicit: the tasks do not necessarily produce decisions at the same timestamps. Without accounting for that difference, their scores would not be directly comparable.
 
@@ -92,18 +93,22 @@ Each formulation has its own natural training objective. However, all of them ev
 
 - Satellite fade and beacon recordings from Fucino.
 - Signal-only inputs, 30-second sampling, 30-observation context.
+- Sparse fades amid long near-baseline stretches motivate event-focused sampling instead of uniformly sampling the full recordings.
+- Forecasting/current-level: candidate-event windows extending 90 minutes before and after onset. Long-fade/survival: timestamps inside task-defined events.
 - External test source: `fc-uplink-fade.csv`.
 - Chronological development splits and validation-based model selection.
 
-**Visual:** a compact preparation-and-split diagram. Include shared cleaning, conservative small-gap handling, task-specific targets, and separate development/test branches. Do not reuse the full-page thesis preprocessing diagram at slide scale.
+**Visual:** two columns: rarity and task-specific sample selection on the left, development and external-test splits on the right. Shared sampling settings occupy one short line. Detailed gap handling remains in backup B5.
 
 **Speaker notes:**
 
-The data consist of heterogeneous fade and beacon recordings from the Fucino ground station. I use only signal history because additional variables are not consistently available across the files. The main setup uses thirty observations sampled thirty seconds apart, which gives approximately fifteen minutes of recent history.
+The recordings mostly contain quiet, near-baseline conditions; fades are sparse. Uniformly sampling the full series would risk making training focus on reproducing these long plateaus rather than the changes relevant to switching. We therefore select samples around fade episodes.
 
-Preparation validates timestamps and signal values and handles small gaps conservatively. Long acquisition gaps remain boundaries rather than being bridged. Each task then constructs its own targets and valid samples.
+Forecasting and current-level persistence use windows extending ninety minutes before and after candidate onset. These include nearby background and recovery, not only above-threshold samples. Long-fade and survival instead sample inside their task-specific events.
 
-One complete source is held out for external testing. The development data are split chronologically, preserving event separation where applicable. Grid searches select configurations on validation data. Chronos is the exception because it is evaluated without training. The survival switch threshold has a separate exploratory caveat, which I will make explicit when presenting those results.
+Inputs use signal only, normally thirty observations at thirty-second sampling. One complete source is held out; development splits are chronological and event-aware, with model selection on validation. The resulting evaluation is event-focused, not a test of continuous monitoring over all raw recordings.
+
+**Methodological clarification for questions:** plateau dominance is the sampling rationale, not a demonstrated full-series versus event-window ablation. Cropping selects eligible prediction timestamps; it does not join distant observations or allow contexts to cross acquisition gaps. Current-level duration labels are searched on the full continuous signal, not truncated at the candidate-window boundary. Timestamp validation and conservative small-gap handling still apply (B5/B6). Chronos is zero-shot; the survival switch threshold has the explicitly stated exploratory caveat.
 
 **Transition:** The inputs are related, but the four targets answer different questions.
 
@@ -175,11 +180,12 @@ The holding rule then checks the current observed signal. If the switch was acti
 **On screen:**
 
 - Models: GRU S2V, GRU encoder-decoder, PatchTST, XGBoost, Chronos zero-shot.
+- Main setup: 30 past values to ten future values; raw and context-standardized trainable variants, raw zero-shot Chronos.
 - Immediate switch: all ten predicted signal values are at least 10 dB.
 - Lowest test RMSE: GRU S2V raw, 2.852 dB.
 - Highest native switch F1: PatchTST raw, 0.808.
 
-**Visual:** a past/future-window sketch and a compact contrast between forecast-error ranking and switch ranking. Include GRU S2V raw and PatchTST raw as the main comparison. Put other variants in backup material rather than squeezing nine rows onto the slide.
+**Visual:** two columns: input/output size, representation variants and initial switch rule on the left; a two-model RMSE/F1 comparison on the right. Architecture names occupy one short line. Exact normalization and the additional Chronos L120 experiment remain in backups B3 and B5.
 
 **Speaker notes:**
 
@@ -187,7 +193,7 @@ The forecasting models receive a past window and predict ten future signal value
 
 The immediate switch rule requires every predicted point to remain at or above the threshold. This is evaluated at the current decision time, rather than by mixing predictions issued at different times.
 
-The raw GRU sequence-to-vector model has the lowest test RMSE. However, raw PatchTST achieves the highest switch F1 on the native autoregressive grid. Errors near the threshold and their timing matter differently from average forecast errors. This is the first example of a predictive ranking that does not determine the operational ranking.
+The raw GRU sequence-to-vector model has the lowest test RMSE. However, raw PatchTST achieves the highest switch F1 on the native autoregressive grid. The trajectory is useful, but average forecast error does not specifically weight mistakes that change the switch decision. This formulation is effective but indirect: we predict an entire trajectory to answer a persistence question.
 
 **Transition:** The next formulation removes the trajectory and predicts a duration directly.
 
@@ -198,17 +204,22 @@ The raw GRU sequence-to-vector model has the lowest test RMSE. However, raw Patc
 - Target: time until the signal falls below S(t) - 0.5 dB.
 - Models: XGBoost and shapelet models with MLP, convolutional, or Transformer heads.
 - Switch: current signal at least 10 dB and predicted duration at least 300 s.
-- XGBoost is useful under this rule; all three shapelet switches remain zero.
+- Input: relative-to-current history plus scalar signal features.
+- Native test XGBoost: duration MAE 586.9 s, median absolute error 27.2 s, switch F1 0.902.
+- Current-level recovery is not necessarily fade recovery; all three shapelet variants have no final switch activations on this test set.
+- Useful switches can coexist with large duration errors.
 
-**Visual:** a level-relative target illustration and two XGBoost error annotations: median absolute error 27.2 s, MAE 586.9 s. Explicitly label both as external-test duration errors. Keep the difference between these two summaries visible.
+**Visual:** the same two-column layout as slide 8, with three metric rows. The level/fade mismatch and shapelet outcome remain visible as short statements; B6 and B7 provide the detailed explanation.
+
+**Additional native-test values for Q&A:** XGBoost switch precision 1.000 and recall 0.822. These remain off the main slide.
 
 **Speaker notes:**
 
-Here the target is the time until the signal drops by at least the configured amount from its current level. It is not the remaining duration of the whole fade. The models combine relative signal history with scalar information derived from the same past window, including its absolute level.
+This target measures time until the signal falls below its current level minus half a decibel. That is not the same as fade recovery: the signal could drop and still remain above ten decibels.
 
-XGBoost has a median absolute error of about twenty-seven seconds, but a mean absolute error of almost ten minutes. This indicates a strongly uneven error distribution, not uniformly accurate duration prediction. Its resulting switch policy is nevertheless conservative and useful on this holdout.
+XGBoost has a median absolute error of twenty-seven seconds but a mean error of almost ten minutes. Useful switching does not contradict these large errors. For example, predicting ten minutes instead of one hour is a very large duration error, but both exceed the five-minute decision threshold. This example illustrates the distinction; it is not a measured decomposition of our errors.
 
-The shapelet models never activate the final switch. When the signal gate is satisfied, their duration predictions stay below five minutes. This negative result illustrates why fitting a duration target does not by itself establish the usefulness of the resulting switch policy.
+The current-signal gate and shared post-processing also contribute to the final policy. XGBoost's switches are conservative on this holdout, but this does not establish reliable duration estimation. The tested shapelet variants never activate because their predictions fail the five-minute gate when the signal is above threshold.
 
 **Transition:** Classification offers another shortcut, but it changes the meaning of the prediction.
 
@@ -217,11 +228,14 @@ The shapelet models never activate the final switch. When the signal gate is sat
 **On screen:**
 
 - Target: total duration of the grouped event is at least 300 s.
+- The same label applies throughout the grouped event, even near its end.
 - Models: XGBoost, TCN, shapelet convolution classifier.
 - Switch: predicted class probability at least 0.5.
 - Nearly perfect native classification, but excessive switch activity.
 
-**Visual:** grouped-event label over a signal trace with temporary recoveries. Contrast one broad positive label with multiple persistent-threshold intervals. Add native TCN switch precision 0.540 and recall 1.000.
+**Visual:** three rows: classification AUPRC approximately 1.000, switch precision 0.540 and recall 1.000. These reveal excessive activation more directly than F1 alone. Keep the event-conditioned, highly imbalanced evaluation caveat visible. B6 contains the full grouping definition.
+
+**Additional native-test values for Q&A:** TCN switch F1 0.702 and active duration 445 min. These are native-grid values, not the common-grid results shown later.
 
 **Speaker notes:**
 
@@ -229,7 +243,7 @@ Long-fade detection predicts whether a grouped event is long. Nearby threshold c
 
 XGBoost, the TCN, and the shapelet classifier obtain very high classification scores. These scores are conditional on this event-based dataset and should not be interpreted as near-perfect online fade detection.
 
-When the probabilities become instantaneous switch decisions, the mismatch becomes clear. The TCN recovers every reference-positive sample on its native grid, but precision is only about fifty-four percent. The classifier can correctly recognize a long event while remaining active during parts of the group where Perfect Switch is already off. Total event duration is therefore a coarse target for precise switch timing.
+When the probabilities become instantaneous switch decisions, the mismatch becomes clear. The TCN recovers every reference-positive sample on its native grid, but precision is only about fifty-four percent. A long event retains its positive label even near its end and across temporary recoveries in the group. Recognizing a long event therefore does not tell us how much of it remains. The formulation is useful for event characterization, but its total-duration label is poorly aligned with precise switch timing.
 
 **Transition:** Survival modeling focuses instead on how much of the current fade remains.
 
@@ -237,24 +251,24 @@ When the probabilities become instantaneous switch decisions, the mismatch becom
 
 **On screen:**
 
-- Output: S(u | X) = P(remaining fade duration > u | X).
-- Models: XGBoost-AFT and discrete-time TCN.
-- Censored observations remain in the dataset.
+- Output: a survival curve, S(u | X) = P(R > u | X), for remaining fade duration.
+- Models: XGBoost-AFT predicts a time distribution; TCN predicts discrete hazards.
+- Right-censored samples are retained.
 - Switch: S(300 s | X) at least 0.65 and current signal at least 10 dB.
 
 **Visible caveat:** 0.65 is an exploratory test-selected threshold, not a validation-calibrated operating point.
 
-**Visual:** a simplified, clearly labeled survival-curve example with the 300-second horizon. Use existing curves as evidence, but redraw a small subset for readability. Add native IBS: TCN 0.103, AFT 0.117, and native switch F1: TCN 0.784, AFT 0.863.
+**Visual:** three actual test TCN curves, selected at the 5th, 50th and 95th percentiles of predicted S(300), with the five-minute horizon marked. One short equation defines the survival output. No metric comparison is shown on this slide. Detailed censoring, model equations and the IBS/F1 comparison are in B6, B9 and B10.
 
 **Speaker notes:**
 
-Survival modeling estimates a distribution over the remaining event duration. If acquisition stops before recovery, we know only that the event continued for at least the observed period. These right-censored samples remain useful and are retained.
+Survival modeling estimates a distribution over the remaining event duration. Of the four formulations, this directly addresses the question of whether the current fade will persist for another five minutes. If acquisition stops before recovery, we know only that the event continued for at least the observed period. These right-censored samples are retained.
 
 XGBoost-AFT models the duration distribution through an accelerated failure-time formulation. The TCN predicts conditional event probabilities over time bins, from which we obtain a survival curve. Both use the same underlying continuous-time labels.
 
-The TCN has the lower integrated Brier score, which evaluates probabilistic prediction quality. XGBoost-AFT produces the better switch sequence at the evaluated operating point. Once again, native quality and decision quality differ.
+If useful in the spoken explanation: the TCN has the lower integrated Brier score, while XGBoost-AFT produces the better switch sequence at the evaluated operating point. The numbers are in B10: IBS 0.103 versus 0.117, and switch F1 0.784 versus 0.863, respectively. Keep this numerical detour for questions if time is tight.
 
-There is an important qualification: the retained probability threshold of 0.65 was explored on the test set. These switch results are exploratory and require validation-only calibration before a confirmatory evaluation or deployment claim.
+Direct target alignment does not guarantee the best empirical policy. Probabilities need calibration assessment, and the operating threshold must be chosen independently of the test set. Here 0.65 was explored on the test set, so the reported switches remain exploratory rather than confirmatory evidence of superiority.
 
 **Transition:** To compare the tasks themselves, we must also align their decision timestamps.
 
@@ -345,29 +359,44 @@ Finally, this is an offline experimental framework, not a deployed controller. A
 
 **On screen:**
 
-- Task definition changes the resulting switch behavior.
-- Native predictive scores do not determine operational quality.
-- Competitive tabular baselines and explicit decision rules remain essential.
+- Autoregressive: useful trajectory-based decisions, but forecast errors are not switch-specific.
+- Current-level: useful conservative XGBoost switches despite unreliable duration estimates; level recovery differs from fade recovery.
+- Long-fade: strong event classification, but total duration is not residual duration.
+- Survival: directly aligned with residual persistence, with calibration still required.
+- No universal winner: one holdout and an exploratory survival operating threshold.
 
-**Closing statement:** Evaluate the prediction and the decision policy together.
+**Closing statement:** Evaluate target alignment, prediction quality and the final switch policy together.
 
 **Speaker notes:**
 
-This thesis provides a common decision-level comparison of four formulations for satellite fade nowcasting. On the evaluated holdout, current-level XGBoost supports a conservative policy, survival XGBoost-AFT recovers more fade activity, and raw PatchTST provides the strongest autoregressive switch balance.
+The four formulations have distinct strengths and limitations. Forecasting supports useful decisions, but average forecast error is not a switch-specific objective. Current-level XGBoost can switch conservatively despite large duration errors; its target is only a proxy for fade persistence. Long-fade classification recognizes long events but does not estimate how much time remains. Survival addresses that residual-duration question directly, although calibration and independent evaluation are still needed.
 
-The negative results are informative as well. Strong event-classification scores can coexist with excessive switching, and duration models can fail to activate under the operational rule. The main lesson is to evaluate the predictive target, the model, and the decision policy together. Thank you. I am happy to take your questions.
+We therefore have different operating trade-offs, not a universal winner. The central conclusion is to evaluate target alignment, prediction quality and the final switch policy together.
+
+## Slide 17. Thank You / Questions
+
+Leave the closing screen visible during questions. Thank you for your attention. I am happy to take your questions.
+
+The small Backup material button links to the first backup. Each backup has a Questions button to return here.
 
 ## Backup Slides
 
-Prepare these after the main narrative is approved. They are outside the 19:15 allocation.
+Implemented in `backup_slides.tex`, after the closing screen. These are not part of the timed talk, the main numeric total, or the Berlin navigation markers.
 
-1. Exact decision rules and Perfect Switch construction, including the sample/interval convention.
-2. Complete model and representation matrix, including Chronos L120.
-3. Grid-selection metrics, winning configurations, seeds, and finalization choices.
-4. Duration targets, acquisition gaps, imputation, and censoring examples.
-5. Native-grid versus common-grid metrics, strict intersection, and coverage.
-6. Full duration/event-count diagnostics and additional event timelines.
-7. Survival C-index uncertainty: the paired event-bootstrap interval includes zero.
+| Backup | Question it supports | Key point |
+| --- | --- | --- |
+| B1 | How does each model activate a switch? | Four explicit raw-decision rules, followed by shared post-processing. |
+| B2 | What exactly is Perfect? Does minimum-island remove short events? | Eleven reference observations span 300 s; short decision islands are extended, then held above threshold. |
+| B3 | Which architectures and input variants were evaluated? | Full family matrix, including Chronos L120 and selected survival representations. |
+| B4 | How extensive was model selection? | Archived trial counts and validation-only selection criteria. |
+| B5 | How are inputs normalized and gaps handled? | Context-only normalization, train-fitted scalar scaling, and offline interpolation availability caveat. |
+| B6 | Why are event definitions and censored samples different? | Current-level recovery, grouped events and survival recovery are distinct targets; acquisition gaps bound observation. |
+| B7 | How can large duration error coexist with useful switches? | Illustrative duration-threshold counterexamples; not empirical samples or a claim of perfect target alignment. |
+| B8 | Is cross-task comparison fair? | Native, common-reference and strict-intersection domains answer different questions. |
+| B9 | How can duration labels produce a survival probability? | AFT time distribution versus TCN conditional hazards; both account for censoring. |
+| B10 | Is the survival ranking statistically meaningful? | Event-bootstrap C-index interval includes zero; probabilistic accuracy and switch F1 are different. |
+
+For exact winning configurations, use thesis Appendix B and saved run metadata rather than adding dense hyperparameter tables to the talk. B4 counts describe archived searches; B10 uses the refreshed external-test metrics reported in Chapter 6. Do not interpret the C-index uncertainty calculation as a significance test for IBS or switch F1.
 
 ## Evidence and Figure Preparation Notes
 
