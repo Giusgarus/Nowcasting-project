@@ -18,6 +18,7 @@ Formulation & Activate when\ \ldots\\\midrule
 \takeaway{Then apply the same short-island extension and above-threshold holding rule.}
 \end{frame}
 
+
 \begin{frame}[noframenumbering]{B2 | Perfect Switch and Post-Processing}
 \begin{columns}[T,onlytextwidth]
 \column{.48\textwidth}
@@ -225,4 +226,79 @@ AFT minus TCN: $\Delta=0.014$, with 95\% percentile interval $[-0.021,\,0.049]$.
 \small The interval includes zero: no statistically significant ranking advantage is established. Lower TCN Brier scores do not imply better switches at one operating threshold.
 \smallnote{Switch F1 uses the exploratory threshold 0.65 and shared post-processing. The bootstrap statement concerns the C-index difference only.}
 \takeaway{Discrimination, probabilistic accuracy and operational decisions are distinct evaluation levels.}
+\end{frame}
+
+\begin{frame}[noframenumbering]{B11 | PatchTST: From Signal Windows to Forecasts}
+\begin{columns}[T,onlytextwidth]
+\column{.61\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=54mm,keepaspectratio]{../figures/patchtst.png}
+\smallnote{Source: Nie et al., \textit{A Time Series is Worth 64 Words}, ICLR 2023. Same architecture illustration as thesis Chapter 2.}
+\column{.36\textwidth}
+\small\textbf{Our selected raw model}
+\begin{itemize}
+\item 30 signal samples; one channel.
+\item Patches of 10, stride 2: 11 tokens.
+\item Width 128; 4 attention heads; 3 encoder layers.
+\item Flatten + linear head: 10 future values at once.
+\end{itemize}
+\smallnote{The figure shows the original normalization step. Our forecaster has no internal instance normalization: raw or context-standard input is prepared externally.}
+\end{columns}
+\end{frame}
+
+\begin{frame}[noframenumbering]{B12 | Autoregressive Models: Exact Inputs}
+\small $x_t=[S_{t-29},\ldots,S_t]$: one signal channel, sampled every 30 seconds.\par
+\vspace{3mm}
+\renewcommand{\arraystretch}{1.35}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{59mm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+Model / task & Input for one prediction\\\midrule
+GRU S2V, GRU encoder--decoder, PatchTST & $30\times1$ sequence: $x_t$ or $(x_t-\mu_t)/s_t$. No scalar features.\\
+XGBoost / autoregressive & Same 30 raw or standardized lags, flattened. One regressor per future step.\\
+Chronos zero-shot & Raw vector of 30 or 120 samples; internal scaling and tokenization.\\
+\bottomrule
+\end{tabularx}\par
+\vspace{3mm}
+\textbf{Raw and context-standard are separate runs.}\par
+$\mu_t$ and $s_t$ come only from the input window. Standardized forecasts are transformed back with those same statistics.
+\smallnote{Shapes exclude the batch dimension. All models output ten future signal values. No scalar summaries, timestamps or meteorological covariates are appended.}
+\end{frame}
+
+\begin{frame}[noframenumbering]{B13 | Persistence Models: Exact Inputs}
+\small $x_t=[S_{t-29},\ldots,S_t]$,\quad
+$r_t=x_t-S_t$,\quad $q_t=x_t-10$.\par
+\vspace{3mm}
+\renewcommand{\arraystretch}{1.28}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{59mm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+Model / task & Input for one prediction\\\midrule
+Three shapelet models / current-level & $r_t$: $30\times1$ sequence + 12 scalars through a separate embedding.\\
+XGBoost / current-level & $[r_t;\,s_t^{\mathrm{CLP}}]$: 42 tabular features.\\
+TCN, shapelet convolution / long-fade & $q_t$: $30\times1$ sequence + 14 scalars through a separate embedding.\\
+XGBoost / long-fade & $[q_t;\,s_t^{\mathrm{LFD}}]$: 44 tabular features.\\
+Selected XGBoost-AFT / survival & 30 raw lags only; no scalar features.\\
+Selected TCN / survival & $r_t$: $30\times1$ sequence + 18 scalars through a separate embedding.\\
+\bottomrule
+\end{tabularx}
+\smallnote{Neural models concatenate the scalar embedding with the encoded sequence/shapelets before the output head. Trees concatenate scalar values with lags. Scalar definitions: B14.}
+\end{frame}
+
+\begin{frame}[noframenumbering]{B14 | What Is in the Scalar Context?}
+\small
+\textbf{Ten shared trailing-window summaries}\par\vspace{1mm}
+Mean, standard deviation, minimum, maximum and range of the 30 samples;\par
+$S_t-S_{t-1}$, $S_t-S_{t-2}$, $S_t-S_{t-4}$; mean and standard deviation of the last five samples.\par
+\vspace{3mm}
+\renewcommand{\arraystretch}{1.35}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{31mm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+Task & Added to those ten summaries\\\midrule
+Current-level (12) & $S_t$ and $S_t-0.5$: absolute level and level-recovery boundary.\\
+Long-fade (14) & $S_t$, $S_t-10$, elapsed event time and observed sample count since onset.\\
+Survival TCN (18) & The long-fade feature types, with survival-event onset; plus current threshold status, time since last above-threshold sample, consecutive below-threshold count and above-threshold fraction in the last five event-local samples.\\
+\bottomrule
+\end{tabularx}
+\par\vspace{3mm}
+These features restore absolute level and summarize recent changes or event state; they are not extra sensor measurements.
+\smallnote{Feature scaling is fitted on training data during selection. No future event end, target duration or censoring label enters the input. Selected AFT does not use this scalar branch.}
 \end{frame}

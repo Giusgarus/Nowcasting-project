@@ -1,7 +1,7 @@
 # Thesis Defense
 
 English, 16:9 LaTeX Beamer presentation: 17 main slides (including the closing
-screen), approximately 19 minutes, followed by ten optional Q&A backup slides.
+screen), approximately 19 minutes, followed by fourteen optional Q&A backup slides.
 Berlin provides clickable section labels and slide markers across five sections:
 Introduction, Methodology, Models, Results, and Conclusions. The plain title
 and closing slides are included in the 17-slide count; content-slide footers
@@ -22,7 +22,9 @@ also links to the first backup.
 Topics: exact switch rules; Perfect and post-processing; models and inputs;
 search scope; normalization and imputation; event definitions and censoring;
 duration error versus switch quality; evaluation grids; survival-model outputs;
-survival results and statistical uncertainty. No additional experiments are run.
+survival results and statistical uncertainty; the PatchTST architecture (B11);
+exact per-model input shapes (B12--B13); scalar feature definitions (B14).
+The main slides remain unchanged. No additional experiments are run.
 
 ## Printable Speaker Notes
 

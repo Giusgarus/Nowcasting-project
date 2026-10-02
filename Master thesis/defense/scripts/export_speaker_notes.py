@@ -76,17 +76,19 @@ def main() -> None:
         r"\par\medskip",
         r"\textit{End of the main talk. The following pages are optional Q\&A notes.}",
         r"\clearpage\section*{Questions: backup-slide guide}",
-        r"\textit{Not part of the timed speech. B1--B10 follow the closing screen in the deck.}",
+        r"\textit{Not part of the timed speech. Backup slides follow the closing screen in the deck.}",
     ])
     backup_rows = []
     for line in plan.splitlines():
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
         if len(cells) == 3 and re.fullmatch(r"B\d+", cells[0]):
             backup_rows.append(cells)
-    if len(backup_rows) != 10:
-        raise ValueError("Expected ten backup descriptions.")
+    if not backup_rows or [row[0] for row in backup_rows] != [
+        f"B{index + 1}" for index in range(len(backup_rows))
+    ]:
+        raise ValueError("Expected consecutively numbered backup descriptions.")
     for index, (identifier, question, answer) in enumerate(backup_rows):
-        if index == 5:
+        if index > 0 and index % 5 == 0:
             output.append(r"\clearpage\section*{Questions: backup-slide guide (continued)}")
         output.append(r"\subsection*{" + latex_escape(identifier + " | " + question) + "}")
         output.append(latex_escape(answer))
